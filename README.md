@@ -467,9 +467,22 @@ External consumers (CLI / GUI / tests)
 No consumer reaches past the SDK. Business logic in a presentation layer cannot
 be tested without that layer and cannot be reused by the next one.
 
-Full C4 diagrams, UML and the architecture decision records are in
-[`docs/PLAN.md`](docs/PLAN.md). Per-mechanism specifications are in
-`docs/PRD_*.md`.
+Full C4 diagrams, UML and the eleven architecture decision records are in
+[`docs/PLAN.md`](docs/PLAN.md).
+
+| Document | Covers |
+|---|---|
+| [`docs/PRD.md`](docs/PRD.md) | Goals, KPIs, acceptance criteria, functional and non-functional requirements |
+| [`docs/PLAN.md`](docs/PLAN.md) | C4 levels 1–4, UML, ADRs, API and data contracts |
+| [`docs/TODO.md`](docs/TODO.md) | Phases, owners, status, definitions of done |
+| [`docs/PRD_belief_map.md`](docs/PRD_belief_map.md) | Bayesian posterior and the adaptive trust estimator |
+| [`docs/PRD_stigmergy.md`](docs/PRD_stigmergy.md) | Pheromone kernel, decay, and reading a heading from a trail |
+| [`docs/PRD_commit_reveal.md`](docs/PRD_commit_reveal.md) | SHA-256 integrity and the mutual audit |
+| [`docs/PRD_deception.md`](docs/PRD_deception.md) | Lying, decoding, and lie detection |
+| [`docs/PRD_gatekeeper.md`](docs/PRD_gatekeeper.md) | Rate limiting, quota, queueing, retries |
+| [`docs/PRD_p2p_protocol.md`](docs/PRD_p2p_protocol.md) | MCP tools, state machine, the two clocks |
+| [`docs/PROMPTS.md`](docs/PROMPTS.md) | Prompt book — how this was built with AI, including what went wrong |
+| [`docs/GMAIL_SETUP.md`](docs/GMAIL_SETUP.md) | One-time OAuth setup, performed by a human |
 
 ---
 
