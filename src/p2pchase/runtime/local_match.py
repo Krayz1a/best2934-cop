@@ -35,7 +35,7 @@ from ..strategy.landmarks import heading_word, pick_landmark
 from .match_side import MatchReport, Side, cells_matching_heading
 
 
-def _build_side(config: dict[str, Any], role: str, group_id: str,
+def build_side(config: dict[str, Any], role: str, group_id: str,
                 strategy_cfg: dict, trash_talk_cfg: dict, llm_cfg: dict) -> Side:
     """Assemble one peer with its own board, state, brain and talk engine."""
     return Side(
@@ -46,9 +46,13 @@ def _build_side(config: dict[str, Any], role: str, group_id: str,
     )
 
 
-def _play_half_turn(side: Side, opponent: Side, step: int, sub_game: int,
-                    map_area: str, max_words: int, rng: random.Random) -> None:
-    """One agent acts; the opponent learns only what the wire would carry."""
+def play_half_turn(side: Side, opponent: Side, step: int, sub_game: int,
+                   map_area: str, max_words: int, rng: random.Random) -> str:
+    """One agent acts; the opponent learns only what the wire would carry.
+
+    Returns the hint that went out, so a caller rendering the match can show
+    what the opponent actually said rather than inventing a second sentence.
+    """
     decision = side.brain.decide(side.state)
     hint = side.talk.compose(
         TalkRequest(
@@ -77,9 +81,10 @@ def _play_half_turn(side: Side, opponent: Side, step: int, sub_game: int,
     claimed = cells_matching_heading(opponent.state, decision.move)
     honest = opponent.state.belief.score_hint(claimed, opponent.state.opponent_scent)
     opponent.state.belief.update_from_hint(claimed if honest else set())
+    return hint
 
 
-def _exchange_scent(cop: Side, thief: Side) -> None:
+def exchange_scent(cop: Side, thief: Side) -> None:
     """Each side samples only its OPPONENT's field, then folds it into belief."""
     cop.state.sample_opponent_scent(thief.state.my_scent.as_dict())
     thief.state.sample_opponent_scent(cop.state.my_scent.as_dict())
@@ -87,7 +92,7 @@ def _exchange_scent(cop: Side, thief: Side) -> None:
         side.state.belief.update_from_scent(side.state.opponent_scent)
 
 
-def _terminal_outcome(cop: Side, thief: Side) -> str | None:
+def terminal_outcome(cop: Side, thief: Side) -> str | None:
     """Check the two ways a sub-game ends early, in the book's order."""
     if cop.state.position == thief.state.position:
         return K.OUTCOME_CAPTURE
@@ -116,18 +121,18 @@ def run_local_match(
     map_area = config.get("world", {}).get("map_area", K.MAP_AREA)
     max_words = int(config.get("world", {}).get("hint_max_words", K.HINT_MAX_WORDS))
 
-    cop = _build_side(config, K.ROLE_COP, cop_group, strategy_cfg, trash_talk_cfg, llm_cfg)
-    thief = _build_side(config, K.ROLE_THIEF, thief_group, strategy_cfg, trash_talk_cfg, llm_cfg)
+    cop = build_side(config, K.ROLE_COP, cop_group, strategy_cfg, trash_talk_cfg, llm_cfg)
+    thief = build_side(config, K.ROLE_THIEF, thief_group, strategy_cfg, trash_talk_cfg, llm_cfg)
 
     outcome: str | None = None
     max_moves = int(config["movement_and_barriers"]["max_moves"])
 
     for step in range(1, max_moves + 1):
         for side, opponent in ((cop, thief), (thief, cop)):
-            _play_half_turn(side, opponent, step, sub_game, map_area, max_words, rng)
+            play_half_turn(side, opponent, step, sub_game, map_area, max_words, rng)
 
-        _exchange_scent(cop, thief)
-        outcome = _terminal_outcome(cop, thief)
+        exchange_scent(cop, thief)
+        outcome = terminal_outcome(cop, thief)
         if outcome is not None:
             break
 

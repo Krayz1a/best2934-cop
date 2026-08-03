@@ -139,10 +139,10 @@ class PeerRunner:
                 if self.session.state.survival_reached():
                     break
         except (DeadlineExceeded, WatchdogTripped) as error:
-            return await self._abort(str(error), step)
+            return await self.abort(str(error), step)
         except Exception as error:  # noqa: BLE001 -- any fault must abort cleanly
             LOGGER.exception("unexpected fault during sub-game")
-            return await self._abort(f"{type(error).__name__}: {error}", step)
+            return await self.abort(f"{type(error).__name__}: {error}", step)
 
         exchange = await self.client.call(C.TOOL_FINAL_REVEAL,
                                           C.final_reveal_payload(
@@ -155,7 +155,7 @@ class PeerRunner:
         return PeerOutcome(outcome, step, records=self.session.records,
                            opponent_audit=audit)
 
-    async def _abort(self, reason: str, step: int) -> PeerOutcome:
+    async def abort(self, reason: str, step: int) -> PeerOutcome:
         """Tell the opponent why we are stopping, then stop.
 
         The abort is best-effort: if the opponent is already gone, sending fails
