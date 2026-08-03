@@ -25,7 +25,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from . import contracts as C
+from . import contracts
 from .handlers import PeerHandlers
 
 LOGGER = logging.getLogger(__name__)
@@ -73,10 +73,10 @@ class PeerClient:
         return _unwrap(result)
 
     async def hello(self) -> dict[str, Any]:
-        return await self.call(C.TOOL_HELLO)
+        return await self.call(contracts.TOOL_HELLO)
 
     async def negotiate(self, handshake: dict[str, Any]) -> dict[str, Any]:
-        return await self.call(C.TOOL_NEGOTIATE, {"handshake": handshake})
+        return await self.call(contracts.TOOL_NEGOTIATE, {"handshake": handshake})
 
 
 def _unwrap(result: Any) -> dict[str, Any]:
@@ -111,11 +111,11 @@ class LoopbackClient:
     async def call(self, tool: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         handler = self._map.get(tool)
         if handler is None:
-            return C.error(f"unknown tool {tool!r}")
+            return contracts.error(f"unknown tool {tool!r}")
         return handler(payload or {})
 
     async def hello(self) -> dict[str, Any]:
-        return await self.call(C.TOOL_HELLO)
+        return await self.call(contracts.TOOL_HELLO)
 
     async def negotiate(self, handshake: dict[str, Any]) -> dict[str, Any]:
-        return await self.call(C.TOOL_NEGOTIATE, {"handshake": handshake})
+        return await self.call(contracts.TOOL_NEGOTIATE, {"handshake": handshake})

@@ -68,7 +68,7 @@ class BeliefMap:
             self.grid = {known_start: 1.0}
             return
         weight = 1.0 / len(cells) if cells else 0.0
-        self.grid = {c: weight for c in cells}
+        self.grid = dict.fromkeys(cells, weight)
 
     # ------------------------------------------------------------- prediction
     def predict(self) -> None:
@@ -114,39 +114,57 @@ class BeliefMap:
             self.grid[cell] *= likelihood
         self._prune_and_normalise()
 
-    def update_from_hint(self, claimed_cells: set[Coord]) -> None:
-        """Fold a decoded verbal hint in, weighted by our current trust.
+    def update_from_hint(self, heading: str | None) -> None:
+        """Transport belief in the claimed direction, weighted by our trust.
 
-        ``claimed_cells`` is the set of cells consistent with what the opponent
-        said. With trust t, a consistent cell is boosted by (1 + t) and an
-        inconsistent one damped by (1 - t). At t = 0 the hint is inert, which is
-        exactly what a proven liar deserves.
+        A directional claim is not evidence about *which* cell the opponent
+        occupies; it is evidence about how the whole cloud moved. Re-weighting
+        cells by whether they are "consistent with north" looks reasonable and
+        is very nearly a no-op, because once belief has diffused almost every
+        cell has a northern neighbour -- the claimed set covers the board and
+        the update cancels out.
+
+        Transport is the update the claim actually licenses. With trust t, a
+        fraction t of each cell's mass steps in the claimed direction and
+        (1 - t) stays where it was. At t = 0 the hint is inert, which is exactly
+        what a proven liar deserves; at t = 1 we would follow it blindly, which
+        is why ``TRUST_CEILING`` sits below 1.
         """
-        if not claimed_cells:
+        if heading not in ("N", "S", "E", "W"):
             return
-        boost = 1.0 + self.trust
-        damp = max(1e-3, 1.0 - self.trust)
-        for cell in list(self.grid):
-            self.grid[cell] *= boost if cell in claimed_cells else damp
+        weight = self.trust
+        moved: dict[Coord, float] = {}
+        for cell, prob in self.grid.items():
+            target = self.board.target_of(cell, heading)
+            if not self.board.is_passable(target):
+                # A wall in the claimed direction: that hypothesis cannot have
+                # moved, so its mass stays rather than vanishing.
+                moved[cell] = moved.get(cell, 0.0) + prob
+                continue
+            moved[target] = moved.get(target, 0.0) + prob * weight
+            moved[cell] = moved.get(cell, 0.0) + prob * (1.0 - weight)
+        self.grid = moved
         self._prune_and_normalise()
 
-    def score_hint(self, claimed_cells: set[Coord], opponent_scent: ScentMap) -> bool:
-        """Cross-check a hint against the trail and adjust trust. True if honest.
+    def score_claim(self, claimed: str | None, observed: str | None) -> bool | None:
+        """Cross-examine a claimed heading against the trail's actual drift.
 
-        This is the book's worked example: the thief says "I moved north" while
-        every gram of scent sits in the south-east. The gap between the claim
-        and the physical record is the tell.
+        This is the book's worked example made continuous: the thief says "I
+        moved north" while its scent is drifting south-east. The gap between the
+        sentence and the physical record is the tell, and the tell is worth a
+        nudge to the trust coefficient rather than an immediate verdict --
+        a lagging average produces the occasional honest mismatch, and one
+        reading should never convict.
+
+        Returns ``None`` when there is nothing to compare: no claim, or no
+        readable drift. An unreadable turn is not evidence of honesty, so it
+        must not be scored as such.
         """
-        if not claimed_cells or not opponent_scent.grid:
-            return True
-        total = sum(opponent_scent.grid.values())
-        if total <= 0:
-            return True
-        supporting = sum(opponent_scent.intensity(c) for c in claimed_cells)
-        consistency = supporting / total
+        if claimed not in ("N", "S", "E", "W") or observed is None:
+            return None
 
         self.hints_seen += 1
-        honest = consistency >= 0.25
+        honest = claimed == observed
         if not honest:
             self.hints_contradicted += 1
 

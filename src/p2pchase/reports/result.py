@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from ..domain.crypto import mutual_agreement_hash
 from .naming import TIMEZONE, links_block
 
@@ -87,7 +87,7 @@ def build_result_artifact(
             "used to build the league standings. Both teams must agree on this "
             "result and each sends its own copy to the lecturer (book ch9)."
         ),
-        "schema_version": K.SCHEMA_VERSION,
+        "schema_version": constants.SCHEMA_VERSION,
         "report_type": "final_game_result",
         "game_id": game_id,
         "game_uid": game_uid,

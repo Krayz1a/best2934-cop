@@ -24,7 +24,7 @@ from typing import Any
 from ..runtime.peer_session import PeerSession
 from ..services.negotiation_service import NegotiationService
 from ..shared.peer_config import PeerConfig
-from . import contracts as C
+from . import contracts
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,113 +64,113 @@ class PeerHandlers:
     # ----------------------------------------------------------------- tools
     def hello(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         """Identify ourselves and publish the fingerprints a match depends on."""
-        return C.ok(handshake=self.negotiation.handshake().as_dict(),
-                    tools=list(C.ALL_TOOLS))
+        return contracts.ok(handshake=self.negotiation.handshake().as_dict(),
+                    tools=list(contracts.ALL_TOOLS))
 
     def negotiate(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Compare the opponent's fingerprints against ours (rule 11)."""
         agreement = self.negotiation.compare(payload.get("handshake", payload))
         if not agreement.agreed:
-            return C.error("configuration mismatch", **agreement.as_dict())
-        return C.ok(**agreement.as_dict())
+            return contracts.error("configuration mismatch", **agreement.as_dict())
+        return contracts.ok(**agreement.as_dict())
 
     def declare_step0(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Accept the opponent's signed hardware declaration (rule 24)."""
         session = self._require_session()
         if session is None:
-            return C.error("no sub-game is in progress")
+            return contracts.error("no sub-game is in progress")
         session.opponent_records.append(dict(payload))
-        return C.ok(step=0)
+        return contracts.ok(step=0)
 
     def commit_step(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Receive a sealed step. The hash alone reveals nothing."""
         problem = self._check_game(payload)
         if problem:
-            return C.error(problem)
+            return contracts.error(problem)
         assert self.session is not None
         step = int(payload.get("step", 0))
         commitment = str(payload.get("commit", ""))
         if len(commitment) != 64:
-            return C.error(f"commitment must be a 64-character SHA-256 hex digest, "
+            return contracts.error(f"commitment must be a 64-character SHA-256 hex digest, "
                            f"got {len(commitment)} characters")
         self.session.on_commit(step, commitment)
-        return C.ok(step=step, acknowledged=True)
+        return contracts.ok(step=step, acknowledged=True)
 
     def acknowledge_step(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Confirm we hold the opponent's commitment for this step."""
         problem = self._check_game(payload)
         if problem:
-            return C.error(problem)
+            return contracts.error(problem)
         assert self.session is not None
         step = int(payload.get("step", 0))
         held = step in self.session.opponent_commitments
         if not held:
-            return C.error(f"no commitment held for step {step}")
-        return C.ok(step=step, commit=self.session.opponent_commitments[step])
+            return contracts.error(f"no commitment held for step {step}")
+        return contracts.ok(step=step, commit=self.session.opponent_commitments[step])
 
     def reveal_step(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Receive the disclosed move, hint and barrier for a committed step."""
         problem = self._check_game(payload)
         if problem:
-            return C.error(problem)
+            return contracts.error(problem)
         assert self.session is not None
         step = int(payload.get("step", 0))
-        move, hint, barrier = C.parse_reveal(payload)
+        move, hint, barrier = contracts.parse_reveal(payload)
         try:
             self.session.on_reveal(step, move, hint, barrier)
         except ValueError as error:
-            return C.error(str(error))
-        return C.ok(step=step, applied=True)
+            return contracts.error(str(error))
+        return contracts.ok(step=step, applied=True)
 
     def sample_scent(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Report our own pheromone intensity at the requested cells."""
         problem = self._check_game(payload)
         if problem:
-            return C.error(problem)
+            return contracts.error(problem)
         assert self.session is not None
         cells = payload.get("cells") or []
-        return C.ok(samples=self.session.scent_at(cells))
+        return contracts.ok(samples=self.session.scent_at(cells))
 
     def final_reveal(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Disclose every nonce so the whole chain becomes checkable (rule 18)."""
         session = self._require_session()
         if session is None:
-            return C.error("no sub-game is in progress")
+            return contracts.error("no sub-game is in progress")
         if payload.get("records"):
             session.audit(list(payload["records"]))
-        return C.ok(records=session.final_reveal(), group=session.group_id)
+        return contracts.ok(records=session.final_reveal(), group=session.group_id)
 
     def audit_result(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Verify the opponent's disclosed chain and return the verdict."""
         session = self._require_session()
         if session is None:
-            return C.error("no sub-game is in progress")
-        return C.ok(audit=session.audit(list(payload.get("records", []))))
+            return contracts.error("no sub-game is in progress")
+        return contracts.ok(audit=session.audit(list(payload.get("records", []))))
 
     def agree_result(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Compare result digests. A mismatch voids the match for both (rule 35)."""
         theirs = str(payload.get("sha256", ""))
         ours = str(payload.get("expected", theirs))
-        return C.ok(agreed=bool(theirs) and theirs == ours, ours=ours, theirs=theirs)
+        return contracts.ok(agreed=bool(theirs) and theirs == ours, ours=ours, theirs=theirs)
 
     def abort(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Accept an abort so neither side is left waiting (rule 6)."""
         self.aborted_reason = str(payload.get("reason", "opponent aborted"))
         LOGGER.error("match aborted by opponent: %s", self.aborted_reason)
-        return C.ok(aborted=True, reason=self.aborted_reason)
+        return contracts.ok(aborted=True, reason=self.aborted_reason)
 
     def as_map(self) -> dict[str, Any]:
         """Tool name -> handler, used by the server binding and by tests."""
         return {
-            C.TOOL_HELLO: self.hello,
-            C.TOOL_NEGOTIATE: self.negotiate,
-            C.TOOL_STEP0: self.declare_step0,
-            C.TOOL_COMMIT: self.commit_step,
-            C.TOOL_ACK: self.acknowledge_step,
-            C.TOOL_REVEAL: self.reveal_step,
-            C.TOOL_SCENT: self.sample_scent,
-            C.TOOL_FINAL_REVEAL: self.final_reveal,
-            C.TOOL_AUDIT: self.audit_result,
-            C.TOOL_AGREE: self.agree_result,
-            C.TOOL_ABORT: self.abort,
+            contracts.TOOL_HELLO: self.hello,
+            contracts.TOOL_NEGOTIATE: self.negotiate,
+            contracts.TOOL_STEP0: self.declare_step0,
+            contracts.TOOL_COMMIT: self.commit_step,
+            contracts.TOOL_ACK: self.acknowledge_step,
+            contracts.TOOL_REVEAL: self.reveal_step,
+            contracts.TOOL_SCENT: self.sample_scent,
+            contracts.TOOL_FINAL_REVEAL: self.final_reveal,
+            contracts.TOOL_AUDIT: self.audit_result,
+            contracts.TOOL_AGREE: self.agree_result,
+            contracts.TOOL_ABORT: self.abort,
         }

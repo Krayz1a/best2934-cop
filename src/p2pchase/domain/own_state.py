@@ -19,10 +19,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from .belief import BeliefMap
 from .board import Board, Coord
 from .smell import ScentMap, build_scent_map
+from .trail_reading import displacement_heading
 
 
 @dataclass
@@ -40,8 +41,16 @@ class OwnState:
     #: networked runner waits on this rather than on wall-clock time, so a peer
     #: never advances past an opponent whose message is merely slow.
     opponent_steps_seen: int = 0
-    max_moves: int = K.MAX_MOVES
-    survival_threshold: int = K.SURVIVAL_THRESHOLD
+    max_moves: int = constants.MAX_MOVES
+    survival_threshold: int = constants.SURVIVAL_THRESHOLD
+    #: Where the opponent's trail was centred when we last sampled it, and which
+    #: way it moved since the sample before that. Together these are the only
+    #: physical evidence we have about the opponent's heading.
+    trail_centre: tuple[float, float] | None = None
+    trail_drift: str | None = None
+    #: The heading the opponent's latest sentence asserted, held until we have
+    #: sampled the trail and can actually cross-examine it.
+    pending_claim: str | None = None
     finished: bool = False
     outcome: str | None = None
     history: list[dict[str, Any]] = field(default_factory=list)
@@ -50,11 +59,11 @@ class OwnState:
     # ------------------------------------------------------------------ roles
     @property
     def is_cop(self) -> bool:
-        return self.role == K.ROLE_COP
+        return self.role == constants.ROLE_COP
 
     @property
     def opponent_role(self) -> str:
-        return K.ROLE_THIEF if self.is_cop else K.ROLE_COP
+        return constants.ROLE_THIEF if self.is_cop else constants.ROLE_COP
 
     # ---------------------------------------------------------------- actions
     def apply_own_move(self, move: str, barrier: Coord | None = None) -> None:
@@ -83,9 +92,19 @@ class OwnState:
         self.opponent_steps_seen += 1
         self.belief.predict()
 
-    def sample_opponent_scent(self, payload: dict[str, float]) -> None:
-        """Load the opponent's trail as sampled from the board this turn."""
-        self.opponent_scent.load(payload)
+    def sample_opponent_scent(self, payload: dict[str, float], merge: bool = False) -> None:
+        """Load the opponent's trail and measure how far its centre has drifted.
+
+        The drift is recorded here rather than computed on demand because the
+        baseline has to advance on *every* sample, including turns where the
+        opponent said nothing worth checking. Computing it lazily would compare
+        against whichever turn we last happened to ask, which silently turns a
+        one-turn measurement into a multi-turn one.
+        """
+        self.opponent_scent.load(payload, merge=merge)
+        centre = self.opponent_scent.centroid()
+        self.trail_drift = displacement_heading(self.trail_centre, centre)
+        self.trail_centre = centre
 
     def end_of_full_turn(self) -> None:
         """Decay every trail once both agents have moved (book ch4.3)."""
@@ -150,8 +169,8 @@ def build_own_state(config: dict, role: str, board: Board) -> OwnState:
     """Assemble a peer's starting local truth from the agreed config."""
     ba = config.get("board_and_agents", {})
     mb = config.get("movement_and_barriers", {})
-    start = tuple(ba.get("cop_start" if role == K.ROLE_COP else "thief_start", (0, 0)))
-    opponent_start = tuple(ba.get("thief_start" if role == K.ROLE_COP else "cop_start", (3, 3)))
+    start = tuple(ba.get("cop_start" if role == constants.ROLE_COP else "thief_start", (0, 0)))
+    opponent_start = tuple(ba.get("thief_start" if role == constants.ROLE_COP else "cop_start", (3, 3)))
 
     belief = BeliefMap(board=board)
     # Start positions are agreed in the shared config, so step 0 is certain.
@@ -167,8 +186,8 @@ def build_own_state(config: dict, role: str, board: Board) -> OwnState:
         belief=belief,
         my_scent=my_scent,
         opponent_scent=opponent_scent,
-        max_moves=int(mb.get("max_moves", K.MAX_MOVES)),
-        survival_threshold=int(mb.get("survival_threshold", K.SURVIVAL_THRESHOLD)),
+        max_moves=int(mb.get("max_moves", constants.MAX_MOVES)),
+        survival_threshold=int(mb.get("survival_threshold", constants.SURVIVAL_THRESHOLD)),
     )
     state.my_scent.emit(state.position)
     return state

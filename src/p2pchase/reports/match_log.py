@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from .naming import TIMEZONE, links_block
 
 
@@ -63,7 +63,7 @@ def build_log_artifact(
             "cryptographic verification: commit/reveal records, moves, hints, "
             "nonces and hashes."
         ),
-        "schema_version": K.SCHEMA_VERSION,
+        "schema_version": constants.SCHEMA_VERSION,
         "game_id": game_id,
         "game_uid": game_uid,
         "links": links_block(game_id),

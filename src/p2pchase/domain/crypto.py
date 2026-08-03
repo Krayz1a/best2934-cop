@@ -79,7 +79,7 @@ class CommitRecord:
 
     def revealed_view(self) -> dict[str, Any]:
         """What the opponent may see at reveal time: content, but not the nonce."""
-        body = {k: v for k, v in self.payload.items()}
+        body = dict(self.payload)
         return {"payload": body, "commit": self.commit}
 
     def audit_view(self) -> dict[str, Any]:
@@ -152,7 +152,7 @@ def sign_declaration(payload: dict[str, Any], secret: str) -> str:
     farm the computational-fairness bonus.
     """
     blob = canonical_json(payload)
-    return hashlib.sha256(f"{secret}|{blob}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{secret}|{blob}".encode()).hexdigest()
 
 
 def mutual_agreement_hash(result_summary: dict[str, Any]) -> str:

@@ -29,7 +29,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from ..shared.rate_limits import DEFAULT_RATE_LIMITS, service_limits
@@ -40,18 +40,18 @@ from .retrying import RetryPolicy
 LOGGER = logging.getLogger(__name__)
 
 
-class GateDecision(str, Enum):
+class GateDecision(StrEnum):
     ALLOW = "allow"
     QUEUED = "queued"
     QUOTA_EXCEEDED = "quota_exceeded"
     LOCKED = "locked"
 
 
-class GatekeeperLocked(RuntimeError):
+class GatekeeperLockedError(RuntimeError):
     """The DOS detector has sealed the pipeline for this process."""
 
 
-class QuotaExceeded(RuntimeError):
+class QuotaExceededError(RuntimeError):
     """Today's allowance is spent; waiting will not help before midnight."""
 
 
@@ -117,15 +117,15 @@ class ApiGatekeeper:
         decision, reason = self.check()
         if decision is GateDecision.LOCKED:
             self._record(label, decision, 0.0, 0.0, 0, False, reason)
-            raise GatekeeperLocked(reason)
+            raise GatekeeperLockedError(reason)
         if decision is GateDecision.QUOTA_EXCEEDED:
             self._record(label, decision, 0.0, 0.0, 0, False, reason)
-            raise QuotaExceeded(reason)
+            raise QuotaExceededError(reason)
 
         waited = self._await_turn(label)
         if not self.dos.record():
             self._record(label, GateDecision.LOCKED, waited, 0.0, 0, False, self.dos.lock_reason)
-            raise GatekeeperLocked(self.dos.lock_reason)
+            raise GatekeeperLockedError(self.dos.lock_reason)
         self.quota.allow()
 
         started = time.monotonic()

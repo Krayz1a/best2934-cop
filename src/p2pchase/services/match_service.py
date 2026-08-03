@@ -18,11 +18,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from ..domain.crypto import commit
 from ..domain.scoring import ScoreTable, SeriesTally, build_score_table
 from ..infra.sysinfo import build_step0, collect_hardware, git_commit
-from ..reports import artifacts as A
+from ..reports import artifacts
 from ..runtime.local_match import run_local_match
 from ..shared.paths import artifacts_dir
 from ..shared.peer_config import PeerConfig
@@ -38,8 +38,8 @@ def roles_for_sub_game(sub_game: int, group_a: str, group_b: str) -> dict[str, s
     nothing to disagree about mid-series.
     """
     if sub_game % 2 == 1:
-        return {group_a: K.ROLE_COP, group_b: K.ROLE_THIEF}
-    return {group_a: K.ROLE_THIEF, group_b: K.ROLE_COP}
+        return {group_a: constants.ROLE_COP, group_b: constants.ROLE_THIEF}
+    return {group_a: constants.ROLE_THIEF, group_b: constants.ROLE_COP}
 
 
 @dataclass
@@ -48,7 +48,7 @@ class SeriesResult:
 
     game_id: str
     game_uid: str
-    outcomes: list[A.SubGameOutcome] = field(default_factory=list)
+    outcomes: list[artifacts.SubGameOutcome] = field(default_factory=list)
     final_result: dict[str, Any] = field(default_factory=dict)
     tokens: dict[str, int] = field(default_factory=dict)
     paths: list[Path] = field(default_factory=list)
@@ -71,9 +71,9 @@ class MatchService:
         self.table: ScoreTable = build_score_table(config.shared)
 
     # ------------------------------------------------------------- identity
-    def identity(self, mcp_url: str = "") -> A.GroupIdentity:
+    def identity(self, mcp_url: str = "") -> artifacts.GroupIdentity:
         """This team's static declaration entry, hardware included."""
-        return A.GroupIdentity(
+        return artifacts.GroupIdentity(
             group_id=self.config.group_id,
             group_name=self.config.group_name,
             members=self.config.members,
@@ -107,11 +107,11 @@ class MatchService:
         """Play a full local series and write every artifact it produces."""
         count = sub_games or self.config.num_sub_games
         mine, theirs = self.config.group_id, opponent_group
-        game_id = A.make_game_id(mine, theirs)
-        game_uid = A.new_game_uid()
-        started = A.now_iso()
+        game_id = artifacts.make_game_id(mine, theirs)
+        game_uid = artifacts.new_game_uid()
+        started = artifacts.now_iso()
 
-        names = A.ArtifactSet(game_id=game_id, directory=self.output_dir)
+        names = artifacts.ArtifactSet(game_id=game_id, directory=self.output_dir)
         tally = SeriesTally(mine, theirs, tie_score=self.table.tie_score)
         result = SeriesResult(game_id=game_id, game_uid=game_uid)
         result.paths.append(self._write_declaration(names, game_id, game_uid, theirs, started))
@@ -123,59 +123,59 @@ class MatchService:
         result.final_result = tally.finalise()
         result.tokens = {mine: sum(o.tokens.get(mine, 0) for o in result.outcomes),
                          theirs: sum(o.tokens.get(theirs, 0) for o in result.outcomes)}
-        report = A.build_result_artifact(game_id, game_uid, [mine, theirs],
+        report = artifacts.build_result_artifact(game_id, game_uid, [mine, theirs],
                                          result.outcomes, result.final_result, result.tokens)
-        result.paths.append(A.write_json(names.result(), report))
+        result.paths.append(artifacts.write_json(names.result(), report))
         LOGGER.info("series %s complete: %s", game_id, result.final_result)
         return result
 
-    def _write_declaration(self, names: A.ArtifactSet, game_id: str, game_uid: str,
+    def _write_declaration(self, names: artifacts.ArtifactSet, game_id: str, game_uid: str,
                            opponent: str, started: str) -> Path:
         """Write the pre-game declaration for both sides of a local rehearsal."""
-        theirs = A.GroupIdentity(
+        theirs = artifacts.GroupIdentity(
             group_id=opponent, group_name=opponent, members=[], repos={},
             mcp_servers={"url": self.config.opponent_url},
             llm_model="unknown", hardware_spec={},
         )
-        payload = A.build_declaration(
+        payload = artifacts.build_declaration(
             game_id, game_uid, self.identity(), theirs,
             num_sub_games=self.config.num_sub_games,
             max_tokens_per_game=int(self.config.shared["network_and_league"]
                                     ["token_budget_per_series"]),
             started_at=started,
         )
-        return A.write_json(names.declaration(), payload)
+        return artifacts.write_json(names.declaration(), payload)
 
-    def _play_one(self, names: A.ArtifactSet, game_id: str, game_uid: str, number: int,
+    def _play_one(self, names: artifacts.ArtifactSet, game_id: str, game_uid: str, number: int,
                   opponent: str, tally: SeriesTally, seed: int,
-                  result: SeriesResult) -> A.SubGameOutcome:
+                  result: SeriesResult) -> artifacts.SubGameOutcome:
         """Play one sub-game, write its config and both logs, and score it."""
         mine = self.config.group_id
         roles = roles_for_sub_game(number, mine, opponent)
-        started = A.now_iso()
+        started = artifacts.now_iso()
 
-        config_payload = A.build_config_artifact(self.config.agreed_terms(), game_id,
+        config_payload = artifacts.build_config_artifact(self.config.agreed_terms(), game_id,
                                                  game_uid, number, [mine, opponent])
-        result.paths.append(A.write_json(names.config(number), config_payload))
+        result.paths.append(artifacts.write_json(names.config(number), config_payload))
 
         report, cop, thief = run_local_match(
             self.config.shared, cop_group=mine, thief_group=opponent, sub_game=number,
             seed=seed, strategy_cfg=self.config.strategy,
             trash_talk_cfg=self.config.trash_talk, llm_cfg=self.config.llm,
         )
-        ended = A.now_iso()
-        mine_side = cop if roles[mine] == K.ROLE_COP else thief
-        audit = report.cop_audit if roles[mine] == K.ROLE_COP else report.thief_audit
+        ended = artifacts.now_iso()
+        mine_side = cop if roles[mine] == constants.ROLE_COP else thief
+        audit = report.cop_audit if roles[mine] == constants.ROLE_COP else report.thief_audit
 
-        log = A.build_log_artifact(
+        log = artifacts.build_log_artifact(
             game_id, game_uid, number, mine, roles[mine], opponent, report.outcome,
             report.winner_role, [self.step_zero(number), *mine_side.records],
             started, ended, mine_side.talk.tokens_used, audit,
         )
-        result.paths.append(A.write_json(names.log(number), log))
+        result.paths.append(artifacts.write_json(names.log(number), log))
 
         score = tally.record(roles, report.outcome, self.table)
-        return A.SubGameOutcome(
+        return artifacts.SubGameOutcome(
             sub_game_number=number, roles=roles, started_at=started, ended_at=ended,
             result=report.outcome,
             winner_group=next((g for g, r in roles.items() if r == report.winner_role), None),

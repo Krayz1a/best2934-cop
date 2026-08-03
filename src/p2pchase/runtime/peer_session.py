@@ -26,10 +26,10 @@ from ..domain.own_state import build_own_state
 from ..domain.protocol import Phase, StateMachine, StepIntent
 from ..reports.artifacts import digest_payload
 from ..shared.peer_config import PeerConfig
-from ..strategy.talk_engine import build_talk_engine
 from ..strategy.landmarks import heading_word, pick_landmark
+from ..strategy.talk_engine import build_talk_engine
 from ..strategy.talk_prompt import TalkRequest
-from .match_side import cells_matching_heading
+from .match_side import judge_claim, record_claim
 
 LOGGER = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class PeerSession:
         hint = self.talk.compose(
             TalkRequest(
                 role=self.role, step=step, intent=decision.intent,
-                heading=heading_word(decision.move),
+                heading=heading_word(decision.spoken_heading),
                 landmark=pick_landmark(self._map_area, self._rng),
                 max_words=self._max_words,
                 steps_remaining=self.state.survival_threshold - self.state.step,
@@ -133,11 +133,14 @@ class PeerSession:
         if int(step) not in self.opponent_commitments:
             raise ValueError(f"reveal for step {step} arrived without a prior commitment")
         self.state.apply_opponent_move(move, barrier)
-        claimed = cells_matching_heading(self.state, move)
-        honest = self.state.belief.score_hint(claimed, self.state.opponent_scent)
-        self.state.belief.update_from_hint(claimed if honest else set())
-        LOGGER.debug("step %d: opponent claims %s (%s); judged %s", step, move,
-                     hint[:40], "credible" if honest else "doubtful")
+        # The move is sealed in the commitment and therefore cannot lie; only the
+        # sentence can. Cross-examining the move would confirm honesty every
+        # time and leave the trust estimator pinned at its ceiling, so it is the
+        # hint that gets judged -- and only once we have sampled the trail it
+        # has to agree with, which happens in :meth:`absorb_scent`.
+        claim = record_claim(self.state, hint)
+        LOGGER.debug("step %d: opponent moved %s and claims %s (%r)",
+                     step, move, claim or "nothing", hint[:40])
 
     def scent_at(self, cells: list[list[int]]) -> dict[str, float]:
         """Our own pheromone intensity at the cells the opponent asked about."""
@@ -147,13 +150,21 @@ class PeerSession:
         }
 
     def absorb_scent(self, samples: dict[str, float]) -> None:
-        """Fold sampled opponent intensities into our posterior.
+        """Fold sampled opponent intensities into our posterior, then judge.
 
         Merged rather than replaced: over the network we sample only the cells
         we asked about, so a replace would throw away every earlier reading.
+
+        Settling the standing verbal claim here keeps the networked path
+        identical to the local harness -- the trail is what a claim is checked
+        against, so this is the first moment the check is possible.
         """
-        self.state.opponent_scent.load(samples, merge=True)
+        self.state.sample_opponent_scent(samples, merge=True)
         self.state.belief.update_from_scent(self.state.opponent_scent)
+        honest = judge_claim(self.state)
+        LOGGER.debug("claim judged %s; trust now %.3f",
+                     {True: "credible", False: "doubtful"}.get(honest, "unreadable"),
+                     self.state.belief.trust)
 
     # ------------------------------------------------------------ finishing
     def end_of_turn(self) -> None:

@@ -12,8 +12,9 @@ channels, and they carry very different amounts of truth:
 * a **sampled scent** -- unforgeable, but noisy and decaying
 * a **verbal hint** -- possibly a lie, worth exactly as much as our trust in it
 
-:func:`cells_matching_heading` is where the second of those is turned into
-something a belief map can use.
+:func:`record_claim` and :func:`judge_claim` are the two halves of the last of
+those: what the opponent said is written down when it arrives, and cross-examined
+against the trail once the trail has been sampled.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from ..domain.crypto import commit
 from ..domain.own_state import OwnState
 from ..domain.protocol import StepIntent
 from ..reports.artifacts import digest_payload
+from ..strategy.hint_decoder import heading_from_hint
 from ..strategy.talk_engine import TalkEngine
 
 
@@ -109,23 +111,39 @@ class MatchReport:
         }
 
 
-def cells_matching_heading(observer: OwnState, move: str) -> set:
-    """Decode a movement claim into the cells it would be consistent with.
+def record_claim(observer: OwnState, hint: str) -> str | None:
+    """Note what the opponent's sentence asserted, without judging it yet.
 
-    We do not know where the opponent stands, so a claim of "north" cannot be
-    read as a position. It is read instead as a claim about the *shape* of our
-    belief cloud: the cells reachable by moving north from somewhere we
-    currently think the opponent might be. STAY tells us nothing about
-    direction, so it claims nothing.
+    Judgement has to wait for the trail. At the moment a hint arrives we have
+    not yet sampled the scent the opponent laid down on that same move, so
+    there is physically nothing to check it against. Holding the claim until
+    :func:`judge_claim` is not bookkeeping convenience -- it is the order in
+    which the evidence actually becomes available.
+
+    Returns the decoded heading, or ``None`` for a sentence naming no direction.
+    An unparsable hint is uninformative, not dishonest, and scoring it would let
+    an opponent silence our estimator simply by writing vaguer sentences.
     """
-    if move not in ("N", "S", "E", "W"):
-        return set()
-    board = observer.board
-    claimed = set()
-    for cell, probability in observer.belief.grid.items():
-        if probability <= 0:
-            continue
-        target = board.target_of(cell, move)
-        if board.is_passable(target):
-            claimed.add(target)
-    return claimed
+    observer.pending_claim = heading_from_hint(hint)
+    return observer.pending_claim
+
+
+def judge_claim(observer: OwnState) -> bool | None:
+    """Cross-examine the standing claim against the trail, and act on the verdict.
+
+    Takes the observer's ``OwnState`` rather than a :class:`Side` so the local
+    harness and the networked session share one implementation -- the
+    cross-examination has to be identical on both paths, or a strategy tuned
+    against the harness would behave differently in a real match.
+
+    Returns ``True`` if the claim matched the drift, ``False`` if it
+    contradicted it, and ``None`` if there was nothing checkable. Only a claim
+    that survived is allowed to move belief: a sentence we just caught
+    contradicting the physical record earns a trust penalty and nothing else.
+    """
+    claim = observer.pending_claim
+    observer.pending_claim = None
+    honest = observer.belief.score_claim(claim, observer.trail_drift)
+    if honest:
+        observer.belief.update_from_hint(claim)
+    return honest

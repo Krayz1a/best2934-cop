@@ -22,7 +22,7 @@ import random
 from collections.abc import Iterator
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from ..domain.board import build_board
 from ..domain.brains import load_brain
 from ..domain.own_state import build_own_state
@@ -65,12 +65,12 @@ def match_frames(config: dict[str, Any], watch_role: str, strategy: dict,
                  group: str = "us", opponent: str = "them") -> Iterator[Frame]:
     """A real two-sided sub-game, seen from ``watch_role``'s side only."""
     rng = random.Random(seed)
-    cop = build_side(config, K.ROLE_COP, group, strategy, trash_talk, llm)
-    thief = build_side(config, K.ROLE_THIEF, opponent, strategy, trash_talk, llm)
-    watched = cop if watch_role == K.ROLE_COP else thief
+    cop = build_side(config, constants.ROLE_COP, group, strategy, trash_talk, llm)
+    thief = build_side(config, constants.ROLE_THIEF, opponent, strategy, trash_talk, llm)
+    watched = cop if watch_role == constants.ROLE_COP else thief
 
-    map_area = config.get("world", {}).get("map_area", K.MAP_AREA)
-    max_words = int(config.get("world", {}).get("hint_max_words", K.HINT_MAX_WORDS))
+    map_area = config.get("world", {}).get("map_area", constants.MAP_AREA)
+    max_words = int(config.get("world", {}).get("hint_max_words", constants.HINT_MAX_WORDS))
     max_moves = int(config["movement_and_barriers"]["max_moves"])
 
     yield watched.state.local_view(), ""
@@ -86,7 +86,7 @@ def match_frames(config: dict[str, Any], watch_role: str, strategy: dict,
         exchange_scent(cop, thief)
         if cop.state.position == thief.state.position or thief.state.thief_is_boxed_in():
             watched.state.finished = True
-            watched.state.outcome = K.OUTCOME_CAPTURE
+            watched.state.outcome = constants.OUTCOME_CAPTURE
             yield watched.state.local_view(), hint
             return
 
@@ -96,5 +96,5 @@ def match_frames(config: dict[str, Any], watch_role: str, strategy: dict,
 
         if thief.state.survival_reached():
             watched.state.finished = True
-            watched.state.outcome = K.OUTCOME_SURVIVAL
+            watched.state.outcome = constants.OUTCOME_SURVIVAL
             return

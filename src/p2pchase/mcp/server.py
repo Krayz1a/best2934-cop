@@ -24,7 +24,7 @@ from .handlers import PeerHandlers
 LOGGER = logging.getLogger(__name__)
 
 
-class MissingTransport(RuntimeError):
+class MissingTransportError(RuntimeError):
     """FastMCP is not installed -- an environment problem, not a code fault."""
 
 
@@ -38,7 +38,7 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
     try:
         from fastmcp import FastMCP
     except ImportError as exc:  # pragma: no cover - optional at import time
-        raise MissingTransport(
+        raise MissingTransportError(
             "FastMCP is not installed. Run `uv sync` to install the peer transport."
         ) from exc
 

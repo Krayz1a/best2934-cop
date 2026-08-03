@@ -24,11 +24,11 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from .. import constants as K
-from ..mcp import contracts as C
+from .. import constants
+from ..mcp import contracts
 from ..shared.peer_config import PeerConfig
 from .peer_session import PeerSession
-from .watchdog import DeadlineExceeded, TurnDeadline, Watchdog, WatchdogTripped
+from .watchdog import DeadlineExceededError, TurnDeadline, Watchdog, WatchdogTrippedError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,14 +87,14 @@ class PeerRunner:
 
     # --------------------------------------------------------------- pushes
     async def _push_commit(self, step: int, commitment: str) -> dict[str, Any]:
-        return await self.client.call(C.TOOL_COMMIT, C.commit_payload(
+        return await self.client.call(contracts.TOOL_COMMIT, contracts.commit_payload(
             self.session.game_id, self.session.sub_game, step,
             self.session.group_id, self.session.role, commitment,
         ))
 
     async def _push_reveal(self, step: int) -> dict[str, Any]:
         revealed = self.session.reveal()["payload"]
-        return await self.client.call(C.TOOL_REVEAL, C.reveal_payload(
+        return await self.client.call(contracts.TOOL_REVEAL, contracts.reveal_payload(
             self.session.game_id, self.session.sub_game, step,
             self.session.group_id, self.session.role,
             move=str(revealed.get("move", "STAY")),
@@ -107,7 +107,7 @@ class PeerRunner:
         cells = [list(cell) for cell, _ in self.session.state.belief.top(12)]
         if not cells:
             return
-        response = await self.client.call(C.TOOL_SCENT, C.scent_query(
+        response = await self.client.call(contracts.TOOL_SCENT, contracts.scent_query(
             self.session.game_id, self.session.sub_game, step, cells))
         if response.get("ok"):
             self.session.absorb_scent(response.get("samples", {}))
@@ -130,7 +130,7 @@ class PeerRunner:
     async def run_sub_game(self) -> PeerOutcome:
         """Play until capture, survival, the move ceiling, or a fault."""
         max_moves = int(self.config.shared["movement_and_barriers"]["max_moves"])
-        outcome = K.OUTCOME_SURVIVAL
+        outcome = constants.OUTCOME_SURVIVAL
         step = 0
 
         try:
@@ -138,14 +138,14 @@ class PeerRunner:
                 await self.play_step(step)
                 if self.session.state.survival_reached():
                     break
-        except (DeadlineExceeded, WatchdogTripped) as error:
+        except (DeadlineExceededError, WatchdogTrippedError) as error:
             return await self.abort(str(error), step)
         except Exception as error:  # noqa: BLE001 -- any fault must abort cleanly
             LOGGER.exception("unexpected fault during sub-game")
             return await self.abort(f"{type(error).__name__}: {error}", step)
 
-        exchange = await self.client.call(C.TOOL_FINAL_REVEAL,
-                                          C.final_reveal_payload(
+        exchange = await self.client.call(contracts.TOOL_FINAL_REVEAL,
+                                          contracts.final_reveal_payload(
                                               self.session.game_id, self.session.sub_game,
                                               self.session.group_id,
                                               self.session.final_reveal()))
@@ -165,8 +165,8 @@ class PeerRunner:
         LOGGER.error("aborting sub-game %d at step %d: %s",
                      self.session.sub_game, step, reason)
         try:
-            await self.client.call(C.TOOL_ABORT, {"reason": reason})
+            await self.client.call(contracts.TOOL_ABORT, {"reason": reason})
         except Exception:  # noqa: BLE001 - the opponent may already be gone
             LOGGER.debug("could not deliver the abort notice", exc_info=True)
-        return PeerOutcome(K.OUTCOME_TECHNICAL_LOSS, step, aborted=True, reason=reason,
+        return PeerOutcome(constants.OUTCOME_TECHNICAL_LOSS, step, aborted=True, reason=reason,
                            records=self.session.records)

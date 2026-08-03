@@ -15,9 +15,10 @@ decides, not a person (rule 19: a mismatch is a technical loss, score 0).
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from ..domain.board import Board, BoardGeometry, Coord
 from ..domain.crypto import verify

@@ -22,7 +22,7 @@ import importlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from .board import Coord
 from .own_state import OwnState
 
@@ -40,9 +40,18 @@ class Decision:
 
     move: str
     barrier: Coord | None = None
-    intent: str = K.INTENT_TRUTH
+    intent: str = constants.INTENT_TRUTH
+    #: The heading the *hint* will assert. Equal to ``move`` when telling the
+    #: truth; a different heading when lying. The move itself is sealed in the
+    #: commitment and stays truthful either way -- only the sentence deceives.
+    claimed_heading: str | None = None
     rationale: str = ""
     features: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def spoken_heading(self) -> str:
+        """What the hint should say, defaulting to the truth."""
+        return self.claimed_heading or self.move
 
 
 class BrainBase:
@@ -136,7 +145,7 @@ def _default_brain(role: str) -> type[BrainBase]:
     from .cop_brain import CopBrain
     from .thief_brain import ThiefBrain
 
-    return CopBrain if role == K.ROLE_COP else ThiefBrain
+    return CopBrain if role == constants.ROLE_COP else ThiefBrain
 
 
 def load_brain(role: str, strategy_cfg: dict, config: dict) -> BrainBase:
@@ -148,7 +157,7 @@ def load_brain(role: str, strategy_cfg: dict, config: dict) -> BrainBase:
     ``thief_class`` spelling are accepted, so a config written from the book
     verbatim also works.
     """
-    legacy_key = "police_class" if role == K.ROLE_COP else "thief_class"
+    legacy_key = "police_class" if role == constants.ROLE_COP else "thief_class"
     dotted = str(strategy_cfg.get("brain") or strategy_cfg.get(legacy_key) or "").strip()
     if not dotted:
         return _default_brain(role)(config, strategy_cfg)

@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from ..domain.crypto import digest_payload
 from .naming import TIMEZONE, links_block, now_iso
 
@@ -63,8 +63,8 @@ def build_declaration(
     game_uid: str,
     group_1: GroupIdentity,
     group_2: GroupIdentity,
-    num_sub_games: int = K.NUM_SUB_GAMES,
-    max_tokens_per_game: int = K.TOKEN_BUDGET_PER_SERIES,
+    num_sub_games: int = constants.NUM_SUB_GAMES,
+    max_tokens_per_game: int = constants.TOKEN_BUDGET_PER_SERIES,
     started_at: str | None = None,
     ended_at: str | None = None,
 ) -> dict[str, Any]:
@@ -76,7 +76,7 @@ def build_declaration(
             "MCP servers, hardware, model, agreed token cap and timings. "
             "Signed and locked before play (book ch5, Step-0)."
         ),
-        "schema_version": K.SCHEMA_VERSION,
+        "schema_version": constants.SCHEMA_VERSION,
         "declaration_type": "pre_game_declaration",
         "game_id": game_id,
         "game_uid": game_uid,
@@ -104,7 +104,7 @@ def build_config_artifact(
             "binding parameter table (Appendix F). Both teams hold "
             "byte-identical copies and lock them via config_sha256."
         ),
-        "schema_version": K.SCHEMA_VERSION,
+        "schema_version": constants.SCHEMA_VERSION,
         "agreed_between": sorted(agreed_between),
     }
     body.update(agreed)

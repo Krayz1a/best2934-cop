@@ -10,6 +10,8 @@ GUI, tests, future integrations -- goes through it and never reaches into the
 internal modules directly (guidelines §4.1).
 """
 
-from .shared.version import CODE_VERSION as __version__
+from .shared.version import CODE_VERSION
+
+__version__ = CODE_VERSION
 
 __all__ = ["__version__"]

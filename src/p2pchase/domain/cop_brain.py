@@ -18,7 +18,7 @@ actually converts into a capture.
 
 from __future__ import annotations
 
-from .. import constants as K
+from .. import constants
 from .board import Coord
 from .brains import BrainBase, Decision
 from .own_state import OwnState
@@ -33,7 +33,7 @@ class CopBrain(BrainBase):
             ``barrier_endgame_reserve`` in ``config/police/setup.json``.
     """
 
-    role = K.ROLE_COP
+    role = constants.ROLE_COP
 
     #: Below this belief-distance the cop starts considering barriers at all.
     BARRIER_ENGAGE_RANGE = 4
@@ -57,7 +57,7 @@ class CopBrain(BrainBase):
             return Decision(
                 move="STAY",
                 barrier=barrier,
-                intent=K.INTENT_TRUTH,  # barrier declarations are always truthful
+                intent=constants.INTENT_TRUTH,  # barrier declarations are always truthful
                 rationale=f"seal {barrier} to shrink thief space (d={distance})",
                 features={"distance": distance, "barriers_left": state.board.barriers_left},
             )

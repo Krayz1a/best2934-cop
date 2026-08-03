@@ -38,14 +38,15 @@ def serve(args: Any) -> int:
     Binds loopback by default. Publishing the port is the tunnel's job (ngrok /
     Localtonet, rule 10), so nothing is exposed to the internet by accident.
     """
-    from ..mcp.server import MissingTransport, serve as run_server
+    from ..mcp.server import MissingTransportError
+    from ..mcp.server import serve as run_server
 
     sdk = _sdk(args)
     session = PeerSession(sdk.config, args.role, args.game_id, sub_game=args.sub_game)
     handlers = PeerHandlers(sdk.config, session)
     try:
         run_server(sdk.config, handlers, host=args.host, port=args.port)
-    except MissingTransport as error:
+    except MissingTransportError as error:
         print(error)
         return EXIT_CONFIG
     except KeyboardInterrupt:
@@ -88,13 +89,13 @@ async def _play(runner: PeerRunner, sdk: P2PChaseSDK, url: str):
 
 def gui(args: Any) -> int:
     """Open the live view of THIS peer's local truth (rules 8, 9)."""
-    from ..ui.live_view import LiveViewUnavailable, run_live_view
+    from ..ui.live_view import LiveViewUnavailableError, run_live_view
 
     sdk = _sdk(args)
     try:
         run_live_view(sdk, sub_games=args.sub_games, seed=args.seed,
                       opponent=args.opponent, text_mode=args.text)
-    except LiveViewUnavailable as error:
+    except LiveViewUnavailableError as error:
         print(error)
         return EXIT_CONFIG
     return EXIT_OK

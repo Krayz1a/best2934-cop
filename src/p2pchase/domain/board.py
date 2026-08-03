@@ -17,8 +17,8 @@ Iron rules encoded here:
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
-from typing import Iterable, Iterator
 
 Coord = tuple[int, int]
 
@@ -33,7 +33,7 @@ _DELTAS: dict[str, Coord] = {
 }
 
 
-class IllegalMove(ValueError):
+class IllegalMoveError(ValueError):
     """Raised when a move violates the shared physics contract."""
 
 
@@ -68,6 +68,11 @@ class BoardGeometry:
         Only the vertical axis flips: with a bottom-left origin the row index
         grows upward, so "N" increases it.
         """
+        if move not in _DELTAS:
+            raise IllegalMoveError(
+                f"{move!r} is not in the permanent move set {sorted(_DELTAS)}; "
+                f"movement is orthogonal only (Appendix F, Table 15)"
+            )
         dr, dc = _DELTAS[move]
         if self.axis_origin_corner in ("bottom-left", "bottom-right"):
             dr = -dr
@@ -98,7 +103,7 @@ class Board:
 
     def target_of(self, origin: Coord, move: str) -> Coord:
         if move not in _DELTAS:
-            raise IllegalMove(f"unknown move {move!r}; legal moves are {sorted(_DELTAS)}")
+            raise IllegalMoveError(f"unknown move {move!r}; legal moves are {sorted(_DELTAS)}")
         dr, dc = self.geometry.delta(move)
         return (origin[0] + dr, origin[1] + dc)
 
@@ -146,17 +151,17 @@ class Board:
         if move == "STAY":
             return origin
         if not self.geometry.in_bounds(target):
-            raise IllegalMove(f"move {move} from {origin} leaves the board")
+            raise IllegalMoveError(f"move {move} from {origin} leaves the board")
         if self.is_blocked(target):
-            raise IllegalMove(f"move {move} from {origin} runs into a barrier at {target}")
+            raise IllegalMoveError(f"move {move} from {origin} runs into a barrier at {target}")
         return target
 
     def place_barrier(self, cop_cell: Coord, cell: Coord) -> None:
         """Place a barrier, enforcing quota, adjacency and permanence."""
         if self.barriers_left <= 0:
-            raise IllegalMove(f"barrier quota exhausted ({self.max_barriers})")
+            raise IllegalMoveError(f"barrier quota exhausted ({self.max_barriers})")
         if cell not in self.barrier_targets(cop_cell):
-            raise IllegalMove(
+            raise IllegalMoveError(
                 f"barrier at {cell} is not within one step of the cop at {cop_cell}"
             )
         self.barriers.add(cell)

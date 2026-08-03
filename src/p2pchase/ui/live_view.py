@@ -28,7 +28,7 @@ LOGGER = logging.getLogger(__name__)
 CLEAR_SCREEN = "\033[2J\033[H"
 
 
-class LiveViewUnavailable(RuntimeError):
+class LiveViewUnavailableError(RuntimeError):
     """No renderer can run here -- an environment problem, not a bug."""
 
 

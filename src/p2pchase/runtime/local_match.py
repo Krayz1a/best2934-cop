@@ -22,17 +22,17 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from ..domain.board import build_board
 from ..domain.brains import load_brain
 from ..domain.crypto import audit_records
 from ..domain.own_state import build_own_state
 from ..domain.scoring import ScoreTable, build_score_table
 from ..domain.smell import build_kernel, kernel_fingerprint
+from ..strategy.landmarks import heading_word, pick_landmark
 from ..strategy.talk_engine import build_talk_engine
 from ..strategy.talk_prompt import TalkRequest
-from ..strategy.landmarks import heading_word, pick_landmark
-from .match_side import MatchReport, Side, cells_matching_heading
+from .match_side import MatchReport, Side, judge_claim, record_claim
 
 
 def build_side(config: dict[str, Any], role: str, group_id: str,
@@ -59,7 +59,7 @@ def play_half_turn(side: Side, opponent: Side, step: int, sub_game: int,
             role=side.role,
             step=step,
             intent=decision.intent,
-            heading=heading_word(decision.move),
+            heading=heading_word(decision.spoken_heading),
             landmark=pick_landmark(map_area, rng),
             max_words=max_words,
             steps_remaining=side.state.survival_threshold - side.state.step,
@@ -76,28 +76,35 @@ def play_half_turn(side: Side, opponent: Side, step: int, sub_game: int,
         decision.move, list(decision.barrier) if decision.barrier else None
     )
 
-    # The claim is cross-examined against the trail, and the trust weight this
-    # peer assigns to future hints moves accordingly.
-    claimed = cells_matching_heading(opponent.state, decision.move)
-    honest = opponent.state.belief.score_hint(claimed, opponent.state.opponent_scent)
-    opponent.state.belief.update_from_hint(claimed if honest else set())
+    # The SENTENCE is what gets cross-examined, not the move. The move is
+    # sealed in the commitment and cannot lie, so checking it would only ever
+    # confirm honesty; the hint is the channel deception actually travels on.
+    # It is only recorded here -- the trail it must be checked against has not
+    # been sampled yet.
+    record_claim(opponent.state, hint)
     return hint
 
 
 def exchange_scent(cop: Side, thief: Side) -> None:
-    """Each side samples only its OPPONENT's field, then folds it into belief."""
+    """Each side samples only its OPPONENT's field, then folds it into belief.
+
+    The verbal claim is settled here too, and it has to be: the trail is the
+    only thing a claim can be checked against, and this is the moment it
+    becomes measurable.
+    """
     cop.state.sample_opponent_scent(thief.state.my_scent.as_dict())
     thief.state.sample_opponent_scent(cop.state.my_scent.as_dict())
     for side in (cop, thief):
         side.state.belief.update_from_scent(side.state.opponent_scent)
+        judge_claim(side.state)
 
 
 def terminal_outcome(cop: Side, thief: Side) -> str | None:
     """Check the two ways a sub-game ends early, in the book's order."""
     if cop.state.position == thief.state.position:
-        return K.OUTCOME_CAPTURE
+        return constants.OUTCOME_CAPTURE
     if thief.state.thief_is_boxed_in():
-        return K.OUTCOME_CAPTURE
+        return constants.OUTCOME_CAPTURE
     return None
 
 
@@ -118,11 +125,11 @@ def run_local_match(
     llm_cfg = llm_cfg or {}
 
     table: ScoreTable = build_score_table(config)
-    map_area = config.get("world", {}).get("map_area", K.MAP_AREA)
-    max_words = int(config.get("world", {}).get("hint_max_words", K.HINT_MAX_WORDS))
+    map_area = config.get("world", {}).get("map_area", constants.MAP_AREA)
+    max_words = int(config.get("world", {}).get("hint_max_words", constants.HINT_MAX_WORDS))
 
-    cop = build_side(config, K.ROLE_COP, cop_group, strategy_cfg, trash_talk_cfg, llm_cfg)
-    thief = build_side(config, K.ROLE_THIEF, thief_group, strategy_cfg, trash_talk_cfg, llm_cfg)
+    cop = build_side(config, constants.ROLE_COP, cop_group, strategy_cfg, trash_talk_cfg, llm_cfg)
+    thief = build_side(config, constants.ROLE_THIEF, thief_group, strategy_cfg, trash_talk_cfg, llm_cfg)
 
     outcome: str | None = None
     max_moves = int(config["movement_and_barriers"]["max_moves"])
@@ -139,12 +146,12 @@ def run_local_match(
         cop.state.end_of_full_turn()
         thief.state.end_of_full_turn()
         if thief.state.survival_reached():
-            outcome = K.OUTCOME_SURVIVAL
+            outcome = constants.OUTCOME_SURVIVAL
             break
 
     if outcome is None:
         # Move ceiling reached without a capture: the thief endured.
-        outcome = K.OUTCOME_SURVIVAL
+        outcome = constants.OUTCOME_SURVIVAL
 
     for side in (cop, thief):
         side.state.finished = True

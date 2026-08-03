@@ -32,13 +32,13 @@ __all__ = [
     "CODE_VERSION",
     "CONFIG_VERSION",
     "RATE_LIMITS_VERSION",
-    "VersionMismatch",
+    "VersionMismatchError",
     "is_compatible",
     "validate_config_version",
 ]
 
 
-class VersionMismatch(RuntimeError):
+class VersionMismatchError(RuntimeError):
     """Raised when a configuration file was written for an incompatible schema."""
 
 
@@ -46,7 +46,7 @@ def _major(version: str) -> int:
     """Leading component of a ``MAJOR.MINOR`` version string."""
     head = version.split(".", 1)[0].strip()
     if not head.isdigit():
-        raise VersionMismatch(f"malformed version string: {version!r}")
+        raise VersionMismatchError(f"malformed version string: {version!r}")
     return int(head)
 
 
@@ -63,12 +63,12 @@ def validate_config_version(found: str | None, expected: str = CONFIG_VERSION,
                             what: str = "configuration") -> None:
     """Refuse to start on an incompatible config rather than misread it."""
     if found is None:
-        raise VersionMismatch(
+        raise VersionMismatchError(
             f"{what} has no 'version' key; expected {expected}. "
             "Every versioned artifact must declare its schema version."
         )
     if not is_compatible(found, expected):
-        raise VersionMismatch(
+        raise VersionMismatchError(
             f"{what} declares version {found}, but this build understands "
             f"{expected}. Refusing to run on a config it may misinterpret."
         )

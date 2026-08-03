@@ -30,9 +30,9 @@ def docstring_lines(tree: ast.AST) -> set[int]:
         if not isinstance(node, holders) or not node.body:
             continue
         first = node.body[0]
-        if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
-            if isinstance(first.value.value, str):
-                lines.update(range(first.lineno, (first.end_lineno or first.lineno) + 1))
+        if (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant)
+                and isinstance(first.value.value, str)):
+            lines.update(range(first.lineno, (first.end_lineno or first.lineno) + 1))
     return lines
 
 

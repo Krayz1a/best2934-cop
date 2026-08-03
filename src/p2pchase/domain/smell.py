@@ -165,8 +165,14 @@ class ScentMap:
         cell = max(self.grid, key=lambda k: self.grid[k])
         return cell, self.grid[cell]
 
-    def centre_of_mass(self) -> Coord | None:
-        """Intensity-weighted centroid of the trail, snapped to a cell."""
+    def centroid(self) -> tuple[float, float] | None:
+        """Intensity-weighted centre of the trail, at sub-cell resolution.
+
+        Kept unrounded on purpose. One step moves this centre by a fraction of a
+        cell -- the whole accumulated trail is being averaged, not just the
+        latest emission -- so rounding to a cell would quantise the very signal
+        :meth:`displacement` exists to read.
+        """
         if not self.grid:
             return None
         total = sum(self.grid.values())
@@ -174,7 +180,14 @@ class ScentMap:
             return None
         r = sum(cell[0] * v for cell, v in self.grid.items()) / total
         c = sum(cell[1] * v for cell, v in self.grid.items()) / total
-        return (int(round(r)), int(round(c)))
+        return (r, c)
+
+    def centre_of_mass(self) -> Coord | None:
+        """The centroid snapped to the nearest cell, for display and targeting."""
+        centre = self.centroid()
+        if centre is None:
+            return None
+        return (int(round(centre[0])), int(round(centre[1])))
 
     def as_dict(self) -> dict[str, float]:
         """Serialisable view, keyed ``"row,col"`` so it survives JSON."""

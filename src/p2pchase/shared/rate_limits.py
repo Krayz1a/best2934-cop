@@ -15,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from .version import RATE_LIMITS_VERSION, validate_config_version
 
 #: Fallback used when ``config/rate_limits.json`` is absent. Mirrors Table 19.
@@ -23,11 +23,11 @@ DEFAULT_RATE_LIMITS: dict[str, Any] = {
     "version": RATE_LIMITS_VERSION,
     "services": {
         "default": {
-            "requests_per_minute": K.REQUESTS_PER_MINUTE,
-            "concurrent_max": K.CONCURRENT_REQUESTS,
-            "retry_after_seconds": K.RETRY_BACKOFF_SEC,
-            "max_retries": K.MAX_RETRIES,
-            "queue_depth": K.QUEUE_DEPTH,
+            "requests_per_minute": constants.REQUESTS_PER_MINUTE,
+            "concurrent_max": constants.CONCURRENT_REQUESTS,
+            "retry_after_seconds": constants.RETRY_BACKOFF_SEC,
+            "max_retries": constants.MAX_RETRIES,
+            "queue_depth": constants.QUEUE_DEPTH,
             "daily_limit": 200,
             "burst_threshold": 12,
             "burst_window_seconds": 60,
@@ -38,11 +38,11 @@ DEFAULT_RATE_LIMITS: dict[str, Any] = {
 #: Ceilings, not floors: a *lower* configured value is stricter and therefore
 #: always allowed. Only these two are floors -- see the sign of the comparison.
 _FLOORS: dict[str, int] = {
-    "requests_per_minute": K.REQUESTS_PER_MINUTE,
-    "concurrent_max": K.CONCURRENT_REQUESTS,
-    "retry_after_seconds": K.RETRY_BACKOFF_SEC,
-    "max_retries": K.MAX_RETRIES,
-    "queue_depth": K.QUEUE_DEPTH,
+    "requests_per_minute": constants.REQUESTS_PER_MINUTE,
+    "concurrent_max": constants.CONCURRENT_REQUESTS,
+    "retry_after_seconds": constants.RETRY_BACKOFF_SEC,
+    "max_retries": constants.MAX_RETRIES,
+    "queue_depth": constants.QUEUE_DEPTH,
 }
 
 

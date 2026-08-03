@@ -22,11 +22,11 @@ import time
 from dataclasses import dataclass, field
 
 
-class DeadlineExceeded(TimeoutError):
+class DeadlineExceededError(TimeoutError):
     """A single operation ran past its allotted time."""
 
 
-class WatchdogTripped(TimeoutError):
+class WatchdogTrippedError(TimeoutError):
     """The match stopped making progress; abort rather than hang (rule 6)."""
 
 
@@ -65,7 +65,7 @@ class TurnDeadline:
     def check(self, what: str = "operation") -> None:
         """Raise if the deadline has passed, naming what ran out of time."""
         if self.expired:
-            raise DeadlineExceeded(
+            raise DeadlineExceededError(
                 f"{what} exceeded its {self.seconds:.0f}s deadline "
                 f"(elapsed {self.elapsed:.1f}s)"
             )
@@ -113,4 +113,4 @@ class Watchdog:
                 f"hanging, since an unfinished sub-game is a technical loss for "
                 f"both teams (rule 6)"
             )
-            raise WatchdogTripped(self.tripped_reason)
+            raise WatchdogTrippedError(self.tripped_reason)

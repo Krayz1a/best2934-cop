@@ -17,13 +17,13 @@ and once per match, at the end:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 
 
-class MessageType(str, Enum):
+class MessageType(StrEnum):
     HELLO = "hello"
     NEGOTIATE = "negotiate"
     STEP0 = "step0_declaration"
@@ -38,7 +38,7 @@ class MessageType(str, Enum):
     ABORT = "abort"
 
 
-class Phase(str, Enum):
+class Phase(StrEnum):
     """Where a single step currently stands."""
 
     IDLE = "idle"
@@ -70,7 +70,7 @@ _TRANSITIONS: dict[Phase, set[Phase]] = {
 }
 
 
-class IllegalTransition(RuntimeError):
+class IllegalTransitionError(RuntimeError):
     """Raised when the protocol is driven into an undefined state."""
 
 
@@ -91,7 +91,7 @@ class StateMachine:
 
     def to(self, target: Phase) -> Phase:
         if not self.can(target):
-            raise IllegalTransition(f"illegal transition {self.phase.value} -> {target.value}")
+            raise IllegalTransitionError(f"illegal transition {self.phase.value} -> {target.value}")
         self.history.append((self.phase, target))
         self.phase = target
         return self.phase
@@ -126,7 +126,7 @@ class Envelope:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Envelope":
+    def from_dict(cls, data: dict[str, Any]) -> Envelope:
         return cls(
             type=MessageType(data["type"]),
             game_id=str(data.get("game_id", "")),
@@ -152,7 +152,7 @@ class StepIntent:
     sub_game_number: int
     move: str
     hint: str
-    intent: str = K.INTENT_TRUTH
+    intent: str = constants.INTENT_TRUTH
     barrier: list[int] | None = None
     state_digest: str = ""
 
@@ -185,7 +185,7 @@ class RevealedStep:
     commit: str
 
     @classmethod
-    def from_payload(cls, payload: dict[str, Any], commit_hash: str) -> "RevealedStep":
+    def from_payload(cls, payload: dict[str, Any], commit_hash: str) -> RevealedStep:
         return cls(
             step=int(payload.get("step", 0)),
             role=str(payload.get("role", "")),

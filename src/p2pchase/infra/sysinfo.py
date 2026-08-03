@@ -18,10 +18,10 @@ import os
 import platform
 import shutil
 import subprocess
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from ..domain.crypto import sign_declaration
 
 
@@ -43,7 +43,7 @@ class HardwareSpec:
 def _cpu_name() -> str:
     """Human-readable CPU model, best effort across platforms."""
     try:
-        with open("/proc/cpuinfo", "r", encoding="utf-8") as handle:
+        with open("/proc/cpuinfo", encoding="utf-8") as handle:
             for line in handle:
                 if line.lower().startswith("model name"):
                     return line.split(":", 1)[1].strip()
@@ -133,7 +133,7 @@ def build_step0(
         "type": "system_spec",
         "spec": collect_hardware().as_dict(),
         "model": llm_model,
-        "code_version": K.CODE_VERSION,
+        "code_version": constants.CODE_VERSION,
         "group_name": group_name,
         "sub_game_number": sub_game_number,
         "github_commit": git_commit(repo_dir),

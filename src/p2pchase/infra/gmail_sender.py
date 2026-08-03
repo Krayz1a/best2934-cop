@@ -29,7 +29,7 @@ from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ LOGGER = logging.getLogger(__name__)
 SCOPES: tuple[str, ...] = ("https://www.googleapis.com/auth/gmail.send",)
 
 
-class GmailNotConfigured(RuntimeError):
+class GmailNotConfiguredError(RuntimeError):
     """Raised when credentials are absent -- a setup problem, not a bug."""
 
 
@@ -55,7 +55,7 @@ def sender_address() -> str:
 
 def build_message(subject: str, body: str, attachment_name: str,
                   attachment: dict[str, Any], sender: str = "",
-                  recipient: str = K.AGENT_REPORT_EMAIL) -> dict[str, str]:
+                  recipient: str = constants.AGENT_REPORT_EMAIL) -> dict[str, str]:
     """Build the raw, base64url-encoded message the Gmail API expects.
 
     Separated from sending so the exact bytes can be asserted in a unit test
@@ -85,20 +85,20 @@ def load_credentials():
         from google.auth.transport.requests import Request
         from google.oauth2.credentials import Credentials
     except ImportError as exc:  # pragma: no cover - optional dependency
-        raise GmailNotConfigured(
+        raise GmailNotConfiguredError(
             "Gmail support needs the optional extra: uv sync --extra gmail"
         ) from exc
 
     path = token_path()
     if not path.exists():
-        raise GmailNotConfigured(
+        raise GmailNotConfiguredError(
             f"no OAuth token at {path}. Run `uv run p2pchase authorize-gmail` once, "
             f"in a browser, to create it. The token file is git-ignored (rule 40)."
         )
     creds = Credentials.from_authorized_user_file(str(path), list(SCOPES))
     if not creds.valid:
         if not (creds.expired and creds.refresh_token):
-            raise GmailNotConfigured(f"the OAuth token at {path} is invalid; re-authorize")
+            raise GmailNotConfiguredError(f"the OAuth token at {path} is invalid; re-authorize")
         creds.refresh(Request())
         path.write_text(creds.to_json(), encoding="utf-8")
     return creds
@@ -114,13 +114,13 @@ def authorize(port: int = 0) -> Path:
     try:
         from google_auth_oauthlib.flow import InstalledAppFlow
     except ImportError as exc:  # pragma: no cover - optional dependency
-        raise GmailNotConfigured(
+        raise GmailNotConfiguredError(
             "Gmail support needs the optional extra: uv sync --extra gmail"
         ) from exc
 
     source = credentials_path()
     if not source.exists():
-        raise GmailNotConfigured(
+        raise GmailNotConfiguredError(
             f"no OAuth client file at {source}. Create one in Google Cloud Console "
             f"(see docs/GMAIL_SETUP.md) and point P2PCHASE_GMAIL_CREDENTIALS at it."
         )

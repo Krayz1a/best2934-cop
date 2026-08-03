@@ -24,70 +24,70 @@ from __future__ import annotations
 
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from .version import CONFIG_VERSION
 
 DEFAULT_SHARED: dict[str, Any] = {
     "version": CONFIG_VERSION,
-    "schema_version": K.SCHEMA_VERSION,
+    "schema_version": constants.SCHEMA_VERSION,
     "board_and_agents": {
-        "grid_size": K.GRID_SIZE,
-        "num_agents": K.NUM_AGENTS,
-        "thief_start": list(K.THIEF_START),
-        "cop_start": list(K.COP_START),
-        "axis_origin_corner": K.AXIS_ORIGIN_CORNER,
-        "axis_start_index": K.AXIS_START_INDEX,
+        "grid_size": constants.GRID_SIZE,
+        "num_agents": constants.NUM_AGENTS,
+        "thief_start": list(constants.THIEF_START),
+        "cop_start": list(constants.COP_START),
+        "axis_origin_corner": constants.AXIS_ORIGIN_CORNER,
+        "axis_start_index": constants.AXIS_START_INDEX,
     },
-    "world": {"map_area": K.MAP_AREA, "hint_max_words": K.HINT_MAX_WORDS},
+    "world": {"map_area": constants.MAP_AREA, "hint_max_words": constants.HINT_MAX_WORDS},
     "movement_and_barriers": {
-        "move_set": list(K.MOVE_SET),
-        "max_barriers": K.MAX_BARRIERS,
-        "max_moves": K.MAX_MOVES,
-        "survival_threshold": K.SURVIVAL_THRESHOLD,
+        "move_set": list(constants.MOVE_SET),
+        "max_barriers": constants.MAX_BARRIERS,
+        "max_moves": constants.MAX_MOVES,
+        "survival_threshold": constants.SURVIVAL_THRESHOLD,
     },
     "scoring": {
-        "capture_cop": K.CAPTURE_COP,
-        "capture_thief": K.CAPTURE_THIEF,
-        "survival_cop": K.SURVIVAL_COP,
-        "survival_thief": K.SURVIVAL_THIEF,
-        "tie_score": K.TIE_SCORE,
-        "technical_loss": K.TECHNICAL_LOSS,
+        "capture_cop": constants.CAPTURE_COP,
+        "capture_thief": constants.CAPTURE_THIEF,
+        "survival_cop": constants.SURVIVAL_COP,
+        "survival_thief": constants.SURVIVAL_THIEF,
+        "tie_score": constants.TIE_SCORE,
+        "technical_loss": constants.TECHNICAL_LOSS,
     },
     "pheromones": {
-        "pheromone_center_intensity": K.PHEROMONE_CENTER_INTENSITY,
-        "pheromone_decay": K.PHEROMONE_DECAY,
-        "pheromone_grid_size": K.PHEROMONE_GRID_SIZE,
+        "pheromone_center_intensity": constants.PHEROMONE_CENTER_INTENSITY,
+        "pheromone_decay": constants.PHEROMONE_DECAY,
+        "pheromone_grid_size": constants.PHEROMONE_GRID_SIZE,
         "pheromone_kernel": "book_table",
     },
     "network_and_league": {
-        "response_timeout_sec": K.RESPONSE_TIMEOUT_SEC,
-        "watchdog_timeout_sec": K.WATCHDOG_TIMEOUT_SEC,
-        "num_sub_games": K.NUM_SUB_GAMES,
-        "diversity_reward": K.DIVERSITY_REWARD,
-        "min_games_to_pass": K.MIN_GAMES_TO_PASS,
-        "max_games_per_team": K.MAX_GAMES_PER_TEAM,
-        "token_budget_per_series": K.TOKEN_BUDGET_PER_SERIES,
+        "response_timeout_sec": constants.RESPONSE_TIMEOUT_SEC,
+        "watchdog_timeout_sec": constants.WATCHDOG_TIMEOUT_SEC,
+        "num_sub_games": constants.NUM_SUB_GAMES,
+        "diversity_reward": constants.DIVERSITY_REWARD,
+        "min_games_to_pass": constants.MIN_GAMES_TO_PASS,
+        "max_games_per_team": constants.MAX_GAMES_PER_TEAM,
+        "token_budget_per_series": constants.TOKEN_BUDGET_PER_SERIES,
     },
 }
 
 PERMANENT: dict[str, Any] = {
-    "board_and_agents.num_agents": K.NUM_AGENTS,
-    "movement_and_barriers.move_set": list(K.MOVE_SET),
-    "scoring.capture_cop": K.CAPTURE_COP,
-    "scoring.capture_thief": K.CAPTURE_THIEF,
-    "scoring.survival_cop": K.SURVIVAL_COP,
-    "scoring.survival_thief": K.SURVIVAL_THIEF,
-    "scoring.tie_score": K.TIE_SCORE,
-    "pheromones.pheromone_center_intensity": K.PHEROMONE_CENTER_INTENSITY,
-    "pheromones.pheromone_decay": K.PHEROMONE_DECAY,
-    "pheromones.pheromone_grid_size": K.PHEROMONE_GRID_SIZE,
+    "board_and_agents.num_agents": constants.NUM_AGENTS,
+    "movement_and_barriers.move_set": list(constants.MOVE_SET),
+    "scoring.capture_cop": constants.CAPTURE_COP,
+    "scoring.capture_thief": constants.CAPTURE_THIEF,
+    "scoring.survival_cop": constants.SURVIVAL_COP,
+    "scoring.survival_thief": constants.SURVIVAL_THIEF,
+    "scoring.tie_score": constants.TIE_SCORE,
+    "pheromones.pheromone_center_intensity": constants.PHEROMONE_CENTER_INTENSITY,
+    "pheromones.pheromone_decay": constants.PHEROMONE_DECAY,
+    "pheromones.pheromone_grid_size": constants.PHEROMONE_GRID_SIZE,
 }
 
 MINIMUM: dict[str, int] = {
-    "board_and_agents.grid_size": K.GRID_SIZE,
-    "movement_and_barriers.max_barriers": K.MAX_BARRIERS,
-    "movement_and_barriers.max_moves": K.MAX_MOVES,
-    "movement_and_barriers.survival_threshold": K.SURVIVAL_THRESHOLD,
+    "board_and_agents.grid_size": constants.GRID_SIZE,
+    "movement_and_barriers.max_barriers": constants.MAX_BARRIERS,
+    "movement_and_barriers.max_moves": constants.MAX_MOVES,
+    "movement_and_barriers.survival_threshold": constants.SURVIVAL_THRESHOLD,
 }
 
 #: Section names covered by ``config_sha256``. Naming metadata is excluded

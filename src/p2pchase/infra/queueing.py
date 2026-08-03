@@ -25,7 +25,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 
-class QueueFull(RuntimeError):
+class QueueFullError(RuntimeError):
     """Raised when the overflow queue is at capacity -- genuine backpressure."""
 
 
@@ -81,11 +81,11 @@ class OverflowQueue:
     rejected_total: int = 0
 
     def take_ticket(self, label: str = "") -> Ticket:
-        """Join the line, or raise :class:`QueueFull` when genuinely overloaded."""
+        """Join the line, or raise :class:`QueueFullError` when genuinely overloaded."""
         with self._lock:
             if len(self._waiting) >= self.max_depth:
                 self.rejected_total += 1
-                raise QueueFull(
+                raise QueueFullError(
                     f"overflow queue is full ({self.max_depth} waiting); "
                     f"applying backpressure instead of buffering without bound"
                 )

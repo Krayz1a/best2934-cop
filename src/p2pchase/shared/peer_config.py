@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .. import constants as K
+from .. import constants
 from ..domain.crypto import canonical_json, digest_payload
 from .config_schema import AGREED_SECTIONS
 
@@ -91,7 +91,7 @@ class PeerConfig:
     @property
     def num_sub_games(self) -> int:
         return int(self.shared.get("network_and_league", {}).get(
-            "num_sub_games", K.NUM_SUB_GAMES))
+            "num_sub_games", constants.NUM_SUB_GAMES))
 
     # ------------------------------------------------------------- strategy
     @property
@@ -114,7 +114,7 @@ class PeerConfig:
         else, so the recipient is overwritten rather than defaulted.
         """
         cfg = dict(self.setup.get("email", {}))
-        cfg["recipient"] = K.AGENT_REPORT_EMAIL
+        cfg["recipient"] = constants.AGENT_REPORT_EMAIL
         return cfg
 
     # ---------------------------------------------------------------- hashes

@@ -14,47 +14,47 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from .. import constants as K
+from .. import constants
 
 Outcome = Literal["capture", "survival", "technical_loss"]
 
 
 @dataclass(frozen=True)
 class ScoreTable:
-    capture_cop: int = K.CAPTURE_COP
-    capture_thief: int = K.CAPTURE_THIEF
-    survival_cop: int = K.SURVIVAL_COP
-    survival_thief: int = K.SURVIVAL_THIEF
-    tie_score: int = K.TIE_SCORE
-    technical_loss: int = K.TECHNICAL_LOSS
+    capture_cop: int = constants.CAPTURE_COP
+    capture_thief: int = constants.CAPTURE_THIEF
+    survival_cop: int = constants.SURVIVAL_COP
+    survival_thief: int = constants.SURVIVAL_THIEF
+    tie_score: int = constants.TIE_SCORE
+    technical_loss: int = constants.TECHNICAL_LOSS
 
     def award(self, outcome: Outcome) -> dict[str, int]:
         """Points for one finished sub-game, keyed by role."""
-        if outcome == K.OUTCOME_CAPTURE:
-            return {K.ROLE_COP: self.capture_cop, K.ROLE_THIEF: self.capture_thief}
-        if outcome == K.OUTCOME_SURVIVAL:
-            return {K.ROLE_COP: self.survival_cop, K.ROLE_THIEF: self.survival_thief}
-        if outcome == K.OUTCOME_TECHNICAL_LOSS:
-            return {K.ROLE_COP: self.technical_loss, K.ROLE_THIEF: self.technical_loss}
+        if outcome == constants.OUTCOME_CAPTURE:
+            return {constants.ROLE_COP: self.capture_cop, constants.ROLE_THIEF: self.capture_thief}
+        if outcome == constants.OUTCOME_SURVIVAL:
+            return {constants.ROLE_COP: self.survival_cop, constants.ROLE_THIEF: self.survival_thief}
+        if outcome == constants.OUTCOME_TECHNICAL_LOSS:
+            return {constants.ROLE_COP: self.technical_loss, constants.ROLE_THIEF: self.technical_loss}
         raise ValueError(f"unknown outcome {outcome!r}")
 
     def winner_role(self, outcome: Outcome) -> str | None:
-        if outcome == K.OUTCOME_CAPTURE:
-            return K.ROLE_COP
-        if outcome == K.OUTCOME_SURVIVAL:
-            return K.ROLE_THIEF
+        if outcome == constants.OUTCOME_CAPTURE:
+            return constants.ROLE_COP
+        if outcome == constants.OUTCOME_SURVIVAL:
+            return constants.ROLE_THIEF
         return None
 
 
 def build_score_table(config: dict) -> ScoreTable:
     sc = config.get("scoring", {})
     return ScoreTable(
-        capture_cop=int(sc.get("capture_cop", K.CAPTURE_COP)),
-        capture_thief=int(sc.get("capture_thief", K.CAPTURE_THIEF)),
-        survival_cop=int(sc.get("survival_cop", K.SURVIVAL_COP)),
-        survival_thief=int(sc.get("survival_thief", K.SURVIVAL_THIEF)),
-        tie_score=int(sc.get("tie_score", K.TIE_SCORE)),
-        technical_loss=int(sc.get("technical_loss", K.TECHNICAL_LOSS)),
+        capture_cop=int(sc.get("capture_cop", constants.CAPTURE_COP)),
+        capture_thief=int(sc.get("capture_thief", constants.CAPTURE_THIEF)),
+        survival_cop=int(sc.get("survival_cop", constants.SURVIVAL_COP)),
+        survival_thief=int(sc.get("survival_thief", constants.SURVIVAL_THIEF)),
+        tie_score=int(sc.get("tie_score", constants.TIE_SCORE)),
+        technical_loss=int(sc.get("technical_loss", constants.TECHNICAL_LOSS)),
     )
 
 
@@ -64,7 +64,7 @@ class SeriesTally:
 
     group_a: str
     group_b: str
-    tie_score: int = K.TIE_SCORE
+    tie_score: int = constants.TIE_SCORE
     totals: dict[str, int] | None = None
     wins: dict[str, int] | None = None
     ties: int = 0

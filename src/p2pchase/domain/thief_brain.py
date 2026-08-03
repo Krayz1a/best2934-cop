@@ -16,7 +16,8 @@ Deception is handled here too, and deliberately rationed -- see
 
 from __future__ import annotations
 
-from .. import constants as K
+from .. import constants
+from ..strategy.hint_decoder import opposite
 from .brains import BrainBase, Decision
 from .own_state import OwnState
 
@@ -30,7 +31,7 @@ class ThiefBrain(BrainBase):
             in ``config/thief/setup.json``.
     """
 
-    role = K.ROLE_THIEF
+    role = constants.ROLE_THIEF
 
     #: Weight on open space versus raw distance early in the game.
     AREA_WEIGHT = 1.0
@@ -45,9 +46,15 @@ class ThiefBrain(BrainBase):
     def _decide_move(self, state: OwnState) -> Decision:
         move = self._pick_move(state)
         remaining = max(0, state.survival_threshold - state.step)
+        intent = self._choose_intent(state)
+        # The move is sealed truthfully in the commitment either way. What a lie
+        # changes is the heading the *sentence* names -- the reverse of the one
+        # actually taken, which is the claim most likely to cost a pursuer a turn.
+        claimed = opposite(move) if intent == constants.INTENT_LIE else move
         return Decision(
             move=move,
-            intent=self._choose_intent(state),
+            intent=intent,
+            claimed_heading=claimed,
             rationale=f"evade; {remaining} steps to survival",
             features={
                 "steps_remaining": remaining,
@@ -101,10 +108,10 @@ class ThiefBrain(BrainBase):
         """
         peak = self._target_cell(state)
         if peak is None:
-            return K.INTENT_TRUTH
+            return constants.INTENT_TRUTH
         distance = self._distance(state, state.position, peak)
         bluff_range = self._tuned("bluff_range", 3)
         bluff_period = max(1, int(self._tuned("bluff_period", 2)))
         if distance <= bluff_range and self.turn_index % bluff_period == 0:
-            return K.INTENT_LIE
-        return K.INTENT_TRUTH
+            return constants.INTENT_LIE
+        return constants.INTENT_TRUTH

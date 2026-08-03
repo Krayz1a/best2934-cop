@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from ..sdk import P2PChaseSDK
+from ..shared.config import load_config
 from ..shared.paths import artifacts_dir
 
 EXIT_OK = 0
@@ -42,8 +43,14 @@ def describe(args: Any) -> int:
 
 
 def check_config(args: Any) -> int:
-    """Validate the configuration against Appendix F without playing."""
-    sdk = _sdk(args)
+    """Validate the configuration against Appendix F without playing.
+
+    Loaded non-strictly on purpose. Every other command must refuse to start on
+    an illegal config, but this one exists to *diagnose* it -- and a diagnostic
+    that raises before it can print the diagnosis is useless exactly when it is
+    needed.
+    """
+    sdk = P2PChaseSDK(load_config(getattr(args, "config_dir", None), args.role, strict=False))
     problems = sdk.config.problems
     print(f"role            : {sdk.config.role}")
     print(f"group           : {sdk.config.group_id} ({', '.join(sdk.config.members)})")
@@ -114,11 +121,11 @@ def send_report(args: Any) -> int:
 
 def authorize_gmail(args: Any) -> int:
     """Run the one-time OAuth consent flow. Human-invoked, never automatic."""
-    from ..infra.gmail_sender import GmailNotConfigured, authorize
+    from ..infra.gmail_sender import GmailNotConfiguredError, authorize
 
     try:
         path = authorize(port=args.port)
-    except GmailNotConfigured as error:
+    except GmailNotConfiguredError as error:
         print(f"Gmail is not set up: {error}")
         return EXIT_CONFIG
     print(f"Token written to {path}. It is git-ignored and must stay that way (rule 40).")
