@@ -1,0 +1,43 @@
+{
+  "_schema": "PRIVATE per-peer setup for the thief side of a local two-process rehearsal. Roles swap between sub-games, so one checkout must be able to play either side. Contains no secrets.",
+  "version": "1.00",
+  "game": {
+    "group_id": "best2934",
+    "group_name": "best2934",
+    "members": ["Tomer Levy", "Eyal Koloshi", "Alon Issman"],
+    "repos": {
+      "cop": "https://github.com/Krayz1a/best2934-cop",
+      "thief": "https://github.com/Krayz1a/best2934-thief"
+    }
+  },
+  "network": {
+    "my_port": 8802,
+    "public_url": "",
+    "opponent_url": "http://127.0.0.1:8801/mcp",
+    "turn_timeout_seconds": 30
+  },
+  "strategy": {
+    "brain": "",
+    "area_weight": 1.0,
+    "distance_weight": 1.2,
+    "endgame_window": 4
+  },
+  "trash_talk": {
+    "provider": "template",
+    "every_n_steps": 1,
+    "seed": 0
+  },
+  "llm": {
+    "model": "claude-haiku-4-5",
+    "max_tokens": 128,
+    "api_key_env": "ANTHROPIC_API_KEY",
+    "ollama_host": "http://127.0.0.1:11434",
+    "ollama_model": "llama3.2:1b"
+  },
+  "email": {
+    "enabled": false,
+    "sender_env": "P2PCHASE_GMAIL_SENDER",
+    "credentials_env": "P2PCHASE_GMAIL_CREDENTIALS",
+    "token_env": "P2PCHASE_GMAIL_TOKEN"
+  }
+}

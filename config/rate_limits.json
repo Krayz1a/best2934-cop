@@ -1,0 +1,40 @@
+{
+  "_schema": "API rate-limit contract for the Gatekeeper (guidelines §5.2). Every limit is read from here; none may be hard-coded. Appendix F Table 19 values are MINIMUMS -- they may be raised by agreement, never lowered.",
+  "version": "1.00",
+  "services": {
+    "default": {
+      "requests_per_minute": 30,
+      "concurrent_max": 2,
+      "retry_after_seconds": 5,
+      "max_retries": 3,
+      "queue_depth": 100,
+      "daily_limit": 200,
+      "burst_threshold": 12,
+      "burst_window_seconds": 60
+    },
+    "gmail": {
+      "_remark": "Reports are rare and bursts are the real hazard, so the bucket is sized far below the per-minute ceiling. The daily limit is the last line of defence before account suspension.",
+      "requests_per_minute": 30,
+      "concurrent_max": 2,
+      "retry_after_seconds": 5,
+      "max_retries": 3,
+      "queue_depth": 100,
+      "daily_limit": 200,
+      "burst_threshold": 12,
+      "burst_window_seconds": 60,
+      "bucket_capacity": 5
+    },
+    "llm": {
+      "_remark": "Trash-talk generation. A provider outage must never cost a sub-game, so the caller falls back to the template provider rather than retrying into the deadline.",
+      "requests_per_minute": 30,
+      "concurrent_max": 2,
+      "retry_after_seconds": 5,
+      "max_retries": 3,
+      "queue_depth": 100,
+      "daily_limit": 400,
+      "burst_threshold": 20,
+      "burst_window_seconds": 60,
+      "bucket_capacity": 8
+    }
+  }
+}

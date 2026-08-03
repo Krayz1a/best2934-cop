@@ -18,9 +18,19 @@ anthropic.json
 
 # --- Match artifacts (regenerated per game; logs are attached to the report)
 logs/*.json
+logs/*.log
 artifacts/*.json
 !artifacts/.gitkeep
 !logs/.gitkeep
+
+# --- Test and coverage output ----------------------------------------------
+# `results/` itself IS committed: the experiment data behind the analysis
+# notebook is part of the submission. Only generated coverage HTML is ignored.
+results/coverage/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
 
 # --- Python ----------------------------------------------------------------
 __pycache__/

@@ -1,0 +1,47 @@
+{
+  "_schema": "PRIVATE per-peer setup (book Appendix B). Never crosses the network, never signed, never negotiated. Contains no secrets -- API keys and OAuth credentials come from environment variables only (guidelines §7.4).",
+  "version": "1.00",
+  "game": {
+    "group_id": "best2934",
+    "group_name": "best2934",
+    "members": ["Tomer Levy", "Eyal Koloshi", "Alon Issman"],
+    "repos": {
+      "cop": "https://github.com/Krayz1a/best2934-cop",
+      "thief": "https://github.com/Krayz1a/best2934-thief"
+    }
+  },
+  "network": {
+    "_remark": "public_url is the tunnel (ngrok / Localtonet). Book rule 10 requires a publicly reachable endpoint for a league match; localhost is legal for development only.",
+    "my_port": 8801,
+    "public_url": "",
+    "opponent_url": "http://127.0.0.1:8802/mcp",
+    "turn_timeout_seconds": 30
+  },
+  "strategy": {
+    "_remark": "brain accepts 'package.module:Class' so a strategy can be swapped without touching the engine (guidelines §12.1, extension points).",
+    "brain": "",
+    "barrier_engage_range": 4,
+    "barrier_min_gain": 1,
+    "barrier_endgame_reserve": 3
+  },
+  "trash_talk": {
+    "_remark": "provider: template | ollama | claude_api | claude_cli. 'template' costs zero tokens and is the default, because the book requires the match to be playable with no LLM at all.",
+    "provider": "template",
+    "every_n_steps": 1,
+    "seed": 0
+  },
+  "llm": {
+    "model": "claude-haiku-4-5",
+    "max_tokens": 128,
+    "api_key_env": "ANTHROPIC_API_KEY",
+    "ollama_host": "http://127.0.0.1:11434",
+    "ollama_model": "llama3.2:1b"
+  },
+  "email": {
+    "_remark": "recipient is overwritten at load time with the address fixed by Appendix F Table 20 -- a team cannot opt out of reporting by redirecting it.",
+    "enabled": false,
+    "sender_env": "P2PCHASE_GMAIL_SENDER",
+    "credentials_env": "P2PCHASE_GMAIL_CREDENTIALS",
+    "token_env": "P2PCHASE_GMAIL_TOKEN"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "_schema": "Logging configuration in dictConfig form (guidelines §7.3). Console stays human-readable for the live match; the file handler keeps the full forensic trail that backs a post-match audit.",
+  "version": "1.00",
+  "logging": {
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+      "console": {
+        "format": "%(asctime)s %(levelname)-7s %(name)-28s %(message)s",
+        "datefmt": "%H:%M:%S"
+      },
+      "detailed": {
+        "format": "%(asctime)s %(levelname)-7s %(name)s %(filename)s:%(lineno)d %(message)s"
+      }
+    },
+    "handlers": {
+      "console": {
+        "class": "logging.StreamHandler",
+        "level": "INFO",
+        "formatter": "console",
+        "stream": "ext://sys.stderr"
+      },
+      "file": {
+        "class": "logging.handlers.RotatingFileHandler",
+        "level": "DEBUG",
+        "formatter": "detailed",
+        "filename": "logs/p2pchase.log",
+        "maxBytes": 2097152,
+        "backupCount": 3,
+        "encoding": "utf-8"
+      }
+    },
+    "loggers": {
+      "p2pchase": {
+        "level": "DEBUG",
+        "handlers": ["console", "file"],
+        "propagate": false
+      },
+      "p2pchase.infra.gatekeeper": {
+        "level": "DEBUG",
+        "handlers": ["console", "file"],
+        "propagate": false
+      }
+    },
+    "root": {
+      "level": "WARNING",
+      "handlers": ["console"]
+    }
+  }
+}

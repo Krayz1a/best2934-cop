@@ -2,84 +2,98 @@
 
 This runs both agents in ONE process. That is legal only as a development
 harness -- it is explicitly not how a league match is played. Rule 1 requires
-the cop and the thief to run in two fully separate processes, and rule 2
-forbids any shared memory between them; a league match additionally runs across
-the public internet through a tunnel (rule 10).
+the cop and the thief to run in two fully separate processes, rule 2 forbids
+shared memory between them, and rule 10 puts a real match across the public
+internet through a tunnel.
 
-The separation discipline is preserved even here: each side gets its own
-``Board`` and its own ``OwnState``, and neither is ever handed the other's
-position. Everything one side learns about the other arrives through the same
-channels the network would carry -- the declared barrier, the revealed move, the
-sampled scent field and the verbal hint. That is what makes the harness a
-faithful rehearsal rather than a shortcut.
+The separation discipline survives anyway: each side gets its own ``Board`` and
+its own ``OwnState``, and neither is ever handed the other's position.
+Everything one side learns arrives through the channels the network would carry
+-- the declared barrier, the revealed move, the sampled scent and the verbal
+hint. That is what makes this a faithful rehearsal rather than a shortcut, and
+it is why the logs it produces are real logs.
 
-Its job is to generate real logs, real artifacts and the screenshots the README
+Its job is to generate those logs, the artifacts and the screenshots the README
 requires, without needing a second machine or an opponent.
 """
 
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from .. import constants as K
 from ..domain.board import build_board
-from ..domain.brains import BrainBase, load_brain
-from ..domain.crypto import commit, audit_records
-from ..domain.own_state import OwnState, build_own_state
-from ..domain.protocol import StepIntent
+from ..domain.brains import load_brain
+from ..domain.crypto import audit_records
+from ..domain.own_state import build_own_state
 from ..domain.scoring import ScoreTable, build_score_table
 from ..domain.smell import build_kernel, kernel_fingerprint
-from ..reports import artifacts as A
-from ..strategy.talk_providers import (
-    TalkEngine, TalkRequest, build_talk_engine, heading_word, pick_landmark,
-)
+from ..strategy.talk_engine import build_talk_engine
+from ..strategy.talk_prompt import TalkRequest
+from ..strategy.landmarks import heading_word, pick_landmark
+from .match_side import MatchReport, Side, cells_matching_heading
 
 
-@dataclass
-class Side:
-    """One peer's complete, private world."""
-
-    group_id: str
-    state: OwnState
-    brain: BrainBase
-    talk: TalkEngine
-    records: list[dict[str, Any]] = field(default_factory=list)
-    honest_hints: int = 0
-    lies_told: int = 0
-
-    @property
-    def role(self) -> str:
-        return self.state.role
-
-
-@dataclass
-class MatchReport:
-    outcome: str
-    steps: int
-    winner_role: str | None
-    score: dict[str, int]
-    cop_audit: dict[str, Any]
-    thief_audit: dict[str, Any]
-    scent_fingerprint: str
-    tokens: dict[str, int]
-
-
-def _seal_step(side: Side, step: int, decision, hint: str, sub_game: int) -> None:
-    """Commit the step, exactly as the network protocol would."""
-    intent = StepIntent(
-        step=step,
-        role=side.role,
-        sub_game_number=sub_game,
-        move=decision.move,
-        hint=hint,
-        intent=decision.intent,
-        barrier=list(decision.barrier) if decision.barrier else None,
-        state_digest=A.digest_payload(side.state.state_digest_source()),
+def _build_side(config: dict[str, Any], role: str, group_id: str,
+                strategy_cfg: dict, trash_talk_cfg: dict, llm_cfg: dict) -> Side:
+    """Assemble one peer with its own board, state, brain and talk engine."""
+    return Side(
+        group_id=group_id,
+        state=build_own_state(config, role, build_board(config)),
+        brain=load_brain(role, strategy_cfg, config),
+        talk=build_talk_engine(trash_talk_cfg, llm_cfg),
     )
-    side.records.append(commit(intent.payload()).audit_view())
+
+
+def _play_half_turn(side: Side, opponent: Side, step: int, sub_game: int,
+                    map_area: str, max_words: int, rng: random.Random) -> None:
+    """One agent acts; the opponent learns only what the wire would carry."""
+    decision = side.brain.decide(side.state)
+    hint = side.talk.compose(
+        TalkRequest(
+            role=side.role,
+            step=step,
+            intent=decision.intent,
+            heading=heading_word(decision.move),
+            landmark=pick_landmark(map_area, rng),
+            max_words=max_words,
+            steps_remaining=side.state.survival_threshold - side.state.step,
+        )
+    )
+    side.note_intent(decision)
+    side.seal_step(step, decision, hint, sub_game)
+    side.state.apply_own_move(decision.move, decision.barrier)
+
+    # A barrier is declared openly and truthfully (rules 15, 16), so the
+    # opponent learns its exact cell. A move is NOT a position: the opponent
+    # learns only which way we went.
+    opponent.state.apply_opponent_move(
+        decision.move, list(decision.barrier) if decision.barrier else None
+    )
+
+    # The claim is cross-examined against the trail, and the trust weight this
+    # peer assigns to future hints moves accordingly.
+    claimed = cells_matching_heading(opponent.state, decision.move)
+    honest = opponent.state.belief.score_hint(claimed, opponent.state.opponent_scent)
+    opponent.state.belief.update_from_hint(claimed if honest else set())
+
+
+def _exchange_scent(cop: Side, thief: Side) -> None:
+    """Each side samples only its OPPONENT's field, then folds it into belief."""
+    cop.state.sample_opponent_scent(thief.state.my_scent.as_dict())
+    thief.state.sample_opponent_scent(cop.state.my_scent.as_dict())
+    for side in (cop, thief):
+        side.state.belief.update_from_scent(side.state.opponent_scent)
+
+
+def _terminal_outcome(cop: Side, thief: Side) -> str | None:
+    """Check the two ways a sub-game ends early, in the book's order."""
+    if cop.state.position == thief.state.position:
+        return K.OUTCOME_CAPTURE
+    if thief.state.thief_is_boxed_in():
+        return K.OUTCOME_CAPTURE
+    return None
 
 
 def run_local_match(
@@ -102,73 +116,23 @@ def run_local_match(
     map_area = config.get("world", {}).get("map_area", K.MAP_AREA)
     max_words = int(config.get("world", {}).get("hint_max_words", K.HINT_MAX_WORDS))
 
-    cop = Side(
-        group_id=cop_group,
-        state=build_own_state(config, K.ROLE_COP, build_board(config)),
-        brain=load_brain(K.ROLE_COP, strategy_cfg, config),
-        talk=build_talk_engine(trash_talk_cfg, llm_cfg),
-    )
-    thief = Side(
-        group_id=thief_group,
-        state=build_own_state(config, K.ROLE_THIEF, build_board(config)),
-        brain=load_brain(K.ROLE_THIEF, strategy_cfg, config),
-        talk=build_talk_engine(trash_talk_cfg, llm_cfg),
-    )
+    cop = _build_side(config, K.ROLE_COP, cop_group, strategy_cfg, trash_talk_cfg, llm_cfg)
+    thief = _build_side(config, K.ROLE_THIEF, thief_group, strategy_cfg, trash_talk_cfg, llm_cfg)
 
     outcome: str | None = None
     max_moves = int(config["movement_and_barriers"]["max_moves"])
 
     for step in range(1, max_moves + 1):
         for side, opponent in ((cop, thief), (thief, cop)):
-            decision = side.brain.decide(side.state)
-            hint = side.talk.compose(
-                TalkRequest(
-                    role=side.role,
-                    step=step,
-                    intent=decision.intent,
-                    heading=heading_word(decision.move),
-                    landmark=pick_landmark(map_area, rng),
-                    max_words=max_words,
-                    steps_remaining=side.state.survival_threshold - side.state.step,
-                )
-            )
-            if decision.intent == K.INTENT_LIE:
-                side.lies_told += 1
-            else:
-                side.honest_hints += 1
+            _play_half_turn(side, opponent, step, sub_game, map_area, max_words, rng)
 
-            _seal_step(side, step, decision, hint, sub_game)
-            side.state.apply_own_move(decision.move, decision.barrier)
-
-            # A barrier is declared openly and truthfully (rules 15, 16), so the
-            # opponent learns its exact cell. A move is NOT a position: the
-            # opponent only learns which way we went.
-            opponent.state.apply_opponent_move(
-                decision.move, list(decision.barrier) if decision.barrier else None
-            )
-
-            # The hint is cross-examined against the trail, and the trust weight
-            # this peer assigns to future hints moves accordingly.
-            claimed = _cells_matching_heading(opponent.state, decision.move)
-            honest = opponent.state.belief.score_hint(claimed, opponent.state.opponent_scent)
-            opponent.state.belief.update_from_hint(claimed if honest else set())
-
-        # Each side samples only its OPPONENT's field.
-        cop.state.sample_opponent_scent(thief.state.my_scent.as_dict())
-        thief.state.sample_opponent_scent(cop.state.my_scent.as_dict())
-        for side in (cop, thief):
-            side.state.belief.update_from_scent(side.state.opponent_scent)
-
-        if cop.state.position == thief.state.position:
-            outcome = K.OUTCOME_CAPTURE
-            break
-        if thief.state.thief_is_boxed_in():
-            outcome = K.OUTCOME_CAPTURE
+        _exchange_scent(cop, thief)
+        outcome = _terminal_outcome(cop, thief)
+        if outcome is not None:
             break
 
         cop.state.end_of_full_turn()
         thief.state.end_of_full_turn()
-
         if thief.state.survival_reached():
             outcome = K.OUTCOME_SURVIVAL
             break
@@ -181,9 +145,6 @@ def run_local_match(
         side.state.finished = True
         side.state.outcome = outcome
 
-    kernel = build_kernel(config)
-    decay = float(config["pheromones"]["pheromone_decay"])
-
     report = MatchReport(
         outcome=outcome,
         steps=cop.state.step,
@@ -191,27 +152,9 @@ def run_local_match(
         score=table.award(outcome),
         cop_audit=audit_records(cop.records).as_dict(),
         thief_audit=audit_records(thief.records).as_dict(),
-        scent_fingerprint=kernel_fingerprint(kernel, decay),
+        scent_fingerprint=kernel_fingerprint(
+            build_kernel(config), float(config["pheromones"]["pheromone_decay"])
+        ),
         tokens={cop.group_id: cop.talk.tokens_used, thief.group_id: thief.talk.tokens_used},
     )
     return report, cop, thief
-
-
-def _cells_matching_heading(observer: OwnState, move: str) -> set:
-    """Decode a movement claim into the cells it would be consistent with.
-
-    We do not know where the opponent stands, so a claim of "north" is read as
-    a claim about the *shape* of its belief cloud: the cells reachable by moving
-    north from somewhere we currently think it might be.
-    """
-    if move not in ("N", "S", "E", "W"):
-        return set()
-    board = observer.board
-    claimed = set()
-    for cell, probability in observer.belief.grid.items():
-        if probability <= 0:
-            continue
-        target = board.target_of(cell, move)
-        if board.is_passable(target):
-            claimed.add(target)
-    return claimed

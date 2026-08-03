@@ -1,0 +1,47 @@
+{
+  "_schema": "SHARED, NEGOTIATED game configuration (book Appendix B). Both peers must hold a BYTE-IDENTICAL copy (rule 11); the pre-game exchange compares config_sha256 and refuses to play on any mismatch. Values follow Appendix F: PERMANENT terms may not change, MINIMUM terms may be raised by mutual agreement but never lowered.",
+  "version": "1.00",
+  "schema_version": "1.1",
+  "board_and_agents": {
+    "grid_size": 7,
+    "num_agents": 2,
+    "thief_start": [3, 3],
+    "cop_start": [0, 0],
+    "axis_origin_corner": "top-left",
+    "axis_start_index": 0
+  },
+  "world": {
+    "map_area": "New York",
+    "hint_max_words": 15
+  },
+  "movement_and_barriers": {
+    "move_set": ["N", "S", "E", "W", "STAY"],
+    "max_barriers": 14,
+    "max_moves": 35,
+    "survival_threshold": 35
+  },
+  "scoring": {
+    "capture_cop": 20,
+    "capture_thief": 5,
+    "survival_cop": 5,
+    "survival_thief": 10,
+    "tie_score": 2,
+    "technical_loss": 0
+  },
+  "pheromones": {
+    "_remark": "pheromone_kernel selects which 5x5 emission table both peers use. 'book_table' is the literal Figure 4 table, so two teams reading the figure hash identically. 'gaussian' recomputes it from sigma^2 = 4/3, which reproduces Figure 4 to within 0.01 everywhere except the diagonal (0.43 vs 0.42).",
+    "pheromone_center_intensity": 0.9,
+    "pheromone_decay": 0.1,
+    "pheromone_grid_size": 5,
+    "pheromone_kernel": "book_table"
+  },
+  "network_and_league": {
+    "response_timeout_sec": 30,
+    "watchdog_timeout_sec": 60,
+    "num_sub_games": 6,
+    "diversity_reward": 10,
+    "min_games_to_pass": 2,
+    "max_games_per_team": 10,
+    "token_budget_per_series": 200000
+  }
+}
