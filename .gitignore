@@ -1,0 +1,41 @@
+# --- MANDATORY: OAuth / Gmail secrets (book rules 39-40) -------------------
+# A secret pushed once is compromised forever -- deleting it in a later commit
+# does NOT remove it from git history. These files must never be committed,
+# even to a private repository shared only with the lecturer.
+credentials.json
+token.json
+*credentials*.json
+*token*.json
+client_secret*.json
+.env
+.env.*
+*.pem
+*.key
+
+# --- Anthropic / LLM credentials -------------------------------------------
+.anthropic/
+anthropic.json
+
+# --- Match artifacts (regenerated per game; logs are attached to the report)
+logs/*.json
+artifacts/*.json
+!artifacts/.gitkeep
+!logs/.gitkeep
+
+# --- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# --- OS / editor -----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
