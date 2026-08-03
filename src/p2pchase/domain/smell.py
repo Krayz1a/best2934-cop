@@ -180,8 +180,17 @@ class ScentMap:
         """Serialisable view, keyed ``"row,col"`` so it survives JSON."""
         return {f"{r},{c}": round(v, 6) for (r, c), v in sorted(self.grid.items())}
 
-    def load(self, payload: dict[str, float]) -> None:
-        self.grid = {}
+    def load(self, payload: dict[str, float], merge: bool = False) -> None:
+        """Load a serialised field.
+
+        ``merge`` matters for the networked game, where a peer samples only the
+        handful of cells it thought to ask about. Replacing the whole map there
+        would silently erase every earlier measurement and make the trail look
+        far sparser than it is; merging keeps what we have already paid to learn
+        and lets it decay naturally.
+        """
+        if not merge:
+            self.grid = {}
         for key, value in payload.items():
             r, c = key.split(",")
             self.grid[(int(r), int(c))] = float(value)

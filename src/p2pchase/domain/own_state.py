@@ -36,6 +36,10 @@ class OwnState:
     my_scent: ScentMap
     opponent_scent: ScentMap
     step: int = 0
+    #: How many of the opponent's steps we have actually seen revealed. The
+    #: networked runner waits on this rather than on wall-clock time, so a peer
+    #: never advances past an opponent whose message is merely slow.
+    opponent_steps_seen: int = 0
     max_moves: int = K.MAX_MOVES
     survival_threshold: int = K.SURVIVAL_THRESHOLD
     finished: bool = False
@@ -76,6 +80,7 @@ class OwnState:
         if barrier is not None:
             cell = (int(barrier[0]), int(barrier[1]))
             self.board.barriers.add(cell)
+        self.opponent_steps_seen += 1
         self.belief.predict()
 
     def sample_opponent_scent(self, payload: dict[str, float]) -> None:
