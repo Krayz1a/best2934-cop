@@ -94,10 +94,10 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
-| 9.1 | Push `best2934-cop` | P0 | Team | **Blocked** | Needs the operator's GitHub credentials — the agent cannot and must not hold them |
-| 9.2 | Create and push `best2934-thief` | P0 | Team | Not started | Symmetric repo, cross-linked with the cop repo in both READMEs |
-| 9.3 | Tag `v1.0-submission` on both | P0 | Team | Not started | Annotated tag (rule 41) |
-| 9.4 | Fill the Word template → PDF | P0 | Team | Not started | Every mandatory section completed |
+| 9.1 | Push `best2934-cop` | P0 | Team | **Blocked** | Needs the operator's GitHub credentials — the agent cannot and must not hold them. Run `git push origin master` in each repository |
+| 9.2 | Create and push `best2934-thief` | P0 | Team | **Blocked** | Repository built, gates green (379 passed, 92.5%), committed locally at `../best2934-thief` with `origin` set. Differs by one constant (`DEFAULT_ROLE`) plus its README; cross-linked from both. Needs the operator to create the GitHub repo and push |
+| 9.3 | Tag `v1.0-submission` on both | P0 | Team | Not started | Annotated tag (rule 41). Deliberately left until after the counted games, so the tag marks what was actually submitted |
+| 9.4 | Fill the Word template → PDF | P0 | Team | In progress | [SUBMISSION.md](SUBMISSION.md) holds every answer derivable today; the rest needs ID numbers and real game results |
 | 9.5 | Self-assessed grade | P0 | Team | Not started | Agreed by all three members |
 | 9.6 | Individual Moodle submission | P0 | Team | Not started | Three submissions, one per member |
 

@@ -27,6 +27,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .. import constants
 from .config_schema import DEFAULT_SHARED, deep_merge, validate_shared
 from .paths import config_dir as default_config_dir
 from .peer_config import PeerConfig
@@ -70,7 +71,7 @@ def _load_shared(path: Path, strict: bool) -> tuple[dict[str, Any], list[str]]:
 
 def load_config(
     config_dir: Path | str | None = None,
-    role: str = "police",
+    role: str = constants.DEFAULT_ROLE,
     strict: bool = True,
 ) -> PeerConfig:
     """Assemble a :class:`PeerConfig` for one peer process.

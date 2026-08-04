@@ -236,7 +236,7 @@ mobile clients.
 | M6 | Deception channel + test suite to ≥85% coverage | Done |
 | M7 | Documentation set (this document and its siblings) | In progress |
 | M8 | Parameter sweep, analysis notebook, figures | Pending |
-| M9 | `best2934-thief` repository, cross-linked, tagged `v1.0-submission` | Pending |
+| M9 | `best2934-thief` repository, cross-linked | Built and committed; push blocked on credentials |
 | M10 | ≥2 counted league games with mutual audit | Pending — needs opponents |
 
 See [TODO.md](TODO.md) for task-level status and definitions of done.

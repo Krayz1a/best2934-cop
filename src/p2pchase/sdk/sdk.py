@@ -33,6 +33,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from .. import constants
 from ..infra.sysinfo import collect_hardware, git_commit
 from ..services.match_service import MatchService, SeriesResult
 from ..services.negotiation_service import Agreement, Handshake, NegotiationService
@@ -66,7 +67,8 @@ class P2PChaseSDK:
         self._reporting: ReportingService | None = None
 
     @classmethod
-    def for_role(cls, role: str = "police", config_dir: Path | str | None = None,
+    def for_role(cls, role: str = constants.DEFAULT_ROLE,
+                 config_dir: Path | str | None = None,
                  output_dir: Path | None = None, signing_secret: str = "") -> P2PChaseSDK:
         """Load configuration for one role and build an SDK around it."""
         return cls(load_config(config_dir, role), output_dir, signing_secret)

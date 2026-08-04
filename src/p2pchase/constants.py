@@ -75,6 +75,14 @@ REFERENCE_REPO: Final[str] = "https://github.com/rmisegal/Game-P2P-Cop-Chase"
 ROLE_COP: Final[str] = "police"
 ROLE_THIEF: Final[str] = "thief"
 
+# The side this repository ships as. The engine is symmetric -- both roles are
+# fully implemented here and either can be selected with ``--role`` -- so this
+# constant is the *only* thing that differs between the two submitted
+# repositories, `best2934-cop` and `best2934-thief`, besides their READMEs.
+# Rule 41 asks for one repository per role; it does not ask for two codebases,
+# and two codebases would be two places for a bug to live.
+DEFAULT_ROLE: Final[str] = ROLE_COP
+
 # --- Outcomes --------------------------------------------------------------
 OUTCOME_CAPTURE: Final[str] = "capture"
 OUTCOME_SURVIVAL: Final[str] = "survival"

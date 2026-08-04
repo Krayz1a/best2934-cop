@@ -18,12 +18,15 @@ import argparse
 import logging
 import sys
 
+from .. import constants
 from . import commands, network_commands
 
 
 def _add_common(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--role", default="police", choices=["police", "thief"],
-                        help="which side this process plays (default: police)")
+    parser.add_argument("--role", default=constants.DEFAULT_ROLE,
+                        choices=[constants.ROLE_COP, constants.ROLE_THIEF],
+                        help=f"which side this process plays "
+                             f"(default: {constants.DEFAULT_ROLE})")
     parser.add_argument("--config-dir", default=None,
                         help="override the config directory (default: config/<role>)")
 

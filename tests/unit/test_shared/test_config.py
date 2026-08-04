@@ -121,3 +121,16 @@ def test_repository_config_is_legal(repo_root):
     for role in ("police", "thief"):
         config = load_config(repo_root / "config" / role, role)
         assert config.problems == []
+
+
+def test_the_shipped_role_is_a_single_constant(repo_root):
+    """`best2934-cop` and `best2934-thief` differ by one line, not two codebases.
+
+    Both roles are fully implemented here and either can be selected with
+    ``--role``. ``DEFAULT_ROLE`` is what the sibling repository flips, so it has
+    to be a real role and it has to be what an argument-free load picks up --
+    otherwise the two repositories would silently play the same side.
+    """
+    assert constants.DEFAULT_ROLE in (constants.ROLE_COP, constants.ROLE_THIEF)
+    default = load_config(repo_root / "config" / constants.DEFAULT_ROLE)
+    assert default.role == constants.DEFAULT_ROLE

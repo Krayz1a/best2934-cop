@@ -21,7 +21,7 @@ from sentences its opponent may be lying in.
 
 ## Table of contents
 
-1. [What this is](#1-what-this-is)
+1. [What this is](#1-what-this-is) · [Two repositories, one engine](#11-two-repositories-one-engine)
 2. [Installation](#2-installation)
 3. [Usage](#3-usage)
 4. [Configuration guide](#4-configuration-guide)
@@ -56,6 +56,35 @@ see the other**. The information one side gets about the other is:
 Integrity is not taken on trust either. Every step is sealed with a SHA-256
 commitment before it is disclosed, and every nonce is published at the end so
 the whole chain can be replayed. A single altered bit is provable.
+
+### 1.1 Two repositories, one engine
+
+Rule 41 asks for one repository per role. It does not ask for two codebases, and
+two codebases would be two places for the same bug to live — a fix to the
+commit-reveal chain or the belief update would have to be made twice and would
+eventually be made once.
+
+The engine is symmetric by construction: both brains are implemented here, both
+sets of configuration ship, and either side can be selected at run time with
+`--role`. [`best2934-thief`](https://github.com/Krayz1a/best2934-thief) differs
+from this repository in a single line:
+
+```python
+# src/p2pchase/constants.py
+DEFAULT_ROLE: Final[str] = ROLE_COP       # ROLE_THIEF in best2934-thief
+```
+
+plus its README and the tuning in `config/thief/setup.json`, which is where a
+thief's judgement actually lives.
+`tests/unit/test_shared/test_config.py::test_the_shipped_role_is_a_single_constant`
+pins the constant to a real role and checks that an argument-free load selects
+it, so the two repositories cannot silently drift into playing the same side.
+
+Running the thief from this checkout is one flag:
+
+```bash
+uv run p2pchase play --role thief --game-id best2934-vs-rival42
+```
 
 ---
 
