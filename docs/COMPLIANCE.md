@@ -107,15 +107,15 @@ Summary: **44 Met · 5 Met, awaiting play · 4 Operator · 2 External**.
 
 ## What is genuinely not done
 
-Four of the five outstanding items need a human and one needs another team.
-Listing them plainly is more useful than a green table:
+Three of these four need a human; the first needs another team. Listing them
+plainly is more useful than a green table:
 
 1. **No counted games yet** (31, 52, and the play-dependent half of 32, 35, 37).
    This is the only gap that can still cost the project a passing grade, and no
    amount of code closes it.
-2. **The repositories are not pushed** (and therefore not tagged, rule 41) —
-   they need the operator's GitHub credentials, which this project deliberately
-   never hands to an agent.
+2. **The repositories are not tagged** (rule 41). Both are pushed and public;
+   the annotated `v1.0-submission` tag waits for the last counted game, so it
+   marks the code that actually played rather than the code that was ready.
 3. **Gmail is in dry-run** (32) until the operator creates the OAuth client and
    runs the consent flow. The send path, the rate limiter and the DoS detector
    are all built and tested against a stub.
