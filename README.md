@@ -505,7 +505,7 @@ External consumers (CLI / GUI / tests)
 No consumer reaches past the SDK. Business logic in a presentation layer cannot
 be tested without that layer and cannot be reused by the next one.
 
-Full C4 diagrams, UML and the eleven architecture decision records are in
+Full C4 diagrams, UML and the fourteen architecture decision records are in
 [`docs/PLAN.md`](docs/PLAN.md).
 
 | Document | Covers |
@@ -519,6 +519,8 @@ Full C4 diagrams, UML and the eleven architecture decision records are in
 | [`docs/PRD_deception.md`](docs/PRD_deception.md) | Lying, decoding, and lie detection |
 | [`docs/PRD_gatekeeper.md`](docs/PRD_gatekeeper.md) | Rate limiting, quota, queueing, retries |
 | [`docs/PRD_p2p_protocol.md`](docs/PRD_p2p_protocol.md) | MCP tools, state machine, the two clocks |
+| [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) | All 55 mandatory rules mapped to code and test — including the four that are genuinely not done |
+| [`docs/SUBMISSION.md`](docs/SUBMISSION.md) | The Moodle form, answered as far as the repository can answer it |
 | [`docs/PROMPTS.md`](docs/PROMPTS.md) | Prompt book — how this was built with AI, including what went wrong |
 | [`docs/GMAIL_SETUP.md`](docs/GMAIL_SETUP.md) | One-time OAuth setup, performed by a human |
 
