@@ -1,7 +1,7 @@
 # TODO — Tasks, phases and definitions of done
 
 **Project** `best2934-cop` · **Document version** 1.00
-**Last updated** 2026-08-03 · **Deadline** 2026-08-12 23:59 (no extensions)
+**Last updated** 2026-08-04 · **Deadline** 2026-08-12 23:59 (no extensions)
 
 Status values: **Done** · **In progress** · **Not started** · **Blocked**
 
@@ -34,7 +34,7 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
 | 3.1 | `uv` only, `uv.lock` committed | P0 | Team | Done | No `requirements.txt`; `pyproject.toml` is the single source of truth |
-| 3.2 | Every file ≤150 code lines | P0 | Team | Done | `tools/check_file_size.py` reports 0 over the limit across 71 files |
+| 3.2 | Every file ≤150 code lines | P0 | Team | Done | `tools/check_file_size.py` reports 0 over the limit across 102 files (largest: `board.py`, 148) |
 | 3.3 | SDK layer | P0 | EK | Done | No consumer reaches past `P2PChaseSDK` |
 | 3.4 | Zero ruff violations | P0 | Team | Done | `ruff check .` clean on `src`, `tests` and `tools` |
 | 3.5 | Versioning from 1.00 | P1 | AI | Done | Code, config and rate-limit versions declared and validated on load |
@@ -64,29 +64,31 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | 6.1 | Decode the opponent's sentence | P0 | EK | Done | Compass word extracted; a compound bearing is refused rather than guessed |
 | 6.2 | Read the true heading from the trail | P0 | EK | Done | Centroid-drift reader chosen over two measured alternatives (ADR-006) |
 | 6.3 | Fix the belief update to transport mass | P0 | EK | Done | A credible "north" moves `trust`-weighted mass north (ADR-004) |
-| 6.4 | Prove lie detection works | P0 | Team | Done | Compulsive liar → 0.02 trust, all claims contradicted; honest → 0.59; measured over three seeds |
-| 6.5 | Test suite ≥85% coverage | P0 | Team | Done | 366 tests, 92.9% coverage, no test touching the network or a real API |
+| 6.4 | Prove lie detection works | P0 | Team | Done | Compulsive liar → 0.020 trust, 97% of claims contradicted; honest → 0.724; measured over 30 seeds |
+| 6.5 | Test suite ≥85% coverage | P0 | Team | Done | 380 tests, 92.9% coverage, no test touching the network or a real API |
 
 ## Phase 7 — Documentation · **In progress**
 
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
 | 7.1 | `docs/PRD.md` | P0 | AI | Done | Goals, KPIs, acceptance criteria, FR/NFR, user stories, milestones |
-| 7.2 | `docs/PLAN.md` | P0 | TL | Done | C4 levels 1–4, UML, 11 ADRs with alternatives, API and data contracts |
+| 7.2 | `docs/PLAN.md` | P0 | TL | Done | C4 levels 1–4, UML, 12 ADRs with alternatives, API and data contracts |
 | 7.3 | `docs/TODO.md` | P0 | EK | Done | This document |
 | 7.4 | Per-mechanism PRDs | P0 | Team | Done | One each for belief, stigmergy, commit-reveal, deception, gatekeeper, protocol |
 | 7.5 | Prompt book | P0 | Team | Done | `docs/PROMPTS.md` — context, prompts, outputs, iterations, lessons |
 | 7.6 | `docs/GMAIL_SETUP.md` | P1 | AI | Done | A human can complete OAuth setup from it without guessing |
-| 7.7 | README screenshots (×4) | P1 | TL | Not started | Live belief map, replay verification, CLI run, artifact tree |
+| 7.7 | README screenshots | P1 | TL | In progress | Terminal live view, replay verified, replay tampered — all captured from real program output. The Tkinter window shot needs `python3-tk` on the operator's machine and a manual capture; it is deliberately not faked |
 
-## Phase 8 — Experiments · **Not started**
+## Phase 8 — Experiments · **Done**
 
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
-| 8.1 | One-at-a-time parameter sweep | P1 | EK | Not started | Each tunable swept independently; raw data under `results/` |
-| 8.2 | Analysis notebook | P1 | EK | Not started | `notebooks/` with matplotlib figures and LaTeX for every formula used |
-| 8.3 | Token cost table | P1 | AI | Not started | Cost per provider per series, measured not estimated |
-| 8.4 | Figures for the report | P1 | TL | Not started | Belief heat map, scent field, trust-collapse curve exported to `assets/` |
+| 8.1 | One-at-a-time parameter sweep | P1 | EK | Done | `tools/sweep.py`, 2400 sub-games, each tunable swept independently including its own default; raw data in `results/sweep.json` |
+| 8.2 | Analysis notebook | P1 | EK | Done | `notebooks/analysis.ipynb` — every figure regenerated from `results/*.json`, LaTeX for the decay, likelihood and trust update rules |
+| 8.3 | Token cost table | P1 | AI | Done | Measured, not estimated: 0 tokens for the whole experiment programme on the default template provider |
+| 8.4 | Figures for the report | P1 | TL | Done | `assets/fig1_kernel.png` … `fig5_sweep.png` — kernel, belief entropy, trust collapse, robustness, sweep |
+| 8.5 | Robustness check of the sweep winner | P1 | EK | Done | Winner re-measured against five structurally different thieves, 60 seeds each; selected by worst case (ADR-012) |
+| 8.6 | Act on the finding | P0 | TL | Done | `barrier_engage_range` 4 → 1 in `config/police/setup.json`; capture rate 0.133 → 0.850 against the sweep thief |
 
 ## Phase 9 — Submission · **Not started**
 
@@ -125,4 +127,4 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | No opponent found before the deadline | Fails the two-game minimum | Start recruiting on the forum now; task 10.1 is the long pole |
 | Public repository exposes strategy | Opponents can read the weights | Flagged twice; kept public by the team's explicit decision. Weights live in `setup.json` and can be changed between matches without touching code |
 | Opponent implements Appendix F differently | Handshake refuses, no match | `check-config` and `handshake` let both sides compare fingerprints before agreeing to play |
-| Trust estimator's ~20% false-contradiction rate | Slightly under-trusts an honest opponent | Measured and documented (ADR-006); separation from a liar remains decisive |
+| Trust estimator's 30.7% false-contradiction rate | Under-trusts an honest opponent (0.724, not the 0.90 ceiling) | Measured over 30 seeds and documented (ADR-006); the separation from a liar (0.020) remains decisive |

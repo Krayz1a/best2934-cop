@@ -84,8 +84,8 @@ thief settles at:
 | Thief policy | Trust | Claims contradicted |
 |---|---|---|
 | Lies every turn | **0.020** (the floor) | 16/16, 13/13, 16/16 |
-| Never lies | **0.593 – 0.597** | ~7/20 (measurement noise) |
-| Shipped, rationed | **0.546 – 0.554** | ~9/20 |
+| Never lies | **0.724 ± 0.093** | 30.7% (measurement noise) |
+| Shipped, rationed | **0.679 ± 0.109** | 43.4% |
 
 A compulsive liar destroys its own channel within a handful of turns. The
 rationed thief keeps a channel worth roughly as much as an honest one while still
@@ -145,18 +145,21 @@ record earns a trust penalty and nothing else.
 |---|---|---|
 | Decode cost | negligible | two regex scans |
 | Detection of a compulsive liar | trust ≤ 0.10 within a sub-game | 0.020, every claim contradicted |
-| False conviction of an honest opponent | trust ≥ 0.50 | 0.593 |
-| Separation, liar vs honest | > 0.30 | **0.573** |
+| False conviction of an honest opponent | trust ≥ 0.50 | 0.724 |
+| Separation, liar vs honest | > 0.30 | **0.704** |
 | Token cost of the channel | 0 with the default provider | 0 |
 
 ---
 
 ## 5. Constraints and limitations
 
-- **~20% false-contradiction rate against an honest opponent**, inherited from
-  the drift reader's noise. This is why honest trust settles near 0.59 rather
-  than at the ceiling. It is a truthful reflection of measurement uncertainty,
-  and the separation from a liar remains decisive.
+- **A 30.7% false-contradiction rate against a perfectly honest opponent**,
+  inherited from the drift reader's noise. This is why honest trust settles at
+  0.724 rather than at the 0.90 ceiling. It is a truthful reflection of
+  measurement uncertainty rather than a defect: an estimator that reached the
+  ceiling here would be overconfident about evidence that genuinely is not
+  certain. The separation from a liar (0.020) remains decisive either way.
+  This is the single largest source of error in the system.
 - **English compass words only.** An opponent writing in Hebrew, or using
   metaphor ("toward the river"), will produce unparsable hints — which degrade to
   "no claim", the safe outcome, rather than to a wrong verdict.
@@ -176,7 +179,7 @@ record earns a trust penalty and nothing else.
 | Cross-examine the revealed move | It is sealed and therefore always truthful — the mechanism does nothing (§1.1) |
 | Never lie | Forfeits a channel the rules explicitly provide, at zero cost to us |
 | Always lie | Measured: destroys the channel's value within a few turns (trust 0.02) |
-| Ignore incoming hints entirely | Discards free evidence, and an honest opponent's hints are worth ~0.59 trust |
+| Ignore incoming hints entirely | Discards free evidence, and an honest opponent's hints are worth ~0.72 trust |
 | Parse with an LLM | Slow, non-deterministic, and rule 25 keeps model output out of decisions. Two regexes are deterministic and replayable |
 | Treat an unparsable hint as a lie | Hands the opponent a trivial way to disable our estimator |
 

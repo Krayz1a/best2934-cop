@@ -113,7 +113,8 @@ was added alongside it rather than replacing it.
 | Emission cost | O(k²), k = 5 | 25 cell updates |
 | Map size after 35 steps | Bounded | ≤ 49 cells (pruning + board size) |
 | Heading agreement, moving turns | > 70% | ~80% |
-| Effect on posterior entropy | Substantial | 5.61 → ≈3.6 bits |
+| Corroboration rate over *all* claims, honest opponent | — | 69.3% |
+| Effect on posterior entropy | Substantial | 5.61 → **2.86 bits** |
 
 ---
 

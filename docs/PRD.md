@@ -75,8 +75,8 @@ against a belief, and the quality of that belief is where the match is won.
 |---|---|---|---|---|
 | G1 | Play a full match with no central component | Processes involved | Exactly 2, no third | Met |
 | G2 | Make cheating detectable | Tampered-log detection rate | 100% | Met — asserted in tests |
-| G3 | Beat a uniform prior on opponent position | Posterior entropy vs 5.61 bits | < 4.6 bits sustained | Met — ≈3.6 bits |
-| G4 | Make lying cost the liar something | Trust separation, liar vs honest | > 0.3 | Met — 0.02 vs 0.59 |
+| G3 | Beat a uniform prior on opponent position | Posterior entropy vs 5.61 bits | < 4.6 bits sustained | Met — **2.86 bits** (30 seeds) |
+| G4 | Make lying cost the liar something | Trust separation, liar vs honest | > 0.3 | Met — **0.020 vs 0.724** (30 seeds) |
 | G5 | Zero-token play must be possible | Series cost with `template` provider | 0 tokens | Met |
 | G6 | Survive a hostile or dead opponent | Unbounded waits | 0 | Met — two clocks |
 | G7 | Meet the software guidelines | Coverage / ruff / file size | ≥85% / 0 / ≤150 | Met — 93% / 0 / 0 |

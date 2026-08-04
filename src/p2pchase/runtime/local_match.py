@@ -117,10 +117,19 @@ def run_local_match(
     strategy_cfg: dict | None = None,
     trash_talk_cfg: dict | None = None,
     llm_cfg: dict | None = None,
+    thief_strategy_cfg: dict | None = None,
 ) -> tuple[MatchReport, Side, Side]:
-    """Play one complete sub-game locally and return both peers' logs."""
+    """Play one complete sub-game locally and return both peers' logs.
+
+    ``thief_strategy_cfg`` lets the two sides be tuned independently, which is
+    what a real match looks like: each peer is a separate process holding its own
+    private ``setup.json``. Sharing one dict would also make a parameter sweep
+    impossible to interpret, since the two brains have overlapping weight names.
+    Defaults to ``strategy_cfg`` so existing callers are unaffected.
+    """
     rng = random.Random(seed)
     strategy_cfg = strategy_cfg or {}
+    thief_strategy_cfg = strategy_cfg if thief_strategy_cfg is None else thief_strategy_cfg
     trash_talk_cfg = trash_talk_cfg or {"provider": "template", "seed": seed}
     llm_cfg = llm_cfg or {}
 
@@ -129,7 +138,8 @@ def run_local_match(
     max_words = int(config.get("world", {}).get("hint_max_words", constants.HINT_MAX_WORDS))
 
     cop = build_side(config, constants.ROLE_COP, cop_group, strategy_cfg, trash_talk_cfg, llm_cfg)
-    thief = build_side(config, constants.ROLE_THIEF, thief_group, strategy_cfg, trash_talk_cfg, llm_cfg)
+    thief = build_side(config, constants.ROLE_THIEF, thief_group, thief_strategy_cfg,
+                       trash_talk_cfg, llm_cfg)
 
     outcome: str | None = None
     max_moves = int(config["movement_and_barriers"]["max_moves"])

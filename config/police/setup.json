@@ -20,7 +20,8 @@
   "strategy": {
     "_remark": "brain accepts 'package.module:Class' so a strategy can be swapped without touching the engine (guidelines §12.1, extension points).",
     "brain": "",
-    "barrier_engage_range": 4,
+    "_barrier_engage_range_remark": "Tuned from 4 to 1 on measured evidence (results/sweep.json, results/robustness.json). A barrier costs a turn of movement, so engaging from a distance leaves the cop standing still while the thief walks away: capture rate 0.13 at range 4 versus 0.85 at range 1. Verified against five structurally different thieves, not only the one the sweep used -- range 1 has the best worst case (0.43) of every level tested.",
+    "barrier_engage_range": 1,
     "barrier_min_gain": 1,
     "barrier_endgame_reserve": 3
   },

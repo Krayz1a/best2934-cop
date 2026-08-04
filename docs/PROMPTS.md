@@ -186,13 +186,14 @@ successes teaches nothing about working with a model.
 
 ### P-10 · Ask for the honest limitation
 
-> **Prompt** *"The honest opponent only reaches 0.59 trust, not the 0.9 ceiling.
+> **Prompt** *"The honest opponent only reaches 0.72 trust, not the 0.9 ceiling.
 > Is that a bug or a property? Don't tune it away until you can tell me which."*
 >
-> **Outcome** A property. The drift reader is ~80% accurate, so an honest
-> opponent is falsely contradicted ~20% of the time and trust converges near
-> 0.6. Tuning the learning rate to hide this would have made the estimator
-> overconfident about a measurement that genuinely is noisy.
+> **Outcome** A property. The drift reader is ~80% accurate on turns where the
+> opponent actually moved, but scored across every claim — including stationary
+> turns — an honest opponent is contradicted 30.7% of the time, and trust
+> converges at 0.724. Tuning the learning rate to hide this would have made the
+> estimator overconfident about a measurement that genuinely is noisy.
 >
 > Documented as a limitation in [PRD_belief_map.md](PRD_belief_map.md) §5 rather
 > than papered over.

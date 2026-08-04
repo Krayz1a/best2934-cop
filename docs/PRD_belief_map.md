@@ -118,8 +118,8 @@ as such would let an opponent silence the estimator by writing vaguer sentences.
 | Entropy against a live opponent | < 4.6 bits | ≈ 3.6 bits (uniform = 5.61) |
 | Entropy with no opponent (solo) | ≈ uniform | 5.0–5.6 bits, as expected |
 | Trust, compulsive liar | ≤ 0.10 | **0.020** across seeds 7, 11, 23 |
-| Trust, honest opponent | ≥ 0.50 | **0.593–0.597** |
-| Trust, rationed liar (shipped thief) | between | **0.546–0.554** |
+| Trust, honest opponent | ≥ 0.50 | **0.724 ± 0.093** |
+| Trust, rationed liar (shipped thief) | between | **0.679 ± 0.109** |
 
 The three-way separation is the headline result: the estimator discriminates, and
 it does so without simply distrusting everyone.
@@ -131,10 +131,12 @@ it does so without simply distrusting everyone.
 - **Small support.** 7×7 = 49 cells, so exact Bayesian updating is affordable. A
   particle filter would be needed at a much larger board size; it is not needed
   here and would add error for no benefit.
-- **The drift reader is noisy.** It agrees with the true heading on ~80% of
-  moving turns, so an honest opponent is falsely contradicted ~20% of the time.
-  That is why honest trust settles near 0.59 rather than at the ceiling — an
-  honest reflection of the measurement, not a bug.
+- **The drift reader is noisy.** It agrees with the true heading on roughly
+  80% of turns where the opponent actually moved, but scored over *all* claims
+  — including turns spent stationary or below the deadband — a perfectly honest
+  opponent is still contradicted 30.7% of the time. That is why honest trust
+  settles at 0.724 rather than at the ceiling: an honest reflection of the
+  measurement, not a bug.
 - **Wall-adjacent bias.** Mass that cannot be transported stays put, which
   slightly over-weights edge cells. Accepted; the alternative is losing mass.
 - **The revealed move is deliberately not used to collapse belief.** See ADR-009
@@ -150,7 +152,7 @@ it does so without simply distrusting everyone.
 | Kalman filter | The state space is discrete with hard barriers; Gaussian assumptions do not hold |
 | Fixed hint weight | Cannot distinguish an honest opponent from a liar — which is the entire point of the channel |
 | Boost/damp re-weighting for hints | Measured to be a near-no-op after diffusion (ADR-004) |
-| Trust as a hard binary (believe / ignore) | One noisy reading would flip it; the gradual estimator is robust to a ~20% false-contradiction rate |
+| Trust as a hard binary (believe / ignore) | One noisy reading would flip it; the gradual estimator absorbs the measured 30.7% false-contradiction rate |
 
 ---
 

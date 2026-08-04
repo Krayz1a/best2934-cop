@@ -1,0 +1,93 @@
+{
+  "_schema": "Cross-opponent robustness check for the most sensitive cop parameter. Selection is by best worst case, because in a league the opponent is unknown.",
+  "parameter": "barrier_engage_range",
+  "seeds_per_cell": 60,
+  "thief_policies": {
+    "shipped": {},
+    "area_obsessed": {
+      "area_weight": 4.0,
+      "distance_weight": 0.3
+    },
+    "distance_only": {
+      "area_weight": 0.0,
+      "distance_weight": 2.4
+    },
+    "always_endgame": {
+      "endgame_window": 99,
+      "adjacency_penalty": 12.0
+    },
+    "never_bluffs": {
+      "bluff_period": 99,
+      "adjacency_penalty": 3.0
+    }
+  },
+  "capture_rates": {
+    "shipped": {
+      "1": 0.85,
+      "2": 0.8166666666666667,
+      "3": 0.5666666666666667,
+      "4": 0.13333333333333333,
+      "5": 0.0,
+      "7": 0.48333333333333334
+    },
+    "area_obsessed": {
+      "1": 0.9666666666666667,
+      "2": 0.36666666666666664,
+      "3": 0.016666666666666666,
+      "4": 0.2,
+      "5": 0.0,
+      "7": 0.9333333333333333
+    },
+    "distance_only": {
+      "1": 0.43333333333333335,
+      "2": 0.85,
+      "3": 0.0,
+      "4": 0.05,
+      "5": 0.016666666666666666,
+      "7": 0.03333333333333333
+    },
+    "always_endgame": {
+      "1": 0.5833333333333334,
+      "2": 0.8,
+      "3": 0.5666666666666667,
+      "4": 0.06666666666666667,
+      "5": 0.016666666666666666,
+      "7": 0.016666666666666666
+    },
+    "never_bluffs": {
+      "1": 0.85,
+      "2": 0.8666666666666667,
+      "3": 0.5666666666666667,
+      "4": 0.15,
+      "5": 0.0,
+      "7": 0.4666666666666667
+    }
+  },
+  "summary": {
+    "1": {
+      "mean": 0.7367,
+      "worst_case": 0.4333
+    },
+    "2": {
+      "mean": 0.74,
+      "worst_case": 0.3667
+    },
+    "3": {
+      "mean": 0.3433,
+      "worst_case": 0.0
+    },
+    "4": {
+      "mean": 0.12,
+      "worst_case": 0.05
+    },
+    "5": {
+      "mean": 0.0067,
+      "worst_case": 0.0
+    },
+    "7": {
+      "mean": 0.3867,
+      "worst_case": 0.0167
+    }
+  },
+  "selected": 1
+}

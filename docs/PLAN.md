@@ -312,7 +312,8 @@ belief toward edges. Accepted: the alternative is belief evaporating off-board.
 truthful; cross-examining it could only ever confirm honesty. Measured: trust sat
 pinned at its 0.9 ceiling in every match and a compulsive liar was
 indistinguishable from an honest opponent.
-**Result** Liar collapses to the 0.02 floor; honest opponent settles near 0.59.
+**Result** Liar collapses to the 0.020 floor with 97% of its claims contradicted;
+honest opponent settles at 0.724. Measured over 30 seeds — `results/trust.json`.
 
 ### ADR-006 · Read the opponent's heading from scent-centroid drift
 
@@ -324,10 +325,12 @@ samples; the dominant axis of the drift is the observed heading.
 the trail peak: agreed with the true heading on roughly half of turns, and was
 outvoted by the wrong direction on several. (b) Peak-cell displacement: the peak
 moves in integer jumps, so it reads as "no movement" then "impossible movement".
-(c) Centroid drift: agreed on ~80% of turns where the opponent actually moved.
-**Trade-off** ~20% false contradictions against an honest opponent, which is why
-trust settles near 0.59 rather than at the ceiling. That is honest about the
-measurement's noise, and the separation from a liar (0.02) is still decisive.
+(c) Centroid drift: agreed on ~80% of turns where the opponent actually moved
+(69.3% of all claims once stationary turns are counted too).
+**Trade-off** Measured over 30 seeds, a perfectly honest opponent still has
+30.7% of its claims contradicted, so trust settles at 0.724 rather than at the
+0.90 ceiling. That is honest about the measurement's noise, and the separation
+from a liar (0.020, with 97% of claims contradicted) is still decisive.
 
 ### ADR-007 · Deception is rationed, not sprayed
 
@@ -338,7 +341,10 @@ then only every `bluff_period` turns.
 **Rationale** The opponent runs the same cross-check we do. A thief that lies
 every turn trains the cop to ignore it, and a hint nobody believes is worth
 nothing when one is finally needed. Confirmed by the trust measurements: the
-compulsive liar earns 0.02 trust, the rationed liar 0.55.
+compulsive liar earns 0.020 trust, the rationed liar 0.679, against 0.724 for a
+thief that never lies at all. The sweep adds the other half of the argument:
+lying every turn raises the thief's own chance of being captured from 0.133 to
+0.333, so over-lying is not merely wasteful, it is actively losing.
 
 ### ADR-008 · The Gatekeeper queues rather than rejects
 
@@ -386,6 +392,52 @@ teams.
 **Rationale** A single per-message timeout cannot catch an opponent that answers
 every message promptly while never advancing the game. The watchdog measures
 progress, so livelock trips it.
+
+### ADR-012 · `barrier_engage_range` set to 1, chosen by max-min over five thieves
+
+**Status** Accepted. Supersedes the hand-picked default of 4.
+**Context** The cop may drop a barrier instead of moving. The original value of 4
+was reasoned about, not measured: engage early, herd the thief. A one-at-a-time
+sweep (`tools/sweep.py`, 2400 sub-games, raw data in `results/sweep.json`)
+measured the opposite.
+
+| `barrier_engage_range` | Capture rate ± SE |
+|---|---|
+| 1 | **0.850 ± 0.046** |
+| 2 | 0.783 ± 0.053 |
+| 4 | 0.133 ± 0.044 |
+
+**Decision** Set it to 1.
+**Rationale** A barrier costs the cop its move for that turn. Engaging from four
+cells away means standing still while the thief walks away — the cop pays the
+turn and buys nothing, because the thief is nowhere near the wall. At range 1 the
+barrier is placed where the thief must actually cross it.
+
+**Why max-min, not the sweep mean.** A sweep tunes against *one* opponent, so its
+winner is a candidate, not a conclusion. The value was re-measured
+(`tools/robustness.py`, `results/robustness.json`) against five structurally
+different thieves — shipped, area-obsessed, distance-only, always-endgame,
+never-bluffs — at 60 seeds each, and selected on the **worst** case rather than
+the average:
+
+| Level | Mean over thieves | Worst case |
+|---|---|---|
+| 1 | 0.737 | **0.433** |
+| 2 | 0.740 | 0.367 |
+| 4 | 0.120 | 0.050 |
+
+Level 2 has a marginally better mean and a clearly worse floor. In a league where
+the opponent is unknown and unrepeatable, the floor is the number that matters.
+
+**Alternatives rejected** Keeping 4 as a "principled" default (it loses 6 games
+in 7); picking by sweep mean alone (overfits to our own thief); making it
+adaptive by observed opponent style (no sample size within a 35-step sub-game to
+estimate the style before the decision must be made).
+
+**Honest caveat** All five test thieves are ours, so they share our idea of what
+a thief does. The measurement bounds overfitting to a single policy; it cannot
+rule out overfitting to a single *authorship*. `barrier_engage_range` is TUNABLE
+under Appendix F and can be changed between matches without touching code.
 
 ---
 

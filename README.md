@@ -418,11 +418,20 @@ The agent's own view during a match — its cell, the declared barriers, and a
 heat map of where it believes the opponent is. **The opponent's true position is
 absent, because this process does not have it** (rules 8, 9).
 
-![Live belief map](assets/live_view_belief_map.png)
-
-Terminal renderer, for machines without Tkinter:
+The terminal renderer, which is what a headless machine gets. Note the last
+line: the legend says out loud what the picture cannot show.
 
 ![Live belief map, terminal](assets/live_view_text.png)
+
+The Tkinter canvas renders the same data as a colour heat map:
+
+![Live belief map](assets/live_view_belief_map.png)
+
+> Tkinter ships as the `python3-tk` **system** package rather than through uv,
+> so `tools/make_screenshots.py` cannot generate that last image on a machine
+> without it — and it will not fake one. To produce it:
+> `sudo apt install python3-tk`, then `uv run p2pchase gui --role police` and
+> capture the window.
 
 ### Replay verification
 
