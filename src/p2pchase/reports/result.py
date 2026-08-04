@@ -71,8 +71,16 @@ def build_result_artifact(
     final_result: dict[str, Any],
     tokens_total_series: dict[str, int],
     confirmed: bool = False,
+    repositories: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    """Assemble the report both teams send independently."""
+    """Assemble the report both teams send independently.
+
+    ``repositories`` carries *four* links -- both teams' cop and thief
+    repositories (rule 49). The lecturer reads the result JSON, not the e-mail
+    body, so the links have to be inside the artifact; and carrying the
+    opponent's pair as well means either team's report alone is enough to find
+    all four, which is what makes a missing counter-report survivable.
+    """
     summary = {
         "game_id": game_id,
         "game_uid": game_uid,
@@ -92,6 +100,7 @@ def build_result_artifact(
         "game_id": game_id,
         "game_uid": game_uid,
         "links": links_block(game_id),
+        "repositories": repositories or {},
         "timezone": TIMEZONE,
         "groups": sorted(groups),
         "num_sub_games": len(sub_games),

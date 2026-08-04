@@ -34,7 +34,7 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
 | 3.1 | `uv` only, `uv.lock` committed | P0 | Team | Done | No `requirements.txt`; `pyproject.toml` is the single source of truth |
-| 3.2 | Every file ≤150 code lines | P0 | Team | Done | `tools/check_file_size.py` reports 0 over the limit across 102 files (largest: `board.py`, 148) |
+| 3.2 | Every file ≤150 code lines | P0 | Team | Done | `tools/check_file_size.py` reports 0 over the limit across 105 files (largest: `board.py`, 148) |
 | 3.3 | SDK layer | P0 | EK | Done | No consumer reaches past `P2PChaseSDK` |
 | 3.4 | Zero ruff violations | P0 | Team | Done | `ruff check .` clean on `src`, `tests` and `tools` |
 | 3.5 | Versioning from 1.00 | P1 | AI | Done | Code, config and rate-limit versions declared and validated on load |
@@ -48,6 +48,8 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | 4.3 | Pre-game negotiation | P0 | AI | Done | A one-byte config difference is refused with the mismatch named |
 | 4.4 | Two clocks | P0 | EK | Done | Per-message deadline plus a watchdog fed only by completed steps |
 | 4.5 | Mutual audit over the wire | P0 | AI | Done | Each peer audits the other's disclosed chain; a tampered record fails at the right step |
+| 4.6 | Capture detection over the wire | P0 | TL | Done | The cop claims a cell, the thief answers truthfully, either answer ends the sub-game (ADR-013). Found while writing the compliance matrix: the networked path had only ever checked for survival |
+| 4.7 | Artifacts from a live match | P0 | AI | Done | A networked sub-game writes declaration, config, log and result; the result is rebuilt from the logs, so a second sub-game extends it rather than replacing it |
 
 ## Phase 5 — Interfaces · **Done**
 
@@ -65,7 +67,8 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | 6.2 | Read the true heading from the trail | P0 | EK | Done | Centroid-drift reader chosen over two measured alternatives (ADR-006) |
 | 6.3 | Fix the belief update to transport mass | P0 | EK | Done | A credible "north" moves `trust`-weighted mass north (ADR-004) |
 | 6.4 | Prove lie detection works | P0 | Team | Done | Compulsive liar → 0.020 trust, 97% of claims contradicted; honest → 0.724; measured over 30 seeds |
-| 6.5 | Test suite ≥85% coverage | P0 | Team | Done | 380 tests, 92.9% coverage, no test touching the network or a real API |
+| 6.5 | Test suite ≥85% coverage | P0 | Team | Done | 393 tests, 93.7% coverage, no test touching the network or a real API |
+| 6.6 | Enforce the coordinate ban (rule 27) | P0 | EK | Done | `strip_positions` deletes digit-bearing and square-naming tokens from every hint before it reaches the wire — the system prompt asks, this enforces (ADR-014) |
 
 ## Phase 7 — Documentation · **In progress**
 
@@ -77,6 +80,8 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | 7.4 | Per-mechanism PRDs | P0 | Team | Done | One each for belief, stigmergy, commit-reveal, deception, gatekeeper, protocol |
 | 7.5 | Prompt book | P0 | Team | Done | `docs/PROMPTS.md` — context, prompts, outputs, iterations, lessons |
 | 7.6 | `docs/GMAIL_SETUP.md` | P1 | AI | Done | A human can complete OAuth setup from it without guessing |
+| 7.8 | Compliance matrix, Appendix E | P0 | Team | Done | [COMPLIANCE.md](COMPLIANCE.md) — all 55 rules mapped to code and test, with the four that are genuinely not done listed plainly |
+| 7.9 | Submission answer sheet | P0 | EK | Done | [SUBMISSION.md](SUBMISSION.md) — every field the repository can answer, the rest marked for the operator |
 | 7.7 | README screenshots | P1 | TL | In progress | Terminal live view, replay verified, replay tampered — all captured from real program output. The Tkinter window shot needs `python3-tk` on the operator's machine and a manual capture; it is deliberately not faked |
 
 ## Phase 8 — Experiments · **Done**

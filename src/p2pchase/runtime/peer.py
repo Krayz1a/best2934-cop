@@ -63,6 +63,8 @@ class PeerRunner:
         self.client = client
         self.watchdog = Watchdog(timeout_sec=float(config.watchdog_timeout))
         self.turn_timeout = float(config.turn_timeout)
+        #: True once the opponent has confirmed one of our capture claims.
+        self.captured_opponent = False
 
     # ------------------------------------------------------------- waiting
     async def _await_condition(self, predicate, what: str) -> None:
@@ -100,6 +102,7 @@ class PeerRunner:
             move=str(revealed.get("move", "STAY")),
             hint=str(revealed.get("hint", "")),
             barrier=revealed.get("barrier"),
+            capture_claim=self.session.capture_claim(),
         ))
 
     async def _pull_scent(self, step: int) -> None:
@@ -119,7 +122,11 @@ class PeerRunner:
         await self._push_commit(step, commitment)
         await self._await_commit(step)
 
-        await self._push_reveal(step)
+        response = await self._push_reveal(step)
+        # The opponent answers our capture claim in the same round trip. It is
+        # their word, sealed against their own record: a false denial is caught
+        # at the audit and forfeits the game (rule 22).
+        self.captured_opponent = bool(response.get("caught"))
         await self._await_reveal(step)
 
         self.session.apply_own_step()
@@ -136,6 +143,9 @@ class PeerRunner:
         try:
             for step in range(1, max_moves + 1):
                 await self.play_step(step)
+                if self._captured():
+                    outcome = constants.OUTCOME_CAPTURE
+                    break
                 if self.session.state.survival_reached():
                     break
         except (DeadlineExceededError, WatchdogTrippedError) as error:
@@ -154,6 +164,17 @@ class PeerRunner:
                     self.session.sub_game, step, outcome, audit.get("passed"))
         return PeerOutcome(outcome, step, records=self.session.records,
                            opponent_audit=audit)
+
+    def _captured(self) -> bool:
+        """Has this sub-game ended in a capture, from either side of the claim?
+
+        Three ways, and a peer sees all three: the thief confirmed our claim, we
+        confirmed theirs, or the thief has no legal move left (rule 47). The
+        last one is checked locally because only the thief can see it, and it
+        would otherwise end the game silently at the move ceiling instead.
+        """
+        return (self.captured_opponent or self.session.i_am_caught
+                or self.session.state.thief_is_boxed_in())
 
     async def abort(self, reason: str, step: int) -> PeerOutcome:
         """Tell the opponent why we are stopping, then stop.

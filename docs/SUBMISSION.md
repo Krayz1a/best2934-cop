@@ -64,8 +64,8 @@ The grade is the team's to choose. What the repository can honestly claim:
 
 | Guidelines V3 gate | Required | Measured (2026-08-04) |
 |---|---|---|
-| Code lines per file | ≤ 150 | 0 of 102 files over; largest `board.py` at 148 |
-| Test coverage | ≥ 85% | **92.95%**, 380 tests |
+| Code lines per file | ≤ 150 | 0 of 105 files over; largest `board.py` at 148 |
+| Test coverage | ≥ 85% | **93.73%**, 393 tests |
 | Ruff violations | 0 | **0** |
 | Dependency management | `uv` only | `uv.lock` committed, no `requirements.txt` |
 | SDK layer | Required | `P2PChaseSDK`; no consumer bypasses it |
@@ -74,6 +74,7 @@ The grade is the team's to choose. What the repository can honestly claim:
 | Documentation set | PRD, PLAN, TODO | Present, plus six per-mechanism PRDs |
 | Prompt book (§8.3) | Required | [PROMPTS.md](PROMPTS.md) — including the prompts that produced wrong answers |
 | ISO/IEC 25010 | Required | Mapped in [PRD.md](PRD.md) |
+| Appendix E, all 55 rules | Required | Mapped one by one in [COMPLIANCE.md](COMPLIANCE.md) |
 
 Beyond the gates, and each backed by data in `results/`:
 

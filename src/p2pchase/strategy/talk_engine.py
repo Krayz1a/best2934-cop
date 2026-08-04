@@ -26,7 +26,7 @@ from .providers import (
     OllamaProvider,
     TemplateProvider,
 )
-from .talk_prompt import TalkProvider, TalkRequest
+from .talk_prompt import TalkProvider, TalkRequest, clamp_words, strip_positions
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,12 +65,12 @@ class TalkEngine:
         """Compose one hint, never raising and never returning an empty string."""
         if self.every_n_steps > 1 and request.step % self.every_n_steps != 0:
             hint, _ = self.fallback.compose(request)
-            return hint
+            return self._guard(hint, request)
         try:
             hint, tokens = self.provider.compose(request)
             self.tokens_used += tokens
             if hint:
-                return hint
+                return self._guard(hint, request)
         except Exception as error:  # noqa: BLE001 -- degrading is the whole point
             self.failures += 1
             LOGGER.warning(
@@ -78,7 +78,19 @@ class TalkEngine:
                 getattr(self.provider, "name", "?"), type(error).__name__, error,
             )
         hint, _ = self.fallback.compose(request)
-        return hint
+        return self._guard(hint, request)
+
+    def _guard(self, hint: str, request: TalkRequest) -> str:
+        """Last checkpoint before the wire: no coordinates, no over-long sentence.
+
+        Applied to every provider including the template bank. The bank is ours
+        and is safe by construction, but a guard that trusts *some* of its
+        inputs is a guard that stops being run.
+        """
+        safe = strip_positions(hint)
+        if safe != hint:
+            LOGGER.warning("stripped a position-like token from a hint (rule 27)")
+        return clamp_words(safe, request.max_words)
 
 
 def build_talk_engine(trash_talk: dict, llm: dict) -> TalkEngine:

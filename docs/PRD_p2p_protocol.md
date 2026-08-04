@@ -56,7 +56,7 @@ what makes the commitment meaningful (see [PRD_commit_reveal.md](PRD_commit_reve
 | `declare_step0` | signed declaration | `{ok}` |
 | `commit_step` | `{game_id, sub_game_number, step, commit}` | `{ok}` |
 | `acknowledge_step` | `{game_id, sub_game_number, step}` | `{ok, held}` |
-| `reveal_step` | `{…, move, hint, barrier?}` | `{ok}` |
+| `reveal_step` | `{…, move, hint, barrier?, capture_claim?}` | `{ok, caught}` |
 | `sample_scent` | `{…, cells: [[r,c], …]}` | `{ok, samples: {"r,c": τ}}` |
 | `final_reveal` | `{records}` | `{ok, records}` |
 | `audit_result` | `{records}` | `{ok, passed, failed_steps}` |
@@ -67,7 +67,30 @@ The set is asserted in both directions: every contract tool must be registered,
 and no tool may be exposed that the contract does not name. Undeclared surface is
 surface nobody agreed to.
 
-### 3.1 Why handlers are MCP-free
+### 3.1 How a capture ends a sub-game (rules 21, 22, 46, 47)
+
+Nobody can see the opponent, so nobody can *observe* a capture. It is claimed
+and answered instead, inside the reveal both peers were already exchanging:
+
+```
+cop  → reveal_step(move, hint, capture_claim = the cell I am moving onto)
+thief→ {ok, caught: true|false}          # answered from its own true cell
+```
+
+The cop names the only cell it can speak for honestly -- its own -- and the
+thief is the only party able to check it. A barrier sealed on the thief's cell
+is claimed the same way (rule 46), and a thief left with no legal move ends the
+sub-game from its own side (rule 47), because only the thief can see that.
+
+Both the claim and the answer are inside the commit chain, so a false denial is
+provable at the final audit and forfeits the game (rule 22). The mechanism is
+honest because lying is strictly worse, not because either side is trusted.
+
+The cost is that the thief learns the cop's cell every turn. That asymmetry is
+deliberate: the pursued may see the pursuer, and without a claim rules 21 and 22
+would have nothing to govern.
+
+### 3.2 Why handlers are MCP-free
 
 `PeerHandlers` is a plain object mapping dict → dict, with no MCP import. The
 FastMCP binding in `mcp/server.py` is a thin adapter containing no logic of its

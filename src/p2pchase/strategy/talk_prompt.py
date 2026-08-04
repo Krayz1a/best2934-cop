@@ -69,6 +69,31 @@ def build_prompt(request: TalkRequest) -> str:
     )
 
 
+#: Words that only ever appear in a sentence trying to name a square.
+POSITION_WORDS = frozenset({"row", "rows", "column", "columns", "col", "cols",
+                            "coordinate", "coordinates", "index", "cell"})
+
+
+def strip_positions(text: str) -> str:
+    """Remove anything that could encode a square (rule 27).
+
+    Rule 27 forbids a numeric position protocol, and rule 26 requires free
+    natural language. The system prompt asks a model for both; this enforces
+    them. A prompt is a request, and a request is not a guarantee -- a provider
+    that returns "heading to 3,4" would breach a rule whose sanction is losing
+    the game's character, and no taunt is worth that.
+
+    Digit-bearing tokens go, along with the vocabulary that only exists to point
+    at a square. Deleting is deliberately preferred to refusing: a hint is
+    optional, so degrading to a shorter sentence costs nothing, while raising
+    here would turn a chatty model into a technical loss.
+    """
+    kept = [word for word in str(text).split()
+            if not any(char.isdigit() for char in word)
+            and word.strip(".,;:!?\"'").lower() not in POSITION_WORDS]
+    return " ".join(kept)
+
+
 def clamp_words(text: str, max_words: int) -> str:
     """Hard-enforce the agreed word limit, whatever the model returned."""
     cleaned = " ".join(str(text).replace("\n", " ").split())

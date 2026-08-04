@@ -116,11 +116,12 @@ class PeerHandlers:
         assert self.session is not None
         step = int(payload.get("step", 0))
         move, hint, barrier = contracts.parse_reveal(payload)
+        claim = contracts.parse_capture_claim(payload)
         try:
-            self.session.on_reveal(step, move, hint, barrier)
+            caught = self.session.on_reveal(step, move, hint, barrier, claim)
         except ValueError as error:
             return contracts.error(str(error))
-        return contracts.ok(step=step, applied=True)
+        return contracts.ok(step=step, applied=True, caught=bool(caught))
 
     def sample_scent(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Report our own pheromone intensity at the requested cells."""

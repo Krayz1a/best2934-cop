@@ -19,6 +19,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from .. import constants
 from ..domain.board import build_board
 from ..domain.brains import BrainBase, Decision, load_brain
 from ..domain.crypto import CommitRecord, audit_records, commit
@@ -55,6 +56,8 @@ class PeerSession:
     opponent_records: list[dict[str, Any]] = field(default_factory=list)
     lies_told: int = 0
     honest_hints: int = 0
+    #: Set when we answered a cop's capture claim truthfully in the affirmative.
+    i_am_caught: bool = False
 
     def __post_init__(self) -> None:
         import random
@@ -108,6 +111,45 @@ class PeerSession:
             raise RuntimeError("reveal() called before prepare_step()")
         return self._pending[2].revealed_view()
 
+    def pending_cell(self) -> tuple[int, int] | None:
+        """Where our pending move puts us -- or the cell we are about to seal.
+
+        The reveal is sent *before* the step is applied, so our own attribute
+        still holds the previous cell. Comparing pre-move cells would report a
+        capture whenever the two agents swapped places, which is not one.
+        """
+        if self._pending is None:
+            return None
+        decision = self._pending[0]
+        if decision.barrier:
+            return (int(decision.barrier[0]), int(decision.barrier[1]))
+        cell = self.state.board.apply_move(self.state.position, decision.move)
+        return (int(cell[0]), int(cell[1]))
+
+    def capture_claim(self) -> list[int] | None:
+        """The cell we assert the thief occupies, if we are the cop.
+
+        A cop cannot see the thief, so it claims the only cell it can speak for
+        honestly: its own, after moving -- or the cell it just sealed, since a
+        barrier dropped on the thief is also a capture (rule 46). The thief
+        answers truthfully because the sealed record settles it either way at
+        the audit, and a false answer forfeits the game (rule 22).
+        """
+        if self.role != constants.ROLE_COP:
+            return None
+        cell = self.pending_cell()
+        return None if cell is None else [cell[0], cell[1]]
+
+    def answer_capture_claim(self, cell: list[int] | None) -> bool | None:
+        """Truthfully answer the cop's claim (rules 21, 22). ``None`` if none made."""
+        if cell is None:
+            return None
+        mine = self.pending_cell() or self.state.position
+        caught = (int(cell[0]), int(cell[1])) == (int(mine[0]), int(mine[1]))
+        if caught:
+            self.i_am_caught = True
+        return caught
+
     def apply_own_step(self) -> Decision:
         """Commit the pending step to our own world and record it."""
         if self._pending is None:
@@ -128,7 +170,8 @@ class PeerSession:
         self.opponent_commitments[int(step)] = str(commitment)
 
     def on_reveal(self, step: int, move: str, hint: str,
-                  barrier: list[int] | None) -> None:
+                  barrier: list[int] | None,
+                  capture_claim: list[int] | None = None) -> bool | None:
         """Apply what the opponent disclosed, weighted by how much we trust it."""
         if int(step) not in self.opponent_commitments:
             raise ValueError(f"reveal for step {step} arrived without a prior commitment")
@@ -141,6 +184,7 @@ class PeerSession:
         claim = record_claim(self.state, hint)
         LOGGER.debug("step %d: opponent moved %s and claims %s (%r)",
                      step, move, claim or "nothing", hint[:40])
+        return self.answer_capture_claim(capture_claim)
 
     def scent_at(self, cells: list[list[int]]) -> dict[str, float]:
         """Our own pheromone intensity at the cells the opponent asked about."""

@@ -439,6 +439,50 @@ a thief does. The measurement bounds overfitting to a single policy; it cannot
 rule out overfitting to a single *authorship*. `barrier_engage_range` is TUNABLE
 under Appendix F and can be changed between matches without touching code.
 
+### ADR-013 · Capture is claimed and answered, not computed
+
+**Status** Accepted. Closes a defect found while writing [COMPLIANCE.md](COMPLIANCE.md).
+**Context** The local harness ends a sub-game by comparing both positions --
+something it can do because it holds both. No peer can. The networked runner
+checked only `survival_reached()`, so a cop standing on the thief in a real
+league match would have played on to the move ceiling and scored the sub-game
+as the thief's survival. Every test passed, because every test that could see
+it was a local one.
+**Decision** The cop attaches a `capture_claim` to every reveal, naming the cell
+it is about to occupy -- or the cell it just sealed a barrier on (rule 46). The
+thief answers truthfully from its own cell in the same round trip. Either
+answer ends the sub-game.
+**Rationale** The cop can only speak honestly about its own position, which is
+the one thing it actually knows; the thief is the only party that can check the
+claim. Both the claim and the answer are sealed in the commit chain, so a false
+denial is provable at the audit and forfeits the game (rule 22) -- the mechanism
+is honest because lying is strictly worse, not because we trust anyone.
+**Alternatives rejected** Deriving the opponent's position from revealed moves
+and the agreed start (contradicts ADR-009 and deletes the belief map);
+exchanging positions every turn (hands the thief the pursuer's location for
+free); detecting capture only at the final audit (the sub-game would run past
+its own ending).
+**Trade-off** The thief learns where the cop is, every turn. That is the
+asymmetry the booklet intends: the pursued may see the pursuer, and the claim
+is what makes rules 21 and 22 mean anything.
+
+### ADR-014 · The coordinate ban is enforced on the way out, not requested
+
+**Status** Accepted.
+**Context** Rule 27 forbids a numeric position protocol; rule 26 requires free
+natural language. The system prompt asked the model for both. A prompt is a
+request, and a request is not a guarantee: a model returning "heading to 3,4"
+would breach a rule whose sanction is losing the game's character.
+**Decision** `strip_positions` deletes digit-bearing tokens and square-naming
+vocabulary from every hint, for every provider including our own template bank,
+immediately before `clamp_words`.
+**Rationale** A guard that trusts some of its inputs is a guard that stops being
+run. Deleting is preferred to refusing because a hint is optional: degrading to
+a shorter sentence costs nothing, while raising here would turn a chatty model
+into a technical loss.
+**Trade-off** A legitimate sentence containing a number ("three steps behind
+you") loses a word. Acceptable -- the taunt is not scored and the rule is.
+
 ---
 
 ## 4. Interface contracts
@@ -452,7 +496,7 @@ under Appendix F and can be changed between matches without touching code.
 | `declare_step0` | both | signed declaration | `{ok}` |
 | `commit_step` | both | `{game_id, sub_game_number, step, commit}` | `{ok}` |
 | `acknowledge_step` | both | `{game_id, sub_game_number, step}` | `{ok, held}` |
-| `reveal_step` | both | `{…, move, hint, barrier?}` | `{ok}` |
+| `reveal_step` | both | `{…, move, hint, barrier?, capture_claim?}` | `{ok, caught}` |
 | `sample_scent` | both | `{…, cells: [[r,c],…]}` | `{ok, samples: {"r,c": φ}}` |
 | `final_reveal` | both | `{records}` | `{ok, records}` |
 | `audit_result` | both | `{records}` | `{ok, passed, failed_steps}` |

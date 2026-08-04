@@ -146,3 +146,32 @@ def test_a_move_renders_as_a_compass_word_never_an_axis_delta():
     assert heading_word("N") == "north"
     assert heading_word("STAY") == "nowhere"
     assert heading_word("?") == "somewhere"
+
+
+def test_a_hint_naming_a_square_is_stripped_before_the_wire():
+    """Rule 27: the prompt asks a model not to name coordinates; this enforces it."""
+    from p2pchase.strategy.talk_prompt import strip_positions
+
+    assert strip_positions("heading to 3,4 now") == "heading to now"
+    assert strip_positions("watch row 2 column 5") == "watch"
+    assert strip_positions("drifting north past the well") == "drifting north past the well"
+
+
+def test_the_engine_guards_every_provider_including_our_own():
+    """A guard that trusts some of its inputs is a guard that stops being run."""
+    from p2pchase.strategy.talk_engine import TalkEngine
+    from p2pchase.strategy.talk_prompt import TalkRequest
+
+    class LeakyProvider:
+        name = "leaky"
+
+        def compose(self, request):
+            return "I am at cell 4,4 and closing", 7
+
+    engine = TalkEngine(provider=LeakyProvider())
+    request = TalkRequest(role="police", step=1, intent="truth", heading="north",
+                          landmark="the well", max_words=15, steps_remaining=30)
+    hint = engine.compose(request)
+    assert not any(char.isdigit() for char in hint)
+    assert "cell" not in hint
+    assert hint  # never empty -- a stripped hint still has to be sendable

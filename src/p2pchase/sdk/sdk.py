@@ -37,6 +37,7 @@ from .. import constants
 from ..infra.sysinfo import collect_hardware, git_commit
 from ..services.match_service import MatchService, SeriesResult
 from ..services.negotiation_service import Agreement, Handshake, NegotiationService
+from ..services.network_artifacts import NetworkArtifactService
 from ..services.reporting_service import DeliveryReceipt, ReportingService
 from ..services.verification_service import AuditVerdict, VerificationService
 from ..shared.config import load_config
@@ -62,6 +63,7 @@ class P2PChaseSDK:
         self.output_dir = output_dir
         self.signing_secret = signing_secret
         self._match: MatchService | None = None
+        self._network_artifacts: NetworkArtifactService | None = None
         self._verification: VerificationService | None = None
         self._negotiation: NegotiationService | None = None
         self._reporting: ReportingService | None = None
@@ -74,6 +76,12 @@ class P2PChaseSDK:
         return cls(load_config(config_dir, role), output_dir, signing_secret)
 
     # ------------------------------------------------------------- services
+    @property
+    def network_artifacts(self) -> NetworkArtifactService:
+        if self._network_artifacts is None:
+            self._network_artifacts = NetworkArtifactService(self.config, self.output_dir)
+        return self._network_artifacts
+
     @property
     def match(self) -> MatchService:
         if self._match is None:
@@ -129,6 +137,22 @@ class P2PChaseSDK:
                    seed: int = 0) -> SeriesResult:
         """Play a full local series and write all four artifacts."""
         return self.match.run_series(opponent_group, sub_games, seed)
+
+    def record_networked_sub_game(self, game_id: str, sub_game: int, opponent: str,
+                                  outcome: Any, started_at: str, ended_at: str,
+                                  tokens: int, handshake: dict[str, Any] | None = None,
+                                  ) -> list[Path]:
+        """Write the artifacts a *live* sub-game produced (rules 20, 32-35, 49).
+
+        The local rehearsal gets its artifacts from ``run_series``. A networked
+        match plays one sub-game per process, so it has to hand them over here
+        instead -- otherwise a real league game would leave nothing to replay,
+        audit or report.
+        """
+        step_zero = self.match.step_zero(sub_game)
+        return self.network_artifacts.record_sub_game(
+            game_id, sub_game, self.config.role, opponent, outcome,
+            started_at, ended_at, tokens, handshake, step_zero)
 
     # --------------------------------------------------------- verification
     def verify_log(self, path: Path | str) -> AuditVerdict:

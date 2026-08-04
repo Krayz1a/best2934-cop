@@ -16,6 +16,7 @@ from typing import Any
 
 from ..mcp.client import PeerClient
 from ..mcp.handlers import PeerHandlers
+from ..reports.naming import now_iso
 from ..runtime.peer import PeerRunner
 from ..runtime.peer_session import PeerSession
 from ..sdk import P2PChaseSDK
@@ -67,24 +68,49 @@ def play(args: Any) -> int:
     client = PeerClient(url, timeout=float(sdk.config.turn_timeout))
     runner = PeerRunner(sdk.config, session, client)
 
-    outcome = asyncio.run(_play(runner, sdk, url))
+    started = now_iso()
+    outcome, handshake = asyncio.run(_play(runner, sdk, url))
     print(f"outcome        : {outcome.outcome}")
     print(f"steps          : {outcome.steps}")
     print(f"opponent audit : {outcome.opponent_audit.get('passed')}")
     if outcome.aborted:
         print(f"aborted        : {outcome.reason}")
+    for path in _write_artifacts(sdk, session, args, handshake, outcome, started):
+        print(f"artifact       : {path}")
     return EXIT_FAILED if outcome.aborted else EXIT_OK
+
+
+def _write_artifacts(sdk: P2PChaseSDK, session: PeerSession, args: Any,
+                     handshake: dict[str, Any], outcome: Any, started: str) -> list[Any]:
+    """Persist what the sub-game produced, including an aborted one.
+
+    An abort still wrote real commitments and still has to be explicable to the
+    opponent, so it gets its artifacts too; a technical loss with no log is
+    indistinguishable from a team that walked away. A failure to *write* is
+    reported and swallowed -- the game already happened, and raising here would
+    turn a disk problem into a lost match.
+    """
+    opponent = str(handshake.get("group_id") or args.opponent or "unknown")
+    try:
+        return sdk.record_networked_sub_game(
+            args.game_id, args.sub_game, opponent, outcome, started, now_iso(),
+            session.talk.tokens_used, handshake)
+    except OSError as error:
+        LOGGER.error("could not write the match artifacts: %s", error)
+        print(f"WARNING: artifacts not written: {error}")
+        return []
 
 
 async def _play(runner: PeerRunner, sdk: P2PChaseSDK, url: str):
     """Handshake first, then play. A mismatch stops the match before move one."""
     theirs = await runner.client.hello()
-    agreement = sdk.agree_with(theirs.get("handshake", {}))
+    handshake = dict(theirs.get("handshake", {}))
+    agreement = sdk.agree_with(handshake)
     if not agreement.agreed:
         LOGGER.error("refusing to play %s: %s", url, "; ".join(agreement.mismatches))
-        return await runner.abort("configuration mismatch at handshake", 0)
-    LOGGER.info("handshake agreed with %s", theirs.get("handshake", {}).get("group_id"))
-    return await runner.run_sub_game()
+        return await runner.abort("configuration mismatch at handshake", 0), handshake
+    LOGGER.info("handshake agreed with %s", handshake.get("group_id"))
+    return await runner.run_sub_game(), handshake
 
 
 def gui(args: Any) -> int:

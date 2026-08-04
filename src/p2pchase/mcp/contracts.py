@@ -75,7 +75,8 @@ def commit_payload(game_id: str, sub_game: int, step: int, group: str, role: str
 
 def reveal_payload(game_id: str, sub_game: int, step: int, group: str, role: str,
                    move: str, hint: str, barrier: list[int] | None,
-                   intent: str | None = None) -> dict[str, Any]:
+                   intent: str | None = None,
+                   capture_claim: list[int] | None = None) -> dict[str, Any]:
     """REVEAL: the move, the hint and any barrier -- but never the nonce.
 
     ``intent`` is optional here on purpose. A peer may withhold its truth/lie
@@ -94,6 +95,11 @@ def reveal_payload(game_id: str, sub_game: int, step: int, group: str, role: str
     }
     if intent is not None:
         body["intent"] = intent
+    if capture_claim is not None:
+        # Rule 21: a cop that believes it has caught the thief must say so, and
+        # say it truthfully. The claim names a cell -- our own -- so answering
+        # it costs the thief nothing it did not already learn from our move.
+        body["capture_claim"] = [int(capture_claim[0]), int(capture_claim[1])]
     return body
 
 
@@ -122,6 +128,14 @@ def final_reveal_payload(game_id: str, sub_game: int, group: str,
         "sender_group": group,
         "records": records,
     }
+
+
+def parse_capture_claim(payload: dict[str, Any]) -> list[int] | None:
+    """The claimed cell from a REVEAL body, or ``None`` if no claim was made."""
+    claim = payload.get("capture_claim")
+    if claim is None:
+        return None
+    return [int(claim[0]), int(claim[1])]
 
 
 def parse_reveal(payload: dict[str, Any]) -> tuple[str, str, list[int] | None]:
