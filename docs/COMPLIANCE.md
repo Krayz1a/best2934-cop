@@ -1,7 +1,7 @@
 # Compliance matrix — Appendix E, all 55 mandatory rules
 
 **Project** `best2934-cop` · **Booklet** v3.0.0, Appendix E (Tables 7–12) ·
-**Version** 1.00 · **Last checked** 2026-08-04
+**Version** 1.00 · **Last checked** 2026-08-05
 
 Appendix E is the booklet's own checklist: five thematic tables plus the
 cross-check additions, each rule carrying a sanction that runs from a technical
@@ -14,7 +14,7 @@ play**: the mechanism is built and exercised against a loopback opponent; the
 rule is only finally discharged during a real match. **Operator**: needs a
 human, by design or by rule. **External**: depends on another team.
 
-Summary: **44 Met · 5 Met, awaiting play · 4 Operator · 2 External**.
+Summary: **45 Met · 4 Met, awaiting play · 4 Operator · 2 External**.
 
 ---
 
@@ -22,7 +22,7 @@ Summary: **44 Met · 5 Met, awaiting play · 4 Operator · 2 External**.
 
 | # | Rule | Status | Where |
 |---|---|---|---|
-| 1 | Cop and thief run in two fully separate processes | Met | `cli/network_commands.py` `serve`/`play`; two repositories, one per role (README §1.1). `local_match.py` is a rehearsal harness and is never used against a live opponent |
+| 1 | Cop and thief run in two fully separate processes | Met | `p2pchase play` is one whole peer — it serves and calls over one session (ADR-015) — so a match is two processes, one per team. Proven end to end over sockets by `tools/rehearsal.py`. `local_match.py` is a rehearsal harness and is never used against a live opponent |
 | 2 | No shared memory or variables between the sides | Met | `OwnState` has no attribute holding the opponent's position — enforced structurally, not by convention. `tests/integration/test_networked_sub_game.py` |
 | 3 | The orchestrator is the single entry point to the subsystems | Met | `sdk/sdk.py` — every CLI command and every test goes through `P2PChaseSDK`. `tests/unit/test_cli/test_commands.py` stubs the SDK and the commands still behave |
 | 4 | Game state managed by a standard state machine | Met | `domain/protocol.py` |
@@ -31,7 +31,7 @@ Summary: **44 Met · 5 Met, awaiting play · 4 Operator · 2 External**.
 | 7 | A watchdog monitors process failure and extracts data in a controlled way | Met | `Watchdog` in `runtime/watchdog.py` — fed only by `beat()` at the end of a completed step, so livelock trips it (ADR-011). `tests/unit/test_runtime/test_watchdog.py` |
 | 8 | The live UI shows local truth only | Met | `ui/live_view.py`, `ui/board_render.py` — the renderers accept an `OwnState`, and no objective board exists to pass them |
 | 9 | The full objective board is never displayed | Met | Same: satisfied by construction (P-3 in [PROMPTS.md](PROMPTS.md)) |
-| 10 | A tunnel exposes the local server to the public internet | Operator | `serve --host` binds loopback by default; publishing the port is ngrok/Localtonet's job. Nothing is exposed by accident |
+| 10 | A tunnel exposes the local server to the public internet | Operator | `play --host` binds loopback by default; publishing the port is ngrok/Localtonet's job. Nothing is exposed by accident |
 
 ## 2. Spatial mechanics, physics and board constraints (Table 8)
 
@@ -52,7 +52,7 @@ Summary: **44 Met · 5 Met, awaiting play · 4 Operator · 2 External**.
 | 18 | The nonce stays secret until the end of the game | Met | `final_reveal` is the only path that discloses nonces; `peer_session.final_reveal()` |
 | 19 | Any hash mismatch at audit is a technical loss | Met | `audit_records` names the exact failing step; `p2pchase verify` exits non-zero. `tests/unit/test_domain/test_crypto.py` |
 | 20 | A viewer application replays and verifies the log | Met | `ui/replay.py`, `p2pchase replay` / `verify`. Screenshots in README §9 |
-| 21 | Truthful declaration on capturing the thief | Met | The cop attaches a `capture_claim` to every reveal, naming the only cell it can speak for honestly — its own, after moving (and the sealed cell when it drops a barrier, rule 46). `runtime/peer_session.py::capture_claim` |
+| 21 | Truthful declaration on capturing the thief | Met | The cop attaches a `capture_claim` to every reveal, naming the only cell it can speak for honestly — its own, after moving (and the sealed cell when it drops a barrier, rule 46). `runtime/peer_session.py::capture_claim`, and the field is declared on the tool itself so it survives the wire (ADR-016) |
 | 22 | No false capture claim | Met | The thief answers from its own true cell, and both the claim and the answer are sealed in the commit chain, so a false answer is provable at the audit. `tests/integration/test_network_artifacts.py::test_a_claim_on_the_wrong_cell_is_answered_honestly` |
 | 23 | The scent emission model is cryptographically locked before play | Met | `kernel_fingerprint` over formula + kernel + a worked example, compared at handshake |
 | 24 | A signed hardware declaration before play | Met | `reports/declaration.py` + `match_service.step_zero` — signed **and** committed as step 0, so editing it invalidates the chain. `tests/integration/test_network_artifacts.py::test_step_zero_is_the_first_record` |
@@ -76,7 +76,7 @@ Summary: **44 Met · 5 Met, awaiting play · 4 Operator · 2 External**.
 | 32 | Report results automatically by Gmail | Met, awaiting play | `services/reporting_service.py`; dry run is the default until credentials exist |
 | 33 | The report is standard JSON | Met | `reports/result.py`; `tests/unit/test_reports/test_artifacts.py` |
 | 34 | No free-text final report — JSON attachment only | Met | The body carries a summary and names the attachment as binding; the artifact is the JSON file |
-| 35 | Both teams agree the result and each sends its own report | Met, awaiting play | `mutual_agreement.sha256` over the summary — two independently built reports hash identically iff they agree |
+| 35 | Both teams agree the result and each sends its own report | Met | `mutual_agreement.sha256` over `agreed_summary` — only the facts both peers derive from the same messages, so two honest reports hash identically and a disputed one does not (ADR-018). Two rehearsal peers produce the same digest; `tests/integration/test_ending_agreement.py` |
 | 36 | Comprehensive mutual log audit at the end of every game | Met | `final_reveal` exchanges chains; each peer audits the other's. `tests/integration/test_networked_sub_game.py` |
 | 37 | Declare the true number of games played at the start of each game | Met, awaiting play | Carried in the handshake and the declaration artifact |
 | 38 | No false declaration of games played | Operator | A rule about honesty, not a mechanism. The number is read from the artifacts on disk, so there is nothing to remember and nothing to round up |
@@ -93,7 +93,7 @@ Summary: **44 Met · 5 Met, awaiting play · 4 Operator · 2 External**.
 | # | Rule | Status | Where |
 |---|---|---|---|
 | 46 | A barrier placed on the thief's current cell is a capture | Met | Locally in `runtime/local_match.py::terminal_outcome`; over the wire the sealed barrier cell is what the cop claims |
-| 47 | A thief with no legal move is captured | Met | `own_state.thief_is_boxed_in()`, checked by `PeerRunner._captured` as well as the local harness — only the thief can see it, so it has to be checked on the thief's side |
+| 47 | A thief with no legal move is captured | Met | `own_state.thief_is_boxed_in()`, checked on the thief's side because only the thief can see it — and then declared to the cop in `final_reveal`, which is what stops a won sub-game timing out into a technical loss for both (ADR-017) |
 | 48 | Score every ending by the score table (5/20, 10/5, 0/0) | Met | `domain/scoring.py`; `tests/unit/test_domain/test_scoring.py` |
 | 49 | Two repositories, cross-linked in the READMEs, two links in Moodle, **four** links in both teams' JSON | Met | READMEs cross-link (§1.1 in both); `repositories` block in `reports/result.py` carries all four. `tests/integration/test_network_artifacts.py::test_the_result_carries_four_repository_links` |
 | 50 | Each repository holds at least README, `config/`, PRD, PLAN and TODO | Met | All present in both repositories |

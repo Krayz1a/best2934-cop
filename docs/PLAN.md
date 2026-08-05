@@ -230,7 +230,7 @@ discipline.
 ```mermaid
 graph TB
     subgraph hostA["Machine A — team best2934"]
-        pa["p2pchase serve --role police<br/>127.0.0.1:9901"]
+        pa["p2pchase play --role police<br/>serves + calls · 127.0.0.1:9901"]
         ta["ngrok tunnel"]
         pa --- ta
     end
@@ -243,8 +243,10 @@ graph TB
 ```
 
 Rule 1 requires two separate processes and rule 2 forbids shared memory between
-them; the server binds a real socket even when both peers sit on one laptop. The
-in-process `LoopbackClient` exists only for tests.
+them; the server binds a real socket even when both peers sit on one laptop. Each
+box is one whole peer — it serves and calls over a single session (ADR-015) — so
+the two processes are the two *teams'*. The in-process `LoopbackClient` exists
+only for tests; `tools/rehearsal.py` reproduces this diagram on one machine.
 
 ---
 
@@ -485,6 +487,87 @@ you") loses a word. Acceptable -- the taunt is not scored and the rule is.
 
 ---
 
+### ADR-015 · One process is the whole peer: it serves and plays together
+
+**Status** Accepted. Supersedes the two-terminal `serve` + `play` flow.
+**Context** The README told an operator to run `serve` in one terminal and
+`play` in another. Two processes, two `PeerSession` objects, no shared memory
+between them -- so the opponent's commitments arrived in the *server's* session
+while the turn loop waited on the *client's*. The first rehearsal over real
+sockets sat at step 1 until the 30-second deadline and booked a technical loss
+for both teams. Every test passed, because a `LoopbackClient` hands the runner
+and the handlers the same session by construction.
+**Decision** `play` starts the FastMCP server itself, in the same event loop and
+over the same session, and waits (bounded) for the opponent's endpoint to answer
+before move one. `serve` survives as the server half alone, for reachability
+checks.
+**Rationale** Rule 1 separates the *cop and the thief*, not a team's own halves;
+one process per team is two per match. One event loop rather than a thread each
+makes the interleaving of inbound handler and outbound loop cooperative, so the
+order is the protocol's rather than the scheduler's.
+**Trade-off** The peer no longer starts before it has somewhere to play. The
+bounded wait covers the real case -- two teams never press enter together.
+
+### ADR-016 · A tool signature is a wire contract, and is tested as one
+
+**Status** Accepted.
+**Context** FastMCP builds each tool's schema from its Python signature and
+refuses any argument the signature does not name. `commit_step`, `reveal_step`
+and `final_reveal` all omitted keys that `contracts.py` had been putting on the
+wire for weeks -- including `capture_claim`, the whole of rule 21. Over a
+loopback client the payload dict is passed straight through, so the suite was
+structurally incapable of noticing. A real match would have been refused at
+move one.
+**Decision** Every key a payload builder emits appears in the corresponding tool
+signature, including ones the handler ignores. `tests/integration/
+test_live_transport.py` calls the real FastMCP tool layer with the real payload
+builders and pins the refusal behaviour so the gap cannot reopen.
+**Rationale** Being permissive about what we accept is also the right posture
+towards an opponent's independent implementation; being strict about what we
+send is not something we can check by reading.
+**Trade-off** Signatures carry fields that look like noise. The docstring says
+why, and the alternative is a technical loss nobody can debug during a match.
+
+### ADR-017 · A peer that stops first declares how the sub-game ended
+
+**Status** Accepted.
+**Context** Rule 47 captures a thief with no legal move -- and only the thief
+can see that. It stopped playing and exited; the cop, having won, waited out its
+deadline for a commitment that was never coming and recorded a technical loss.
+Rule 6 charges *both* teams for that.
+**Decision** `final_reveal` carries an `outcome`. Receiving it marks the sub-game
+finished on our side too, and a peer waiting for a message stops waiting and
+adopts the declared ending instead of aborting. A fault raised after that
+announcement is likewise treated as the expected consequence of an opponent that
+has already gone.
+**Rationale** The only ending a peer can declare unilaterally is one against
+itself, and the disclosed chain arrives in the same message, so the claim is
+checkable move by move rather than taken on trust.
+**Trade-off** One more field to agree with an opponent. It defaults to empty and
+an opponent that never sets it behaves exactly as before.
+
+### ADR-018 · The agreement digest covers only what both teams can derive
+
+**Status** Accepted.
+**Context** `mutual_agreement.sha256` hashed the whole result summary --
+including `started_at` (microseconds apart), `tokens` and `github_commit` (each
+team's own), `audit` (a statement *about* the other side) and `game_uid` (minted
+locally, never negotiated). Two rehearsal peers that agreed on every fact of the
+match produced different digests. Rule 35 answers a contradiction by voiding the
+match and scoring both teams zero.
+**Decision** `agreed_summary` narrows the digest to the facts both peers derive
+from the same protocol messages: game id, groups, and per sub-game the roles,
+result, winner, tie flag and score, plus the series totals that follow from
+them. Everything private is still *reported*, just not hashed.
+**Rationale** A certificate of agreement may only cover things that can be
+agreed. Hashing private fields does not make the report stricter, it makes it
+meaningless -- it would have failed on every honest match and never once on a
+dishonest one.
+**Trade-off** Two teams that disagree only about a timestamp now hash the same.
+That is the intended reading of rule 35: the ending is the thing.
+
+---
+
 ## 4. Interface contracts
 
 ### 4.1 MCP tools (eleven, symmetric)
@@ -494,11 +577,11 @@ you") loses a word. Acceptable -- the taunt is not scored and the rule is.
 | `hello` | both | — | `{ok, handshake, tools}` |
 | `negotiate` | both | `{handshake}` | `{ok, agreed, mismatches}` |
 | `declare_step0` | both | signed declaration | `{ok}` |
-| `commit_step` | both | `{game_id, sub_game_number, step, commit}` | `{ok}` |
+| `commit_step` | both | `{game_id, sub_game_number, step, commit, sender_group, sender_role}` | `{ok}` |
 | `acknowledge_step` | both | `{game_id, sub_game_number, step}` | `{ok, held}` |
 | `reveal_step` | both | `{…, move, hint, barrier?, capture_claim?}` | `{ok, caught}` |
 | `sample_scent` | both | `{…, cells: [[r,c],…]}` | `{ok, samples: {"r,c": φ}}` |
-| `final_reveal` | both | `{records}` | `{ok, records}` |
+| `final_reveal` | both | `{game_id, sub_game_number, sender_group, records, outcome}` | `{ok, records, group}` |
 | `audit_result` | both | `{records}` | `{ok, passed, failed_steps}` |
 | `agree_result` | both | `{sha256, expected}` | `{ok, agreed}` |
 | `abort` | both | `{reason}` | `{ok}` |

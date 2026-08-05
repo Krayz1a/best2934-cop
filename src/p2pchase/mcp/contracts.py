@@ -120,13 +120,26 @@ def scent_query(game_id: str, sub_game: int, step: int, cells: list[list[int]]) 
 
 
 def final_reveal_payload(game_id: str, sub_game: int, group: str,
-                         records: list[dict[str, Any]]) -> dict[str, Any]:
-    """FINAL_REVEAL: the complete audit view, nonces included (rule 18)."""
+                         records: list[dict[str, Any]],
+                         outcome: str = "") -> dict[str, Any]:
+    """FINAL_REVEAL: the complete audit view, nonces included (rule 18).
+
+    ``outcome`` is how the sender says the sub-game ended, and it is load-bearing
+    for one case the wire cannot otherwise carry: a thief with no legal move is
+    captured (rule 47), and only the thief can see that. Without the
+    declaration the cop waits for a commitment that will never come and rule 6
+    turns a won sub-game into a technical loss for both teams.
+
+    Believing it is safe because the only side that can declare it is declaring
+    against itself, and the disclosed chain arriving in the same message makes
+    the claim checkable move by move.
+    """
     return {
         "game_id": game_id,
         "sub_game_number": sub_game,
         "sender_group": group,
         "records": records,
+        "outcome": outcome,
     }
 
 

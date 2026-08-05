@@ -11,6 +11,15 @@ The module is deliberately thin. Every tool below immediately delegates to
 :class:`~p2pchase.mcp.handlers.PeerHandlers`, which knows nothing about MCP and
 can therefore be tested without it. If you are looking for behaviour, it is
 there, not here.
+
+One thing here is *not* free to drift: a tool's parameters are its published
+MCP schema, and FastMCP rejects a call carrying any argument the signature does
+not name. So every key :mod:`p2pchase.mcp.contracts` puts on the wire must
+appear below -- including the ones a handler ignores, such as ``sender_group``.
+Omitting one does not degrade the message, it refuses it, and a refused
+``commit_step`` is a technical loss at move one for both teams (rule 6).
+``tests/integration/test_live_transport.py`` holds this to a real socket,
+because an in-process client passes the dict through and can never see it.
 """
 
 from __future__ import annotations
@@ -60,12 +69,13 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
         return handlers.declare_step0(declaration)
 
     @mcp.tool
-    def commit_step(game_id: str, sub_game_number: int, step: int,
-                    commit: str) -> dict[str, Any]:
+    def commit_step(game_id: str, sub_game_number: int, step: int, commit: str,
+                    sender_group: str = "", sender_role: str = "") -> dict[str, Any]:
         """Receive one sealed step: the SHA-256 commitment and nothing else."""
         return handlers.commit_step({
             "game_id": game_id, "sub_game_number": sub_game_number,
             "step": step, "commit": commit,
+            "sender_group": sender_group, "sender_role": sender_role,
         })
 
     @mcp.tool
@@ -77,11 +87,16 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
 
     @mcp.tool
     def reveal_step(game_id: str, sub_game_number: int, step: int, move: str,
-                    hint: str, barrier: list[int] | None = None) -> dict[str, Any]:
+                    hint: str, barrier: list[int] | None = None,
+                    capture_claim: list[int] | None = None,
+                    intent: str = "", sender_group: str = "",
+                    sender_role: str = "") -> dict[str, Any]:
         """Receive the disclosed move, hint and barrier. The nonce stays sealed."""
         return handlers.reveal_step({
             "game_id": game_id, "sub_game_number": sub_game_number, "step": step,
             "move": move, "hint": hint, "barrier": barrier,
+            "capture_claim": capture_claim, "intent": intent,
+            "sender_group": sender_group, "sender_role": sender_role,
         })
 
     @mcp.tool
@@ -94,9 +109,15 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
         })
 
     @mcp.tool
-    def final_reveal(records: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    def final_reveal(records: list[dict[str, Any]] | None = None, game_id: str = "",
+                     sub_game_number: int = 0, sender_group: str = "",
+                     outcome: str = "") -> dict[str, Any]:
         """Exchange complete audit views, nonces included, after the sub-game."""
-        return handlers.final_reveal({"records": records or []})
+        return handlers.final_reveal({
+            "records": records or [], "game_id": game_id,
+            "sub_game_number": sub_game_number, "sender_group": sender_group,
+            "outcome": outcome,
+        })
 
     @mcp.tool
     def audit_result(records: list[dict[str, Any]]) -> dict[str, Any]:

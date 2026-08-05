@@ -36,6 +36,14 @@ LOGGER = logging.getLogger(__name__)
 POLL_INTERVAL_SEC = 0.05
 
 
+class OpponentFinishedError(RuntimeError):
+    """The opponent ended the sub-game while we were waiting for their move.
+
+    Carries the outcome they declared. Not a fault: the commonest cause is a
+    thief with no legal move left (rule 47), which only the thief can see.
+    """
+
+
 @dataclass
 class PeerOutcome:
     """How one networked sub-game ended, from this peer's point of view."""
@@ -68,9 +76,17 @@ class PeerRunner:
 
     # ------------------------------------------------------------- waiting
     async def _await_condition(self, predicate, what: str) -> None:
-        """Wait for an inbound message, bounded by both clocks."""
+        """Wait for an inbound message, bounded by both clocks.
+
+        A third way out: the opponent's final reveal may arrive instead of the
+        message we asked for, which means the sub-game is over and no further
+        message is coming. Waiting out the deadline on a finished game would
+        book a technical loss for both of us over an ending we agree about.
+        """
         deadline = TurnDeadline(self.turn_timeout)
         while not predicate():
+            if self.session.opponent_finished:
+                raise OpponentFinishedError(self.session.opponent_finished)
             self.watchdog.check(f"sub-game {self.session.sub_game}")
             deadline.check(what)
             await asyncio.sleep(POLL_INTERVAL_SEC)
@@ -148,22 +164,56 @@ class PeerRunner:
                     break
                 if self.session.state.survival_reached():
                     break
+        except OpponentFinishedError as ending:
+            # They stopped and said why. Their chain arrived with the claim and
+            # is audited below, so believing them here costs nothing we cannot
+            # check -- and the only ending they can declare unilaterally is one
+            # against themselves.
+            outcome = str(ending.args[0]) or constants.OUTCOME_SURVIVAL
+            LOGGER.info("opponent ended sub-game %d at step %d: %s",
+                        self.session.sub_game, step, outcome)
         except (DeadlineExceededError, WatchdogTrippedError) as error:
-            return await self.abort(str(error), step)
+            if self.session.opponent_finished:
+                outcome = self.session.opponent_finished
+            else:
+                return await self.abort(str(error), step)
         except Exception as error:  # noqa: BLE001 -- any fault must abort cleanly
-            LOGGER.exception("unexpected fault during sub-game")
-            return await self.abort(f"{type(error).__name__}: {error}", step)
+            # A fault *after* they told us the sub-game was over is expected, not
+            # a fault: they have exited, and we were mid-message to a peer that
+            # no longer exists. Aborting here would book a technical loss for
+            # both of us over an ending we have already agreed on.
+            if self.session.opponent_finished:
+                LOGGER.info("opponent already ended the sub-game; ignoring %s", error)
+                outcome = self.session.opponent_finished
+            else:
+                LOGGER.exception("unexpected fault during sub-game")
+                return await self.abort(f"{type(error).__name__}: {error}", step)
 
-        exchange = await self.client.call(contracts.TOOL_FINAL_REVEAL,
-                                          contracts.final_reveal_payload(
-                                              self.session.game_id, self.session.sub_game,
-                                              self.session.group_id,
-                                              self.session.final_reveal()))
-        audit = self.session.audit(list(exchange.get("records", [])))
+        audit = await self._exchange_chains(outcome)
         LOGGER.info("sub-game %d finished after %d steps: %s (opponent audit: %s)",
                     self.session.sub_game, step, outcome, audit.get("passed"))
         return PeerOutcome(outcome, step, records=self.session.records,
                            opponent_audit=audit)
+
+    async def _exchange_chains(self, outcome: str) -> dict[str, Any]:
+        """Disclose our nonces and collect theirs, so both chains can be audited.
+
+        Best-effort by necessity. If they stopped first they have already pushed
+        their chain to us and may have exited, so a failure here is expected and
+        costs nothing: we audited what they sent when it arrived. Letting the
+        exception through would throw away a completed sub-game's artifacts.
+        """
+        try:
+            exchange = await self.client.call(contracts.TOOL_FINAL_REVEAL,
+                                              contracts.final_reveal_payload(
+                                                  self.session.game_id, self.session.sub_game,
+                                                  self.session.group_id,
+                                                  self.session.final_reveal(), outcome))
+        except Exception:  # noqa: BLE001 -- they may be gone; we still have their chain
+            LOGGER.info("could not exchange final reveals; using the chain they already sent",
+                        exc_info=True)
+            return dict(self.session.last_audit)
+        return self.session.audit(list(exchange.get("records", [])))
 
     def _captured(self) -> bool:
         """Has this sub-game ended in a capture, from either side of the claim?

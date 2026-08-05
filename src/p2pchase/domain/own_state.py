@@ -66,6 +66,25 @@ class OwnState:
         return constants.ROLE_THIEF if self.is_cop else constants.ROLE_COP
 
     # ---------------------------------------------------------------- actions
+    def settle_move(self, move: str) -> Coord:
+        """Where a committed move actually lands, given the board as it now is.
+
+        A move is sealed a full exchange before the opponent's barrier for the
+        same step is revealed -- that is what commit-reveal means -- so a choice
+        that was legal when it was sealed can arrive at a cell that has just
+        been walled off. The mover then stands still. This is the protocol
+        working rather than a fault: the commitment seals the *choice*, so it
+        still verifies at the audit, and raising here would turn an ordinary
+        race between two honest peers into a technical loss for both (rule 6).
+
+        Every other illegality -- off the board, a direction that does not exist
+        -- is a fault in our own brain and still raises, because nothing in the
+        protocol can cause one.
+        """
+        if move != "STAY" and self.board.is_blocked(self.board.target_of(self.position, move)):
+            return self.position
+        return self.board.apply_move(self.position, move)
+
     def apply_own_move(self, move: str, barrier: Coord | None = None) -> None:
         """Apply this peer's own decided action to its local truth."""
         if barrier is not None:
@@ -76,7 +95,7 @@ class OwnState:
                 raise ValueError("a barrier may only be placed on a turn with no movement")
             self.board.place_barrier(self.position, barrier)
         else:
-            self.position = self.board.apply_move(self.position, move)
+            self.position = self.settle_move(move)
         self.my_scent.emit(self.position)
 
     def apply_opponent_move(self, move: str, barrier: list[int] | None) -> None:

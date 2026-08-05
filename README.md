@@ -183,22 +183,41 @@ uv run p2pchase gui --role police            # Tkinter heat map
 uv run p2pchase gui --role police --text     # terminal, no Tkinter needed
 ```
 
-### Play a real match against another team
+### Rehearse first
 
-Two processes, two terminals — that is the requirement, not a convention
-(rules 1, 2).
+Before any match, play one against yourself over real sockets:
 
 ```bash
-# Terminal 1 — our peer's server
-uv run p2pchase serve --role police --game-id best2934-vs-rival42 --port 8801
-
-# Terminal 2 — our peer's client, driving the turn loop
-uv run p2pchase play  --role police --game-id best2934-vs-rival42 \
-                      --opponent-url https://their-tunnel.ngrok.io/mcp
+uv run python tools/rehearsal.py
 ```
 
+Two whole peers, two processes, two ports, one sub-game, and a pass only if both
+finished, agreed on the ending and audited each other clean. This is the only
+check that crosses a socket — the test suite reaches the handlers in-process,
+which is the right shape for testing the protocol and structurally blind to the
+transport. Every bug listed in [ADR-015 through ADR-018](docs/PLAN.md) was found
+here and by nothing else.
+
+### Play a real match against another team
+
+One command. `play` **is** the peer: it serves our tools and calls theirs over
+one session, because the turn loop has to see what arrives (see
+[`runtime/peer_host.py`](src/p2pchase/runtime/peer_host.py)). The two processes
+rules 1 and 2 require are the two *teams'*, one each.
+
+```bash
+uv run p2pchase play --role police --game-id best2934-vs-rival42 \
+                     --port 8801 \
+                     --opponent-url https://their-tunnel.ngrok.io/mcp
+```
+
+It waits for the opponent's endpoint to answer before move one, so whoever
+presses enter first simply waits rather than losing the match to a race.
+
 For a league match, expose port 8801 through your tunnel and put the public URL
-in `network.public_url`.
+in `network.public_url`. `p2pchase serve` runs only the server half, which is
+useful for letting an opponent check reachability early — but a match is played
+with `play`.
 
 ### Report the result
 
@@ -216,7 +235,7 @@ config file.
 ### Typical workflow
 
 ```
-check-config → agree game.json with the opponent → handshake → serve + play
+check-config → rehearsal.py → agree game.json with the opponent → play
             → verify (own logs) → audit (their logs) → send-report --live
 ```
 
@@ -505,7 +524,7 @@ External consumers (CLI / GUI / tests)
 No consumer reaches past the SDK. Business logic in a presentation layer cannot
 be tested without that layer and cannot be reused by the next one.
 
-Full C4 diagrams, UML and the fourteen architecture decision records are in
+Full C4 diagrams, UML and the eighteen architecture decision records are in
 [`docs/PLAN.md`](docs/PLAN.md).
 
 | Document | Covers |
@@ -532,6 +551,7 @@ Full C4 diagrams, UML and the fourteen architecture decision records are in
 uv run pytest                                   # tests, coverage ≥ 85%
 uv run ruff check .                             # zero violations
 uv run python tools/check_file_size.py src tests   # every file ≤ 150 code lines
+uv run python tools/rehearsal.py                # one real sub-game over sockets
 ```
 
 | Gate | Threshold | Enforced by |
@@ -539,8 +559,14 @@ uv run python tools/check_file_size.py src tests   # every file ≤ 150 code lin
 | Test coverage | ≥ 85% | `fail_under` in `pyproject.toml` |
 | Lint | 0 violations | `ruff check` |
 | File size | ≤ 150 code lines | `tools/check_file_size.py` |
+| End-to-end match | both peers finish, agree and audit clean | `tools/rehearsal.py` |
 | Secrets in tree | 0 | `.gitignore` + `.env-example` |
 | Package manager | `uv` only | `uv.lock` committed |
+
+The last one is not a formality. The first four gates were all green while the
+transport was refusing our own messages, the cop could not see a boxed-in thief,
+and the two teams' agreement digests could never match — three separate ways to
+score zero, none of them visible from inside a single process.
 
 ---
 

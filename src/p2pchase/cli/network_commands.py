@@ -18,6 +18,7 @@ from ..mcp.client import PeerClient
 from ..mcp.handlers import PeerHandlers
 from ..reports.naming import now_iso
 from ..runtime.peer import PeerRunner
+from ..runtime.peer_host import host_and_play
 from ..runtime.peer_session import PeerSession
 from ..sdk import P2PChaseSDK
 from .commands import EXIT_CONFIG, EXIT_FAILED, EXIT_OK
@@ -34,7 +35,12 @@ def _sdk(args: Any) -> P2PChaseSDK:
 
 
 def serve(args: Any) -> int:
-    """Run this peer's MCP server until interrupted.
+    """Run only the server half of this peer, until interrupted.
+
+    Useful for letting an opponent check reachability and fingerprints before
+    either side starts a sub-game -- but a match is played with ``play``, which
+    serves and plays over one session. Serving here and playing in a second
+    process would leave the turn loop waiting on an inbox it cannot see.
 
     Binds loopback by default. Publishing the port is the tunnel's job (ngrok /
     Localtonet, rule 10), so nothing is exposed to the internet by accident.
@@ -56,7 +62,12 @@ def serve(args: Any) -> int:
 
 
 def play(args: Any) -> int:
-    """Play one sub-game against a live opponent over MCP."""
+    """Play one sub-game against a live opponent over MCP.
+
+    This process is the whole peer: it serves our tools and calls theirs, over
+    one session. See :mod:`p2pchase.runtime.peer_host` for why that cannot be
+    split across two processes.
+    """
     sdk = _sdk(args)
     url = args.opponent_url or sdk.config.opponent_url
     if not url:
@@ -67,9 +78,11 @@ def play(args: Any) -> int:
                           sub_game=args.sub_game, seed=args.seed)
     client = PeerClient(url, timeout=float(sdk.config.turn_timeout))
     runner = PeerRunner(sdk.config, session, client)
+    handlers = PeerHandlers(sdk.config, session)
+    port = args.port or sdk.config.my_port
 
     started = now_iso()
-    outcome, handshake = asyncio.run(_play(runner, sdk, url))
+    outcome, handshake = asyncio.run(_play(runner, handlers, sdk, args.host, port, url))
     print(f"outcome        : {outcome.outcome}")
     print(f"steps          : {outcome.steps}")
     print(f"opponent audit : {outcome.opponent_audit.get('passed')}")
@@ -101,16 +114,14 @@ def _write_artifacts(sdk: P2PChaseSDK, session: PeerSession, args: Any,
         return []
 
 
-async def _play(runner: PeerRunner, sdk: P2PChaseSDK, url: str):
+async def _play(runner: PeerRunner, handlers: PeerHandlers, sdk: P2PChaseSDK,
+                host: str, port: int, url: str):
     """Handshake first, then play. A mismatch stops the match before move one."""
-    theirs = await runner.client.hello()
-    handshake = dict(theirs.get("handshake", {}))
-    agreement = sdk.agree_with(handshake)
-    if not agreement.agreed:
-        LOGGER.error("refusing to play %s: %s", url, "; ".join(agreement.mismatches))
-        return await runner.abort("configuration mismatch at handshake", 0), handshake
-    LOGGER.info("handshake agreed with %s", handshake.get("group_id"))
-    return await runner.run_sub_game(), handshake
+    def agree(handshake: dict[str, Any]) -> str:
+        agreement = sdk.agree_with(handshake)
+        return "" if agreement.agreed else "; ".join(agreement.mismatches)
+
+    return await host_and_play(runner, handlers, host, port, url, agree)
 
 
 def gui(args: Any) -> int:

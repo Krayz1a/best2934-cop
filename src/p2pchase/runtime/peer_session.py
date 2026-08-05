@@ -58,6 +58,10 @@ class PeerSession:
     honest_hints: int = 0
     #: Set when we answered a cop's capture claim truthfully in the affirmative.
     i_am_caught: bool = False
+    #: How the opponent said the sub-game ended, once their final reveal arrives.
+    opponent_finished: str = ""
+    #: The verdict on the opponent's chain, whichever way round it reached us.
+    last_audit: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         import random
@@ -123,7 +127,7 @@ class PeerSession:
         decision = self._pending[0]
         if decision.barrier:
             return (int(decision.barrier[0]), int(decision.barrier[1]))
-        cell = self.state.board.apply_move(self.state.position, decision.move)
+        cell = self.state.settle_move(decision.move)
         return (int(cell[0]), int(cell[1]))
 
     def capture_claim(self) -> list[int] | None:
@@ -168,6 +172,15 @@ class PeerSession:
     def on_commit(self, step: int, commitment: str) -> None:
         """Record the opponent's sealed step. Nothing is knowable from it yet."""
         self.opponent_commitments[int(step)] = str(commitment)
+
+    def on_opponent_finished(self, outcome: str) -> None:
+        """Note that the opponent has ended the sub-game, and how they say it ended.
+
+        Recorded rather than acted on: the runner decides what to do about it,
+        and a peer that stopped early still owes us a chain that has to audit.
+        """
+        self.opponent_finished = outcome or constants.OUTCOME_SURVIVAL
+        LOGGER.info("the opponent has ended sub-game %d: %s", self.sub_game, outcome or "unstated")
 
     def on_reveal(self, step: int, move: str, hint: str,
                   barrier: list[int] | None,
@@ -220,6 +233,12 @@ class PeerSession:
         return list(self.records)
 
     def audit(self, records: list[dict[str, Any]]) -> dict[str, Any]:
-        """Verify the opponent's disclosed chain (rules 19, 36)."""
+        """Verify the opponent's disclosed chain (rules 19, 36).
+
+        The verdict is kept because the chain can arrive either way round: we
+        ask for it, or they push it when they stop first. The second case
+        happens exactly when they have gone, so there is nobody left to ask.
+        """
         self.opponent_records = list(records)
-        return audit_records(records).as_dict()
+        self.last_audit = audit_records(records).as_dict()
+        return self.last_audit

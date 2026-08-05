@@ -13,6 +13,7 @@ exercised for real here. What is checked instead is the decision each one makes
 
 from __future__ import annotations
 
+import asyncio
 from argparse import Namespace
 
 import pytest
@@ -77,13 +78,24 @@ def test_play_reports_the_outcome_of_a_completed_sub_game(args, thief_config,
 
             return {"handshake": NegotiationService(thief_config).handshake().as_dict()}
 
+        async def open(self):
+            """`play` holds one session for the whole sub-game; here it is free."""
+
+        async def close(self):
+            pass
+
     async def _finish(self):
         from p2pchase.runtime.peer import PeerOutcome
 
         return PeerOutcome("survival", 35, opponent_audit={"passed": True})
 
+    async def _no_socket(handlers, host, port, name):
+        """`play` also serves. Binding a port is not this test's business."""
+        await asyncio.Event().wait()
+
     monkeypatch.setattr("p2pchase.cli.network_commands.PeerClient",
                         lambda url, timeout: _Client())
+    monkeypatch.setattr("p2pchase.runtime.peer_host._serve_forever", _no_socket)
     monkeypatch.setattr("p2pchase.runtime.peer.PeerRunner.run_sub_game", _finish)
 
     args.opponent_url = "http://127.0.0.1:9902/mcp"

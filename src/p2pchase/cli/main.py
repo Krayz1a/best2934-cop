@@ -80,7 +80,7 @@ def build_parser() -> argparse.ArgumentParser:
     auth.add_argument("--port", type=int, default=0, help="local callback port")
     auth.set_defaults(func=commands.authorize_gmail)
 
-    serve = sub.add_parser("serve", help="run this peer's MCP server")
+    serve = sub.add_parser("serve", help="run only the server half (diagnostics; `play` serves too)")
     _add_common(serve)
     serve.add_argument("--host", default="127.0.0.1", help="bind address")
     serve.add_argument("--port", type=int, default=None, help="bind port")
@@ -88,9 +88,11 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--sub-game", type=int, default=1, help="sub-game number")
     serve.set_defaults(func=network_commands.serve)
 
-    play = sub.add_parser("play", help="play one sub-game against a live opponent")
+    play = sub.add_parser("play", help="serve our tools and play one sub-game")
     _add_common(play)
     play.add_argument("--opponent-url", default="", help="opponent's MCP endpoint")
+    play.add_argument("--host", default="127.0.0.1", help="bind address for our own server")
+    play.add_argument("--port", type=int, default=None, help="bind port (default: my_port)")
     play.add_argument("--game-id", default="local-rehearsal", help="agreed game id")
     play.add_argument("--sub-game", type=int, default=1, help="sub-game number")
     play.add_argument("--seed", type=int, default=0, help="seed for reproducibility")

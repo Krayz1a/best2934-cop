@@ -139,6 +139,10 @@ class PeerHandlers:
             return contracts.error("no sub-game is in progress")
         if payload.get("records"):
             session.audit(list(payload["records"]))
+        # Their final reveal is also the news that they have stopped playing.
+        # A peer still waiting for their next commitment has to learn it here or
+        # it waits out the deadline for a sub-game that is already over.
+        session.on_opponent_finished(str(payload.get("outcome", "")))
         return contracts.ok(records=session.final_reveal(), group=session.group_id)
 
     def audit_result(self, payload: dict[str, Any]) -> dict[str, Any]:

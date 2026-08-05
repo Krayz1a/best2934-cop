@@ -50,6 +50,7 @@ class PeerClient:
         self.url = url
         self.timeout = timeout
         self._client = None
+        self._open = False
 
     def _connect(self):
         if self._client is None:
@@ -62,14 +63,47 @@ class PeerClient:
             self._client = Client(self.url, timeout=self.timeout)
         return self._client
 
+    async def open(self) -> None:
+        """Hold one session open for the whole sub-game.
+
+        Both peers send and receive on every step, so a connection per message
+        means two peers repeatedly tearing down and rebuilding sessions at the
+        same instant while each is also serving the other. That is a race, and
+        it deadlocked a rehearsal at a different step every time. One session,
+        opened once, removes the race and about a hundred handshakes with it.
+        """
+        await self._connect().__aenter__()
+        self._open = True
+
+    async def close(self) -> None:
+        """Release the session. Safe to call when it was never opened.
+
+        Never raises. The commonest time to close is right after the opponent
+        finished and exited, so the session being already dead is the normal
+        case -- and losing a completed sub-game's artifacts to a teardown error
+        would be an absurd way to lose a match.
+        """
+        if self._open and self._client is not None:
+            self._open = False
+            try:
+                await self._client.__aexit__(None, None, None)
+            except Exception:  # noqa: BLE001 -- the peer may already be gone
+                LOGGER.debug("closing the peer session failed", exc_info=True)
+
     async def call(self, tool: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         """Invoke one tool on the opponent and return its structured answer."""
         client = self._connect()
-        async with client:
-            try:
+        try:
+            # Connecting is inside the guard on purpose: an opponent whose
+            # server is not up yet fails *here*, not at call_tool, and a caller
+            # that is waiting for them to appear must see one kind of error.
+            if self._open:
                 result = await client.call_tool(tool, payload or {})
-            except Exception as error:  # noqa: BLE001 -- re-raised as a transport fault
-                raise TransportError(f"{tool} failed: {type(error).__name__}: {error}") from error
+            else:
+                async with client:
+                    result = await client.call_tool(tool, payload or {})
+        except Exception as error:  # noqa: BLE001 -- re-raised as a transport fault
+            raise TransportError(f"{tool} failed: {type(error).__name__}: {error}") from error
         return _unwrap(result)
 
     async def hello(self) -> dict[str, Any]:
