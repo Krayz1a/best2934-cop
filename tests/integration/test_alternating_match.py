@@ -173,4 +173,63 @@ def test_a_turn_for_a_step_we_never_saw_is_refused_not_raised(peers):
     session.opponent_commitments.clear()
     broken = thief_side.submit_turn({"step": 10, "sender": "COP",
                                      "commit": "", "hint": "x", "nil": False})
-    assert "reply_turn" in broken or broken["ack"] is False
+    # Three legal shapes, and the point is that all of them are *answers*: we
+    # acted, we refused outright, or we declined because acting would have taken
+    # a second move in one round (the guard added for gal-roy1's duplicate-step
+    # report). A commitment-less turn reads as a handover, so here it is the
+    # third. What must never happen is an exception.
+    assert ("reply_turn" in broken or broken["ack"] is False
+            or broken.get("acted") is False)
+    assert broken.get("error") or "reply_turn" in broken
+
+
+def test_a_repeated_handover_does_not_buy_us_a_second_move(peers):
+    """gal-roy1 reported this against us twice before we could reproduce it.
+
+    A nil turn is a handover, so the first one makes us open the round. A
+    *second* one, with the opponent still never having acted, must not make us
+    act again: that is two of our moves against one of theirs, which is not a
+    desynchronisation but a cheat, and a worse outcome than the stall that
+    declining risks.
+
+    It is declined rather than raised. An exception crosses MCP as an opaque
+    transport failure and rule 6 charges both teams for the stall.
+    """
+    cop_side, _ = peers
+    loop = cop_side.turns(cop_side.handlers.session)
+
+    first = cop_side.submit_turn(nil_turn(constants.ROLE_THIEF))
+    assert first["reply_turn"]["step"] == 1
+    assert loop.round == 1
+
+    second = cop_side.submit_turn(nil_turn(constants.ROLE_THIEF))
+    assert "reply_turn" not in second, "a second handover must not buy a second move"
+    assert second["ack"] is True and second["acted"] is False
+    assert loop.round == 1, "the declined turn must not advance the round either"
+
+
+def test_our_step_number_is_monotonic_whatever_arrives(peers):
+    """The audit is keyed on the step, so sealing one twice is fatal (rules 19, 36).
+
+    This is the second half of the same report. Even with the handover guarded,
+    ``theirs + 1`` can land on a step we have already sealed whenever a peer
+    sends a step we are past -- a retry, a duplicate, a driver that numbers
+    rounds differently. Two payloads under two commitments at one step number is
+    indistinguishable from a forgery, and our own auditor would flag it.
+
+    So this drives deliberately hostile step numbers rather than a tidy sequence.
+    """
+    cop_side, _ = peers
+    session = cop_side.handlers.session
+
+    cop_side.submit_turn(nil_turn(constants.ROLE_THIEF))
+    for step in (1, 1, 2, 1, 3, 2):
+        answer = cop_side.submit_turn({
+            "step": step, "sender": "THIEF", "commit": f"{step:064d}",
+            "hint": "somewhere", "scent_grid": {}})
+        assert "reply_turn" in answer
+
+    sealed = [record["payload"]["step"] for record in session.final_reveal()
+              if record["payload"].get("type") != "system_spec"]
+    assert len(sealed) == len(set(sealed)), f"a step was sealed twice: {sealed}"
+    assert sealed == sorted(sealed), f"step numbers went backwards: {sealed}"

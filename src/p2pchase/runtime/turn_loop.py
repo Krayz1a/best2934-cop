@@ -57,6 +57,8 @@ class TurnLoop:
         turn = parse_turn(payload)
         if turn.is_nil:
             # A handover. Do not advance the round counter -- see turn_message.
+            if not self._may_act():
+                return self._decline(turn.step)
             LOGGER.info("nil turn from %s: taking the first move", turn.sender)
             return self._answer(step=self.round + 1, response=None)
 
@@ -68,6 +70,33 @@ class TurnLoop:
             return {"ack": True, "step": turn.step, "claim_response": response,
                     "reply_outcome": constants.OUTCOME_CAPTURE}
         return self._answer(step=self._reply_step(turn.step), response=response)
+
+    def _may_act(self) -> bool:
+        """May we take a turn, or would that be a second move in one round?
+
+        Alternating play lets the first mover be ahead by exactly one. Anything
+        more is two of our moves against one of theirs, which is not a desync --
+        it is us cheating, and it is worse than the stall that refusing risks.
+
+        ``opponent_steps_seen`` counts turns they have actually *acted* on, so a
+        handover does not raise it. That is what makes a repeated nil visible:
+        after the first one we are one ahead legitimately, and a second would
+        put us two ahead against an opponent who has still never moved.
+        """
+        return self.round <= self.session.state.opponent_steps_seen
+
+    def _decline(self, step: int) -> dict[str, Any]:
+        """Acknowledge a turn we must not act on, and say why.
+
+        Answered rather than raised or ignored. An exception crosses MCP as an
+        opaque transport failure and rule 6 charges both teams for the stall, and
+        silence is worse still -- the driver would simply wait.
+        """
+        LOGGER.warning("declining to act at step %s: we are already a move ahead "
+                       "(round %d, opponent has acted %d times)",
+                       step, self.round, self.session.state.opponent_steps_seen)
+        return {"ack": True, "step": step, "acted": False,
+                "error": "already a move ahead; send your turn rather than a handover"}
 
     def _reply_step(self, theirs: int) -> int:
         """Which round our answer belongs to.
@@ -83,8 +112,17 @@ class TurnLoop:
         the same key, each overwriting the last, and an audit that reports five
         forgeries at step 1 because five different payloads were announced
         under one commitment.
+
+        The ``self.round + 1`` floor is the same failure arriving from the other
+        side. If a peer ever sends a step we are already past -- a retry, a
+        duplicate handover, a driver that numbers rounds differently -- then
+        ``theirs + 1`` can land on a step we have *already sealed*, and we would
+        announce two different payloads under two different commitments at one
+        step number. gal-roy1 reported exactly that against us twice before we
+        could reproduce it. Our own step number must be monotonic no matter what
+        arrives, because the audit is keyed on it (rules 19, 36).
         """
-        return theirs if self.round < theirs else theirs + 1
+        return max(theirs if self.round < theirs else theirs + 1, self.round + 1)
 
     def _absorb(self, turn: TurnMessage) -> dict[str, Any] | None:
         """Apply everything their turn discloses, in the order evidence arrives."""

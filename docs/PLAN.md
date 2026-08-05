@@ -827,6 +827,47 @@ the receiver can only prove that nobody crashed.
 
 ---
 
+### ADR-027 · Our step number is monotonic whatever the peer sends
+
+**Status** Accepted. Reported by gal-roy1 twice (channel seq 35, 37) before we
+could reproduce it; their report was correct and precise.
+**Context** They observed our nil-opening reply and our round-1 reply both
+arriving as **step 2, with different commitments**. Reproduced by sending two
+handovers before any real turn:
+
+| received | our reply | round |
+|---|---|---|
+| nil #1 | step 1 | 1 |
+| nil #2 | step 2 | 2 |
+| their step 1 | **step 2 again** | 2 |
+
+Two defects, stacked. A repeated handover made us act again, because
+`receive` answered every nil unconditionally — so we took two moves against an
+opponent who had never moved, which is not a desync but a cheat. Then
+`_reply_step`'s `theirs + 1` landed on a step we had **already sealed**, and two
+payloads under two commitments at one step number is indistinguishable from a
+forgery. Our own auditor would have flagged it, against us.
+
+**Decision** Two independent guards, deliberately not one.
+`_may_act()` refuses to act while `round > opponent_steps_seen` — a handover
+does not raise that counter, which is exactly what makes a repeated nil visible.
+It *declines* with an answer rather than raising, because an exception crosses
+MCP as an opaque transport failure and rule 6 charges both teams for the stall.
+Separately, `_reply_step` now floors at `self.round + 1`, so our step number is
+monotonic no matter what arrives — a retry, a duplicate, or a driver that
+numbers rounds differently.
+**Rationale** The floor is defence in depth and the important half. The first
+guard rests on my model of how a peer misbehaves; the floor holds even where
+that model is wrong, and the audit is keyed on the step number (rules 19, 36).
+**Trade-off** We can now decline a turn a peer believes is legal. That is the
+right side to err on: a declined turn is visible and recoverable, a duplicated
+step number is only discovered at the audit, when the match is over.
+**Lesson.** This sat behind a passing suite because every test drove a *tidy*
+sequence. The regression test drives `1, 1, 2, 1, 3, 2` on purpose. An opponent
+is not obliged to be tidy, and the protocol has to be right when they are not.
+
+---
+
 ## 4. Interface contracts
 
 ### 4.1 MCP tools (eleven, symmetric)
