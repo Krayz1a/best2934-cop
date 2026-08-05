@@ -690,6 +690,15 @@ to "every series ends 45–45 and the league is 2-point draws". The premise was 
 measurement artefact. The arithmetic was right and the input was not, which is
 the more embarrassing of the two.
 
+**Open, and it limits every number in `results/`.** The corrected figures above
+are measured on the *local harness*, which decides capture by comparing the two
+true positions — something no networked peer can do. Both wire paths decide it
+from the cop's claim and the thief's answer instead, and neither reproduces the
+harness: 1.000 locally, **0/10 over the interop turn loop**, and survival at 35
+steps in every two-process rehearsal. So the published capture rates describe the
+harness and do not yet predict match play. Tracked as task #20; the suspect is
+*when* the two positions are compared, not the strategy.
+
 ---
 
 ### ADR-023 · Alternating turns are reconciled at the round, not at the message

@@ -123,8 +123,27 @@ class PeerRunner:
         ))
 
     async def _pull_scent(self, step: int) -> None:
-        """Ask the opponent for its trail intensity where we think it might be."""
-        cells = [list(cell) for cell, _ in self.session.state.belief.top(12)]
+        """Ask the opponent for its whole trail, the way both sides now push it.
+
+        This used to ask about the twelve most-believed cells only, on the
+        reasoning that a capped query discloses less than a whole field. That
+        reasoning belonged to a protocol where the field was transmitted live:
+        since I-6 the *lag* is what protects it, and gal-roy1's model -- which
+        we adopted and now speak in ``submit_turn`` -- pushes the entire lagged
+        grid in every turn message.
+
+        Leaving the cap in place made our two paths measure different games. The
+        local harness and the interop turn loop both move the whole field, so
+        every capture rate we have published describes a cop that sees it; the
+        native networked cop saw twelve cells and, in the two-process rehearsal,
+        never captured at all. A strategy tuned on one path and played on the
+        other is the exact failure the rehearsal gate exists to expose.
+        """
+        board = self.session.state.board
+        start = board.geometry.axis_start_index
+        size = board.geometry.grid_size
+        cells = [[r, c] for r in range(start, start + size)
+                 for c in range(start, start + size)]
         if not cells:
             return
         response = await self.client.call(contracts.TOOL_SCENT, contracts.scent_query(

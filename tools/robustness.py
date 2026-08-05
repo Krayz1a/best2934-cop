@@ -29,6 +29,9 @@ from p2pchase import constants  # noqa: E402
 from p2pchase.runtime.local_match import run_local_match  # noqa: E402
 from p2pchase.shared.config_schema import DEFAULT_SHARED, deep_merge  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sweep import shipped_strategy  # noqa: E402
+
 PARAMETER = "barrier_engage_range"
 LEVELS = (1, 2, 3, 4, 5, 7)
 
@@ -36,6 +39,11 @@ LEVELS = (1, 2, 3, 4, 5, 7)
 #: something different, so a cop setting that beats all of them is not exploiting
 #: one opponent's blind spot.
 THIEVES: dict[str, dict] = {
+    # Filled from config/thief/setup.json at run time. It used to be ``{}``,
+    # which is the thief's *class* defaults and not the one we deploy -- the
+    # same fault that made the cop's baseline describe a configuration nobody
+    # runs (ADR-025). A panel whose "shipped" member is not the shipped agent
+    # measures robustness against a fiction.
     "shipped": {},
     "area_obsessed": {"area_weight": 4.0, "distance_weight": 0.3},
     "distance_only": {"area_weight": 0.0, "distance_weight": 2.4},
@@ -64,10 +72,16 @@ def main() -> int:
     shared = deep_merge({}, DEFAULT_SHARED)
     grid: dict[str, dict[str, float]] = {}
 
+    # Both sides start from the configuration on disk; only the swept parameter
+    # moves. Anything else measures agents we do not field (ADR-025).
+    base_cop = shipped_strategy(constants.ROLE_COP)
+    THIEVES["shipped"] = shipped_strategy(constants.ROLE_THIEF)
+
     header = f"{'thief':<16}" + "".join(f"{level:>8}" for level in LEVELS)
     print(header)
     for thief_name, thief_cfg in THIEVES.items():
-        row = {str(level): capture_rate(shared, {PARAMETER: level}, thief_cfg, args.seeds)
+        row = {str(level): capture_rate(shared, {**base_cop, PARAMETER: level},
+                                        thief_cfg, args.seeds)
                for level in LEVELS}
         grid[thief_name] = row
         print(f"{thief_name:<16}" + "".join(f"{row[str(x)]:>8.2f}" for x in LEVELS))

@@ -24,7 +24,7 @@
   "strategy": {
     "_remark": "brain accepts 'package.module:Class' so a strategy can be swapped without touching the engine (guidelines §12.1, extension points).",
     "brain": "",
-    "_barrier_engage_range_remark": "Tuned from 4 to 1 on measured evidence (results/sweep.json, results/robustness.json). A barrier costs a turn of movement, so engaging from a distance leaves the cop standing still while the thief walks away: capture rate 0.13 at range 4 versus 0.85 at range 1. Verified against five structurally different thieves, not only the one the sweep used -- range 1 has the best worst case (0.43) of every level tested.",
+    "_barrier_engage_range_remark": "Tuned from 4 to 1 on measured evidence (results/sweep.json, results/robustness.json). A barrier costs a turn of movement, so engaging from a distance leaves the cop standing still while the thief walks away -- and under the agreed one-turn scent lag the belief peak it was aiming at is probably wrong too. Re-measured under that lag, the curve is a cliff rather than a slope: capture 1.000 at range 1, 0.950 at 2, then 0.000 at 3 and 0.025 at 4. Verified against five structurally different thieves, not only the one the sweep used -- range 1 has the best worst case (0.925) of every level tested. NOTE the class default in CopBrain is still 4; this file is what we field, and measuring the class defaults instead is exactly the fault recorded as ADR-025.",
     "barrier_engage_range": 1,
     "barrier_min_gain": 1,
     "barrier_endgame_reserve": 3
