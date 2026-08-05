@@ -690,14 +690,12 @@ to "every series ends 45–45 and the league is 2-point draws". The premise was 
 measurement artefact. The arithmetic was right and the input was not, which is
 the more embarrassing of the two.
 
-**Open, and it limits every number in `results/`.** The corrected figures above
-are measured on the *local harness*, which decides capture by comparing the two
-true positions — something no networked peer can do. Both wire paths decide it
-from the cop's claim and the thief's answer instead, and neither reproduces the
-harness: 1.000 locally, **0/10 over the interop turn loop**, and survival at 35
-steps in every two-process rehearsal. So the published capture rates describe the
-harness and do not yet predict match play. Tracked as task #20; the suspect is
-*when* the two positions are compared, not the strategy.
+**Resolved, and the diagnosis recorded here was wrong.** An earlier version of
+this paragraph reported the three paths disagreeing — 1.000 locally, 0/10 over
+the interop turn loop, survival in every two-process rehearsal — and blamed
+*when* the two positions are compared. It also warned that this limited every
+number in `results/`. Both claims are withdrawn. See ADR-026 for the actual
+cause; the harness numbers were never in question, and all three paths now agree.
 
 ---
 
@@ -775,6 +773,57 @@ verification habit here was aimed at the *opponent's* claims. This number was
 ours, so nothing checked it. The rule that would have caught it is the same one
 that caught their mislabelled Vector B: a test vector needs its own assertion,
 and so does a baseline.
+
+---
+
+### ADR-026 · A barrier is declared from the decision, never from the sealed view
+
+**Status** Accepted. This is the fix for the three-way disagreement ADR-022
+originally blamed on capture-comparison semantics.
+**Context** `PeerRunner._push_reveal` built its declaration out of
+`session.reveal()["payload"]` — the sealed payload narrowed to `MID_GAME_FIELDS`
+(ADR-021). That worked while the payload had a `barrier` key. When we adopted
+gal-roy1's `StepIntent` shape (ADR-020) it stopped having one: a placement is
+encoded inside the sealed `move` as `BARRIER:r,c`. The filter matched nothing,
+`.get("barrier")` returned `None`, and **the networked peer sent `barrier: null`
+on every step of every game.**
+
+**What it cost.** Rules 15 and 16 require every placement to be declared openly
+and truthfully, so this was a compliance failure before it was a strategy one.
+Worse, it desynchronised the two boards: our walls existed only for us. The
+opponent walked through them, and rule 47 — a thief with no legal move counts as
+captured — could never fire, because the thief's board had nothing in it. In the
+rehearsal that produced a cop which correctly manoeuvred the thief into the (6,6)
+corner, correctly walled both its exits at steps 15 and 16, and then sat still
+for nineteen turns while the thief strolled out through a wall; the cop had also
+sealed *itself* into (5,5) behind four barriers only it could see.
+
+**Why nothing caught it.** Both commit chains verified. Both audits passed. Both
+peers agreed on the outcome. 488 tests were green. The only symptom was a capture
+rate of zero on one path — and the two paths that did work masked it, because the
+local harness passes `decision.barrier` across directly and the interop turn loop
+already declared from `pending_declaration`. Only the native protocol read from
+the sealed view, and no test asserted that a declaration *arrived*.
+
+**Decision** `_push_reveal` takes both the hint and the barrier from
+`pending_declaration()`, the same source the interop loop uses.
+`test_every_barrier_we_place_is_declared_and_reaches_the_opponents_board`
+asserts the placement went out **and** that it landed on the opponent's board;
+checking only the payload would pass on a peer declaring into a void.
+**Rationale** An open declaration and a sealed commitment are different
+obligations over the same fact. Deriving one from the other couples them, and
+the coupling broke silently the moment the sealed shape changed.
+**Trade-off** The barrier is now stated twice — sealed in `move`, declared in
+`barrier`. That redundancy is the point: rule 15 makes it common knowledge, and
+the audit makes the declaration checkable against the seal afterwards.
+**Result** Local harness 1.000, interop turn loop 1.000, and the two-process
+rehearsal now ends in `capture` at step 16 with both peers agreeing and both
+audits clean. `MID_GAME_FIELDS` keeps its stale `sub_game`/`barrier` entries on
+purpose — an allow-list should filter an older peer's shape, not leak it.
+**Lesson.** ADR-025's was that we only verify the opponent's claims. This one is
+narrower and sharper: we tested that our messages were *well formed*, never that
+their content *changed the opponent's world*. A protocol test that never inspects
+the receiver can only prove that nobody crashed.
 
 ---
 

@@ -41,7 +41,7 @@ Summary: **45 Met · 4 Met, awaiting play · 4 Operator · 2 External**.
 | 12 | Minimum parameter values may be raised by agreement, never lowered | Met | `shared/config_schema.py` validates PERMANENT vs TUNABLE; `p2pchase check-config` reports every violation |
 | 13 | Movement is orthogonal only | Met | `domain/board.py` `legal_moves` |
 | 14 | No diagonal moves | Met | `geometry.delta` raises `IllegalMoveError` naming the permanent move set. `tests/unit/test_domain/test_board.py` |
-| 15 | Every barrier placement is declared openly | Met | `reveal_step` carries the barrier; it is inside the commitment, so it cannot be added afterwards |
+| 15 | Every barrier placement is declared openly | Met | `reveal_step` carries the barrier, declared from `pending_declaration()` and asserted to reach the opponent's board by `test_every_barrier_we_place_is_declared_and_reaches_the_opponents_board`. This row read "Met" for weeks while the networked peer sent `barrier: null` on every step — deriving the declaration from the sealed view broke when that shape changed (ADR-026). The citation is now a test that inspects the *receiver*, because a claim about a message is not a claim about its effect |
 | 16 | No lying about where a barrier was placed | Met | The barrier is sealed in the SHA-256 commitment (rule 17); altering it fails the audit at that exact step |
 
 ## 3. Cryptography, log integrity and zero-knowledge (Table 9)
@@ -93,7 +93,7 @@ Summary: **45 Met · 4 Met, awaiting play · 4 Operator · 2 External**.
 | # | Rule | Status | Where |
 |---|---|---|---|
 | 46 | A barrier placed on the thief's current cell is a capture | Met | Locally in `runtime/local_match.py::terminal_outcome`; over the wire the sealed barrier cell is what the cop claims |
-| 47 | A thief with no legal move is captured | Met | `own_state.thief_is_boxed_in()`, checked on the thief's side because only the thief can see it — and then declared to the cop in `final_reveal`, which is what stops a won sub-game timing out into a technical loss for both (ADR-017) |
+| 47 | A thief with no legal move is captured | Met | `own_state.thief_is_boxed_in()`, checked on the thief's side because only the thief can see it — and then declared to the cop in `final_reveal`, which is what stops a won sub-game timing out into a technical loss for both (ADR-017). Depends entirely on rule 15 actually landing: the thief judges "no legal move" against *its own* board, so an undeclared wall makes this rule unfireable rather than merely inaccurate (ADR-026) |
 | 48 | Score every ending by the score table (5/20, 10/5, 0/0) | Met | `domain/scoring.py`; `tests/unit/test_domain/test_scoring.py` |
 | 49 | Two repositories, cross-linked in the READMEs, two links in Moodle, **four** links in both teams' JSON | Met | READMEs cross-link (§1.1 in both); `repositories` block in `reports/result.py` carries all four. `tests/integration/test_network_artifacts.py::test_the_result_carries_four_repository_links` |
 | 50 | Each repository holds at least README, `config/`, PRD, PLAN and TODO | Met | All present in both repositories |

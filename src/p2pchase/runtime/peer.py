@@ -111,14 +111,30 @@ class PeerRunner:
         ))
 
     async def _push_reveal(self, step: int) -> dict[str, Any]:
-        # ``revealed`` is already narrowed to MID_GAME_FIELDS, so there is no
-        # move to forward even if this wanted to send one (I-5).
-        revealed = self.session.reveal()["payload"]
+        """Declare what this step discloses: the sentence, and any barrier.
+
+        Both come from :meth:`~PeerSession.pending_declaration`, which reads the
+        decision itself -- NOT from ``reveal()``. That distinction is the whole
+        bug this method used to have. ``reveal()`` narrows the sealed payload to
+        :data:`~p2pchase.domain.crypto.MID_GAME_FIELDS`, and once we adopted
+        gal-roy1's payload shape that payload stopped having a ``barrier`` key at
+        all -- a placement is encoded inside ``move`` as ``BARRIER:r,c``, which
+        is sealed. So ``revealed.get("barrier")`` was ``None`` on every step of
+        every networked game, and we silently stopped declaring barriers.
+
+        That is a rule 15/16 violation on its own, and it desynchronises the two
+        boards: our walls existed only for us, so the opponent walked through
+        them and rule 47 could never fire. Only this path was affected -- the
+        interop turn loop already declares from ``pending_declaration`` and the
+        local harness passes the decision across directly, which is exactly why
+        those two captured and this one never did.
+        """
+        hint, barrier = self.session.pending_declaration()
         return await self.client.call(contracts.TOOL_REVEAL, contracts.reveal_payload(
             self.session.game_id, self.session.sub_game, step,
             self.session.group_id, self.session.role,
-            hint=str(revealed.get("hint", "")),
-            barrier=revealed.get("barrier"),
+            hint=hint,
+            barrier=barrier,
             capture_claim=self.session.capture_claim(),
         ))
 

@@ -51,8 +51,17 @@ NONCE_BYTES = 16
 #:     step, for both roles. The binding that stops a commitment being replayed
 #:     in another context (ch5.3.1) was also a plaintext position broadcast.
 #:
-#: ``barrier`` stays: rule 15 requires the cop to declare each placement openly,
-#: so it is common knowledge by design rather than a leak.
+#: ``sub_game`` and ``barrier`` are named here but can no longer appear. Since we
+#: adopted gal-roy1's payload shape it carries neither: there is no ``sub_game``
+#: key at all, and a placement is encoded inside the sealed ``move`` as
+#: ``BARRIER:r,c``. They are kept so that a peer still sending the older shape is
+#: filtered rather than leaked, which is the job of an allow-list.
+#:
+#: The barrier is still declared openly every step, as rule 15 requires -- but
+#: from the decision, via :meth:`~p2pchase.runtime.peer_session.PeerSession.
+#: pending_declaration`, never from here. Reading it out of this view instead is
+#: what silently stopped the networked peer declaring barriers at all; see
+#: :meth:`~p2pchase.runtime.peer.PeerRunner._push_reveal`.
 MID_GAME_FIELDS = ("step", "role", "sub_game", "hint", "barrier")
 
 

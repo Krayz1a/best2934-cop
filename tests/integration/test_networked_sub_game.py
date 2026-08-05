@@ -161,3 +161,53 @@ def test_nothing_we_send_mid_game_discloses_a_move_or_an_intent(peer_config, thi
         assert "intent" not in body
         assert "state" not in body
         assert body["hint"], "the hint is the one thing a reveal is still for"
+
+
+def test_every_barrier_we_place_is_declared_and_reaches_the_opponents_board(
+        peer_config, thief_config):
+    """Rules 15/16, asserted on the wire and on the opponent's board.
+
+    This is the test whose absence let the networked peer stop declaring
+    barriers entirely. ``StepIntent.payload`` is gal-roy1's shape, which has no
+    ``barrier`` key -- a placement rides inside the sealed ``move`` as
+    ``BARRIER:r,c`` -- so the reveal, which used to read the barrier out of the
+    narrowed sealed view, sent ``None`` every step of every game.
+
+    Nothing caught it. The commit chains still verified, both audits still
+    passed, and both peers still agreed on the outcome, because a wall nobody
+    declares is simply a wall the opponent walks through. It only showed up as a
+    cop that could never capture over the network while capturing every time
+    locally, and as a cop that eventually sealed *itself* into a cell with four
+    barriers its opponent could not see.
+
+    So the assertion is deliberately two-sided: that the declaration went out,
+    and that it landed. Checking only the payload would pass on a peer that
+    declares into a void.
+    """
+    cop = PeerSession(config=peer_config, role=constants.ROLE_COP, game_id=GAME_ID, seed=5)
+    thief = PeerSession(config=thief_config, role=constants.ROLE_THIEF, game_id=GAME_ID, seed=6)
+    cop_client = RecordingClient(PeerHandlers(thief_config, thief))
+    cop_runner = PeerRunner(peer_config, cop, cop_client)
+    thief_runner = PeerRunner(thief_config, thief, LoopbackClient(PeerHandlers(peer_config, cop)))
+
+    async def drive() -> None:
+        for step in range(1, 9):
+            await asyncio.gather(cop_runner.play_step(step), thief_runner.play_step(step))
+
+    asyncio.run(drive())
+
+    placed = {int(step): cell for step, cell in (
+        (record["payload"]["step"], record["payload"]["move"].split(":", 1)[1])
+        for record in cop.final_reveal()
+        if str(record["payload"].get("move", "")).startswith("BARRIER:"))}
+    assert placed, "the cop built no barrier, so this test proved nothing"
+
+    declared = {int(body["step"]): body.get("barrier")
+                for tool, body in cop_client.sent if tool == contracts.TOOL_REVEAL}
+    for step, cell in placed.items():
+        row, column = (int(part) for part in cell.split(","))
+        assert declared[step] == [row, column], (
+            f"step {step}: placed a barrier at {cell} and declared {declared[step]!r}")
+
+    # And it has to be common knowledge, not merely transmitted.
+    assert sorted(thief.state.board.barriers) == sorted(cop.state.board.barriers)
