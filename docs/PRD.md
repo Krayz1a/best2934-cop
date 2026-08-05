@@ -3,7 +3,7 @@
 **Project** `best2934-cop` (paired with `best2934-thief`)
 **Course** אורקסטרציה של סוכני AI 26 — final project
 **Team** best2934 — Tomer Levy, Eyal Koloshi, Alon Issman
-**Document version** 1.00 · **Code version** 1.0.0 · **Config schema** 1.1
+**Document version** 1.00 · **Code version** 1.0.0 · **Config schema** 1.2
 
 ---
 

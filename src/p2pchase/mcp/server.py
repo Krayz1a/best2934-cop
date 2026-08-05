@@ -29,6 +29,8 @@ from typing import Any
 
 from ..shared.peer_config import PeerConfig
 from .handlers import PeerHandlers
+from .interop import InteropAdapter
+from .interop_server import register_interop
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,10 +55,18 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
 
     mcp = FastMCP(name)
 
+    adapter = InteropAdapter(handlers)
+
     @mcp.tool
-    def hello() -> dict[str, Any]:
-        """Identify this peer and publish its configuration fingerprints."""
-        return handlers.hello({})
+    def hello(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Identify this peer and publish its configuration fingerprints.
+
+        ``payload`` is optional and ignored: our own client sends nothing, and
+        an opponent whose convention is one object per call sends ``{}``. A
+        signature that named no argument at all would *refuse* the second one,
+        because FastMCP rejects any argument it does not declare.
+        """
+        return adapter.hello(payload or {})
 
     @mcp.tool
     def negotiate(handshake: dict[str, Any]) -> dict[str, Any]:
@@ -64,9 +74,15 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
         return handlers.negotiate({"handshake": handshake})
 
     @mcp.tool
-    def declare_step0(declaration: dict[str, Any]) -> dict[str, Any]:
-        """Accept the caller's signed Step-0 hardware declaration."""
-        return handlers.declare_step0(declaration)
+    def declare_step0(declaration: dict[str, Any] | None = None,
+                      payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Accept the caller's signed Step-0 hardware declaration.
+
+        Two spellings of the same argument, because two teams named it
+        differently and the name is the published schema. Accepting both costs
+        one ``or``; accepting one costs the match at the handshake (rule 6).
+        """
+        return handlers.declare_step0(declaration or payload or {})
 
     @mcp.tool
     def commit_step(game_id: str, sub_game_number: int, step: int, commit: str,
@@ -125,15 +141,26 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
         return handlers.audit_result({"records": records})
 
     @mcp.tool
-    def agree_result(sha256: str, expected: str = "") -> dict[str, Any]:
-        """Compare result digests; a mismatch voids the match for both sides."""
-        return handlers.agree_result({"sha256": sha256, "expected": expected or sha256})
+    def agree_result(sha256: str = "", expected: str = "",
+                     payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Compare result digests; a mismatch voids the match for both sides.
+
+        Our client sends the digests flat; gal-roy1 sends one ``payload``
+        carrying ``{outcome, agreement}``. Both arrive here, and both are
+        answered with the digest *and* the field list it covers -- two digests
+        over different objects disagree every time, and rule 35 answers a
+        disagreement by voiding the match for both teams.
+        """
+        if payload is not None:
+            return adapter.agree_result(payload)
+        return adapter.agree_result({"sha256": sha256, "expected": expected or sha256})
 
     @mcp.tool
     def abort(reason: str = "") -> dict[str, Any]:
         """Accept an abort so neither peer is left waiting on a dead match."""
         return handlers.abort({"reason": reason})
 
+    register_interop(mcp, adapter)
     return mcp
 
 

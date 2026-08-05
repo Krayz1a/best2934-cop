@@ -1,7 +1,7 @@
 {
   "_schema": "SHARED, NEGOTIATED game configuration (book Appendix B). Both peers must hold a BYTE-IDENTICAL copy (rule 11); the pre-game exchange compares config_sha256 and refuses to play on any mismatch. Values follow Appendix F: PERMANENT terms may not change, MINIMUM terms may be raised by mutual agreement but never lowered.",
   "version": "1.00",
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "board_and_agents": {
     "grid_size": 7,
     "num_agents": 2,

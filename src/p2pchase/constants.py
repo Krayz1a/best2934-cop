@@ -17,7 +17,7 @@ from typing import Final
 
 CODE_VERSION: Final[str] = "1.0.0"
 BOOK_VERSION: Final[str] = "3.0.0"
-SCHEMA_VERSION: Final[str] = "1.1"
+SCHEMA_VERSION: Final[str] = "1.2"
 
 # --- Appendix F, Table 13: board, axes and start positions -----------------
 GRID_SIZE: Final[int] = 7  # minimum

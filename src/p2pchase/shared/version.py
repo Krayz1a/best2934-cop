@@ -34,6 +34,7 @@ __all__ = [
     "RATE_LIMITS_VERSION",
     "VersionMismatchError",
     "is_compatible",
+    "peer_schema_compatible",
     "validate_config_version",
 ]
 
@@ -57,6 +58,21 @@ def is_compatible(found: str, expected: str) -> bool:
     A major bump means a key changed meaning, which is never safe to guess at.
     """
     return _major(found) == _major(expected)
+
+
+def peer_schema_compatible(ours: str, theirs: str) -> bool:
+    """Like :func:`is_compatible`, but for a string an *opponent* sent us.
+
+    Same major-version rule, one difference that matters: a malformed version
+    is answered with ``False`` instead of an exception. :func:`is_compatible`
+    reads our own config, where a malformed string is a bug worth crashing on.
+    This reads whatever a peer put on the wire, and a peer who sends nonsense
+    should be refused a handshake, not be able to raise inside ours (rule 6).
+    """
+    try:
+        return is_compatible(theirs, ours)
+    except VersionMismatchError:
+        return False
 
 
 def validate_config_version(found: str | None, expected: str = CONFIG_VERSION,

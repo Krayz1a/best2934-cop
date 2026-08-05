@@ -148,7 +148,7 @@ def rehearse(timeout: float, keep: bool) -> int:
 
     for name, (code, output) in results.items():
         print(f"\n----- {name} (exit {code}) -----")
-        for prefix in ("outcome", "steps", "opponent audit", "aborted"):
+        for prefix in ("outcome", "steps", "opponent audit", "audit detail", "aborted"):
             if _field(output, prefix):
                 print(f"  {prefix:<15}: {_field(output, prefix)}")
         if not _field(output, "outcome"):

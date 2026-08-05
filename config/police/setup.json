@@ -4,7 +4,11 @@
   "game": {
     "group_id": "best2934",
     "group_name": "best2934",
-    "members": ["Tomer Levy", "Eyal Koloshi", "Alon Issman"],
+    "members": [
+      "Tomer Levy",
+      "Eyal Koloshi",
+      "Alon Issman"
+    ],
     "repos": {
       "cop": "https://github.com/Krayz1a/best2934-cop",
       "thief": "https://github.com/Krayz1a/best2934-thief"
@@ -13,7 +17,7 @@
   "network": {
     "_remark": "public_url is the tunnel (ngrok / Localtonet). Book rule 10 requires a publicly reachable endpoint for a league match; localhost is legal for development only.",
     "my_port": 8801,
-    "public_url": "",
+    "public_url": "https://monogram-radio-blooper.ngrok-free.dev/mcp",
     "opponent_url": "http://127.0.0.1:8802/mcp",
     "turn_timeout_seconds": 30
   },

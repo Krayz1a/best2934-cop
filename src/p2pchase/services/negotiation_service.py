@@ -16,6 +16,11 @@ refuse to play unless all three match:
 
 ``schema_version``
     The artifact schema, so neither side writes a log the other cannot verify.
+    Compared on the MAJOR component only. This was an exact comparison and it
+    was wrong: our opponent published 1.2 to our 1.1 and every handshake between
+    two teams that agreed on all thirty-odd game parameters aborted before the
+    first move, over a digit whose whole documented meaning is "optional keys
+    were added". A major bump redefines existing keys and still refuses.
 
 A mismatch is not negotiated away here. It is reported with the specific
 parameters that differ, so the humans can fix the config and restart.
@@ -30,7 +35,7 @@ from typing import Any
 from ..domain.smell import build_kernel, kernel_fingerprint
 from ..shared.config_schema import validate_shared
 from ..shared.peer_config import PeerConfig
-from ..shared.version import CODE_VERSION
+from ..shared.version import CODE_VERSION, peer_schema_compatible
 
 LOGGER = logging.getLogger(__name__)
 
@@ -136,10 +141,19 @@ class NegotiationService:
         for label, mine, yours in (
             ("config_sha256", ours.config_sha256, theirs.config_sha256),
             ("scent_fingerprint", ours.scent_fingerprint, theirs.scent_fingerprint),
-            ("schema_version", ours.schema_version, theirs.schema_version),
         ):
             if mine != yours:
                 mismatches.append(f"{label}: ours={mine} theirs={yours}")
+
+        # Major-only, not exact. An exact comparison aborted the handshake on a
+        # MINOR bump, which by our own definition only ever adds optional keys --
+        # so two peers that understood each other perfectly refused to play over
+        # a digit. A major bump redefines existing keys and must still refuse.
+        if not peer_schema_compatible(ours.schema_version, theirs.schema_version):
+            mismatches.append(
+                f"schema_version: ours={ours.schema_version} theirs={theirs.schema_version} "
+                "(incompatible major version)"
+            )
 
         if ours.group_id == theirs.group_id:
             mismatches.append(

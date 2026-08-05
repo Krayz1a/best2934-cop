@@ -20,9 +20,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .. import constants
+from ..domain.audit import audit_against_commitments
 from ..domain.board import build_board
 from ..domain.brains import BrainBase, Decision, load_brain
-from ..domain.crypto import CommitRecord, audit_records, commit
+from ..domain.crypto import CommitRecord, commit
 from ..domain.own_state import build_own_state
 from ..domain.protocol import Phase, StateMachine, StepIntent
 from ..reports.artifacts import digest_payload
@@ -189,7 +190,10 @@ class PeerSession:
         if int(step) not in self.opponent_commitments:
             raise ValueError(f"reveal for step {step} arrived without a prior commitment")
         self.state.apply_opponent_move(move, barrier)
-        # The move is sealed in the commitment and therefore cannot lie; only the
+        # The move is sealed in the commitment and therefore cannot lie -- but that
+        # is only true because :meth:`audit` cross-checks the disclosed seal against
+        # this one at the end. Nothing can enforce it *here*: the nonce is still
+        # secret, so the claim is uncheckable until the final audit. Only the
         # sentence can. Cross-examining the move would confirm honesty every
         # time and leave the trust estimator pinned at its ceiling, so it is the
         # hint that gets judged -- and only once we have sampled the trail it
@@ -228,17 +232,43 @@ class PeerSession:
         self.state.end_of_full_turn()
 
     def final_reveal(self) -> list[dict[str, Any]]:
-        """Our complete audit view, nonces included, once the sub-game is over."""
+        """Our complete audit view, nonces included, once the sub-game is over.
+
+        Includes the *pending* step, if the sub-game ended between our
+        commitment going out and the step being applied. That happens on nearly
+        every capture: the winning claim is answered inside the loser's server,
+        the loser exits, and the winner's own step never completes -- so the
+        opponent holds a commitment for a step we would otherwise never
+        disclose.
+
+        Withholding it is not an option, however innocent the cause. An auditor
+        that cross-checks live commitments reads the gap as concealment, and it
+        is right to: "the last step need not be disclosed" is precisely the
+        loophole worth exploiting -- commit, see how the round turned out, then
+        stay silent about it. The payload was sealed before the outcome was
+        known, so disclosing it costs nothing and proves that.
+        """
         self.machine.phase = Phase.FINALISING
-        return list(self.records)
+        disclosed = list(self.records)
+        if self._pending is not None:
+            disclosed.append(self._pending[2].audit_view())
+        return disclosed
 
     def audit(self, records: list[dict[str, Any]]) -> dict[str, Any]:
         """Verify the opponent's disclosed chain (rules 19, 36).
+
+        Cross-checked against ``opponent_commitments`` -- the seals that arrived
+        during play -- and not merely against the ``commit`` each disclosed
+        record carries about itself. Self-consistency is free to forge: rewrite
+        the payload, keep the nonce, recompute the hash, and the record verifies
+        against its own new seal. What a forger cannot change is what we were
+        handed at the time.
 
         The verdict is kept because the chain can arrive either way round: we
         ask for it, or they push it when they stop first. The second case
         happens exactly when they have gone, so there is nobody left to ask.
         """
         self.opponent_records = list(records)
-        self.last_audit = audit_records(records).as_dict()
+        self.last_audit = audit_against_commitments(
+            records, dict(self.opponent_commitments)).as_dict()
         return self.last_audit

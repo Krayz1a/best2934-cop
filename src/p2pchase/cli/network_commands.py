@@ -86,6 +86,9 @@ def play(args: Any) -> int:
     print(f"outcome        : {outcome.outcome}")
     print(f"steps          : {outcome.steps}")
     print(f"opponent audit : {outcome.opponent_audit.get('passed')}")
+    # The breakdown, not just the verdict: "False" alone cannot distinguish a
+    # forged step from a withheld one, and those are different accusations.
+    print(f"audit detail   : {outcome.opponent_audit}")
     if outcome.aborted:
         print(f"aborted        : {outcome.reason}")
     for path in _write_artifacts(sdk, session, args, handshake, outcome, started):

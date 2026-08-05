@@ -47,9 +47,18 @@ def test_every_tool_in_the_contract_is_registered(server):
     assert set(contracts.ALL_TOOLS) <= _tool_names(server)
 
 
-def test_no_tool_is_exposed_that_the_contract_does_not_name(server):
-    """An undeclared tool is surface area nobody agreed to."""
-    assert _tool_names(server) == set(contracts.ALL_TOOLS)
+def test_no_tool_is_exposed_that_nobody_agreed_to(server):
+    """Surface area is a liability, so the published set stays closed.
+
+    It is no longer *just* our contract: an opponent whose convention differs
+    from ours calls three names of their own (ADR-019), and those are agreed
+    too -- in their CONNECT.md rather than in ours. What must not appear is a
+    fourth thing neither document names.
+    """
+    from p2pchase.mcp.interop_server import DISTINCT_TOOLS
+
+    agreed = set(contracts.ALL_TOOLS) | set(DISTINCT_TOOLS)
+    assert _tool_names(server) == agreed
 
 
 def test_the_server_is_named_after_the_peer_running_it(peer_config, handlers):
@@ -60,9 +69,24 @@ def test_the_server_is_named_after_the_peer_running_it(peer_config, handlers):
 
 def test_a_tool_answers_exactly_as_its_handler_does(server, handlers):
     """Proof that the binding adds nothing -- which is its entire job."""
-    through_server = asyncio.run(server.call_tool("hello", {}))
+    through_server = asyncio.run(server.call_tool("abort", {"reason": "x"}))
+    assert through_server.structured_content == handlers.abort({"reason": "x"})
+
+
+def test_hello_adds_only_the_opponents_aliases_and_removes_nothing(server, handlers):
+    """``hello`` is the one tool whose binding is *not* transparent, because two
+    teams put identity in different places: ours nests it under ``handshake``,
+    theirs reads it at the top level (ADR-019).
+
+    Adding is safe and dropping is not -- a field an opponent ignores costs
+    nothing, a field our own client can no longer find costs the match. So this
+    pins the direction: a strict superset, never a replacement.
+    """
+    through_server = asyncio.run(server.call_tool("hello", {})).structured_content
     direct = handlers.hello({})
-    assert through_server.structured_content == direct
+    assert direct.items() <= through_server.items(), "the binding dropped or altered a field"
+    assert set(through_server) - set(direct) == {"group_id", "schema_version",
+                                                 "counted_games_played"}
 
 
 def test_serve_refuses_clearly_when_the_transport_is_absent(peer_config, handlers,
