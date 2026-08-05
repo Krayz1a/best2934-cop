@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 import sys
 import time
@@ -90,12 +91,19 @@ def aggregate(runs: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def sweep_one(shared: dict, role: str, name: str, levels, seeds: int) -> list[dict[str, Any]]:
-    """Vary one parameter across its levels, everything else at its default."""
+    """Vary one parameter across its levels, everything else as shipped.
+
+    "Everything else" means the config on disk, not the brains' class defaults.
+    Overriding one key on top of ``{}`` measures a strategy we do not run,
+    against an opponent we do not run either -- see :func:`shipped_strategy`.
+    """
     rows = []
+    base_cop = shipped_strategy(constants.ROLE_COP)
+    base_thief = shipped_strategy(constants.ROLE_THIEF)
     for level in levels:
         cfg = {name: level}
-        cop_cfg = cfg if role == constants.ROLE_COP else {}
-        thief_cfg = cfg if role == constants.ROLE_THIEF else {}
+        cop_cfg = {**base_cop, **cfg} if role == constants.ROLE_COP else base_cop
+        thief_cfg = {**base_thief, **cfg} if role == constants.ROLE_THIEF else base_thief
         runs = [one_match(shared, cop_cfg, thief_cfg, seed) for seed in range(seeds)]
         rows.append({"role": role, "parameter": name, "value": level, **aggregate(runs)})
         print(f"  {name:<22} = {level!s:<6} capture={rows[-1]['capture_rate']:.3f} "
@@ -103,10 +111,39 @@ def sweep_one(shared: dict, role: str, name: str, levels, seeds: int) -> list[di
     return rows
 
 
+def shipped_strategy(role: str) -> dict[str, Any]:
+    """The strategy block we actually deploy, read from the config on disk.
+
+    Not ``{}``. An empty strategy config makes every brain fall back to its
+    *class* defaults, and those are not what we ship -- ``barrier_engage_range``
+    is 4 in :class:`CopBrain` and 1 in ``config/police/setup.json``, which under
+    the agreed scent lag is the difference between a cop that captures 0.03 of
+    the time and one that captures 0.90.
+
+    That gap is the whole reason this function exists. Measuring ``{}`` and
+    calling it "the shipped defaults" produced a baseline for a configuration
+    nobody runs, and a conclusion about the league drawn from it was wrong in
+    the alarming direction for two days before anyone opened the config file.
+    """
+    directory = "police" if role == constants.ROLE_COP else "thief"
+    path = Path(_root()) / "config" / directory / "setup.json"
+    if not path.exists():
+        return {}
+    setup = json.loads(path.read_text(encoding="utf-8"))
+    strategy = setup.get("strategy", {})
+    return {key: value for key, value in strategy.items()
+            if not key.startswith("_") and value != ""}
+
+
+def _root() -> str:
+    return os.environ.get("P2PCHASE_ROOT", str(Path(__file__).resolve().parent.parent))
+
+
 def baseline(shared: dict, seeds: int) -> dict[str, Any]:
-    """The shipped defaults, measured the same way as every swept level."""
-    runs = [one_match(shared, {}, {}, seed) for seed in range(seeds)]
-    return {"role": "both", "parameter": "baseline", "value": "default", **aggregate(runs)}
+    """The shipped configuration, measured the same way as every swept level."""
+    cop, thief = shipped_strategy(constants.ROLE_COP), shipped_strategy(constants.ROLE_THIEF)
+    runs = [one_match(shared, cop, thief, seed) for seed in range(seeds)]
+    return {"role": "both", "parameter": "baseline", "value": "shipped", **aggregate(runs)}
 
 
 def main() -> int:

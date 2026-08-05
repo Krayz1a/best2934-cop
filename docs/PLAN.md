@@ -672,35 +672,23 @@ in the agreed config, inside an `AGREED_SECTION`, so it is frozen by
 the other believes it is not sending. It is deliberately **not** an Appendix F
 term: it is a negotiated reading, not a permanent constant.
 **Rationale** Lagged, the trail is evidence; live, it is the answer.
-**Trade-off** Large and measured, not assumed. Over 150 seeds on the shipped
-defaults:
+**Trade-off** Real, and much smaller than first reported. **The figures
+originally recorded here were wrong and are corrected below** — see ADR-025 for
+the measurement fault that produced them. Measured against the configuration we
+actually deploy, over 80 seeds against a five-thief panel, the cop's worst-case
+capture rate under the agreed lag is **0.90**, and 1.00 against our own shipped
+thief. The lag makes the game harder to read; it does not disable the cop.
 
-| lag | capture rate | mean steps |
-|---|---|---|
-| 0 (live) | 0.147 ± 0.029 | 34.7 |
-| **1 (agreed)** | **0.033 ± 0.015** | 34.8 |
-| 2 | 0.067 ± 0.020 | 34.3 |
-
-The cop loses roughly four fifths of its captures. That is the correct game
-rather than a regression — the previous number was measured against an opponent
-whose position we could read — but two consequences follow and neither is
-cosmetic.
-
-**Consequence 1 — the notebook figures describe a game we no longer play.**
+**Consequence — the notebook figures describe a game we no longer play.**
 Every sweep, sensitivity run and figure was measured on the local harness, which
 sampled the live field. `local_match.transmitted_field` now routes the harness
 through the same delay line, so the numbers must be regenerated before they are
 submitted as evidence of anything.
 
-**Consequence 2 — at a 3% capture rate every series ends level.** Six sub-games
-split 3 and 3, all ending in survival, pays each team 3x5 as cop plus 3x10 as
-thief = **45 each**: a dead-level series, so chapter 9 fires and both sides take
-`tie_score` = 2. And 45 is one of the four reachable tied totals ({45, 55, 65,
-75}) found by brute force when checking gal-roy1's vectors. So under the agreed
-lag, cop strength is the *entire* game: a league where nobody can capture is a
-league of 2-point draws. Re-tuning the cop against the lagged field is now the
-highest-value strategy work outstanding — ADR-012's max-min choice was made
-against the live field and cannot be assumed to survive.
+**Retracted:** an earlier version of this ADR reasoned from a 0.033 capture rate
+to "every series ends 45–45 and the league is 2-point draws". The premise was a
+measurement artefact. The arithmetic was right and the input was not, which is
+the more embarrassing of the two.
 
 ---
 
@@ -741,6 +729,43 @@ than absolute: a disclosure past the last seal we hold is an in-flight turn and
 is fine; a disclosure in a *gap* below it is a step that was never played and
 fails. Failing all of them would fail every honest alternating match on its final
 step, which is the same mistake as ADR-021's, from the other side.
+
+---
+
+### ADR-025 · A baseline measures the config on disk, not the class defaults
+
+**Status** Accepted. Written after the fault below reached an opponent.
+**Context** `tools/sweep.py` measured its baseline with
+`one_match(shared, {}, {}, seed)` and labelled the row "the shipped defaults".
+An empty strategy dict makes every brain fall back to its **class** defaults,
+and those are not what we ship: `CopBrain.BARRIER_ENGAGE_RANGE` is 4, and
+`config/police/setup.json` sets it to 1. Under the agreed scent lag that single
+key is the difference between a cop that captures 0.03 of the time and one that
+captures 0.90 — because a barrier costs a *turn*, so engaging from four cells
+away leaves the cop standing still while the thief walks off, and the shipped
+cop spends 13.9 of its 14 barriers doing exactly that.
+
+`sweep_one` had the same fault from the other side: it overrode one key on top
+of `{}`, so every swept level was measured against an opponent we do not run.
+
+**What it cost.** The bad baseline was reported to gal-roy1 twice as our
+measured capture rate, and ADR-022 reasoned from it to a confident and wrong
+conclusion about the whole league. They replied with their own 0.333 and the
+mechanism behind it, and the 10× gap was read as a strategy deficit on our side.
+There was no deficit. There was a baseline measuring a configuration nobody runs.
+
+**Decision** `shipped_strategy(role)` reads the strategy block from the config
+on disk, and both the baseline and every swept level start from it.
+**Rationale** A baseline that does not describe the thing being shipped is worse
+than no baseline: it is confidently wrong in whichever direction the untested
+defaults happen to point, and every comparison drawn against it inherits that.
+**Trade-off** The sweep now depends on files rather than being self-contained.
+Worth it — self-contained was precisely the property that let it measure fiction.
+**Lesson, stated plainly because it is the recurring one in this project.** Every
+verification habit here was aimed at the *opponent's* claims. This number was
+ours, so nothing checked it. The rule that would have caught it is the same one
+that caught their mislabelled Vector B: a test vector needs its own assertion,
+and so does a baseline.
 
 ---
 
