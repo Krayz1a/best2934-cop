@@ -101,9 +101,16 @@ class OwnState:
     def apply_opponent_move(self, move: str, barrier: list[int] | None) -> None:
         """Fold the opponent's revealed action into our local truth.
 
-        We learn the *action*, not the position: a move name only tells us where
-        they went if we already knew where they were. Barriers, by contrast, are
-        declared with exact coordinates and become hard fact.
+        ``move`` is accepted and deliberately not consumed, and since I-5 it is
+        usually ``""`` because a sealed move is no longer disclosed mid-game.
+        Both facts are the same fact: a direction locates an agent only if you
+        already know where it started, and we never know that, so this has
+        always been a step counter rather than a position update. Worth stating
+        outright, because it is what made sealing the move cost us nothing --
+        we were disclosing ours every step and discarding theirs unread.
+
+        Barriers, by contrast, are declared with exact coordinates (rules 15,
+        16) and become hard fact.
         """
         if barrier is not None:
             cell = (int(barrier[0]), int(barrier[1]))

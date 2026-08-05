@@ -111,11 +111,12 @@ class PeerRunner:
         ))
 
     async def _push_reveal(self, step: int) -> dict[str, Any]:
+        # ``revealed`` is already narrowed to MID_GAME_FIELDS, so there is no
+        # move to forward even if this wanted to send one (I-5).
         revealed = self.session.reveal()["payload"]
         return await self.client.call(contracts.TOOL_REVEAL, contracts.reveal_payload(
             self.session.game_id, self.session.sub_game, step,
             self.session.group_id, self.session.role,
-            move=str(revealed.get("move", "STAY")),
             hint=str(revealed.get("hint", "")),
             barrier=revealed.get("barrier"),
             capture_claim=self.session.capture_claim(),

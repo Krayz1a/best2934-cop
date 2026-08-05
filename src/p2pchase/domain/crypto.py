@@ -30,6 +30,31 @@ from typing import Any
 
 NONCE_BYTES = 16
 
+#: The only payload fields a peer may disclose mid-game (interop item I-5).
+#:
+#: Everything else stays sealed until the final audit. Three fields are absent
+#: on purpose, and the third is the one that actually mattered:
+#:
+#: ``move``
+#:     A direction only locates an agent if you already know where it started,
+#:     so this looks like the dangerous one and is the mildest of the three.
+#: ``intent``
+#:     The truth/lie flag. Disclosing it beside the hint it applies to would
+#:     annotate every sentence with whether to believe it, which is the whole
+#:     deception layer handed over for free (book ch5.3.1, ch7).
+#: ``state``
+#:     ``SHA256({step, role, position, board})``. Every field but ``position``
+#:     is public -- step and role travel in the same message, and the board is
+#:     grid size, axis convention and the barriers a cop must declare
+#:     truthfully (rules 15, 16). That leaves 49 candidates. We brute-forced our
+#:     own disclosed digest and recovered the exact cell in 49 hashes, every
+#:     step, for both roles. The binding that stops a commitment being replayed
+#:     in another context (ch5.3.1) was also a plaintext position broadcast.
+#:
+#: ``barrier`` stays: rule 15 requires the cop to declare each placement openly,
+#: so it is common knowledge by design rather than a leak.
+MID_GAME_FIELDS = ("step", "role", "sub_game", "hint", "barrier")
+
 
 def canonical_json(payload: Any) -> str:
     """Deterministic serialisation: sorted keys, no incidental whitespace.
@@ -78,8 +103,21 @@ class CommitRecord:
         return {"step": self.payload.get("step"), "commit": self.commit}
 
     def revealed_view(self) -> dict[str, Any]:
-        """What the opponent may see at reveal time: content, but not the nonce."""
-        body = dict(self.payload)
+        """What the opponent may see at reveal time: :data:`MID_GAME_FIELDS` only.
+
+        This used to disclose the whole payload, on the reasoning that a
+        commitment the opponent already holds makes the content unforgeable
+        anyway. True and beside the point -- unforgeable is not the same as
+        secret, and the nonce is withheld until the audit (rule 18), so nothing
+        disclosed here can even be *checked* until the match is over. The
+        mid-game reveal buys no integrity; it only gives information away.
+
+        So it now gives away exactly what the game requires and nothing more.
+        The full payload is disclosed at the final audit, where the nonce makes
+        it verifiable and the match is already decided.
+        """
+        body = {name: value for name, value in self.payload.items()
+                if name in MID_GAME_FIELDS}
         return {"payload": body, "commit": self.commit}
 
     def audit_view(self) -> dict[str, Any]:

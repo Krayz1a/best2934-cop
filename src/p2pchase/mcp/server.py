@@ -102,12 +102,21 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
         })
 
     @mcp.tool
-    def reveal_step(game_id: str, sub_game_number: int, step: int, move: str,
-                    hint: str, barrier: list[int] | None = None,
+    def reveal_step(game_id: str, sub_game_number: int, step: int,
+                    hint: str = "", move: str = "",
+                    barrier: list[int] | None = None,
                     capture_claim: list[int] | None = None,
                     intent: str = "", sender_group: str = "",
                     sender_role: str = "") -> dict[str, Any]:
-        """Receive the disclosed move, hint and barrier. The nonce stays sealed."""
+        """Receive the disclosed hint and any barrier. Move and nonce stay sealed.
+
+        ``move`` and ``intent`` are optional and default to empty: since I-5
+        neither peer discloses them mid-game. They stay in the signature because
+        a signature *is* the published schema -- FastMCP rejects any argument it
+        does not name -- so removing them would refuse a peer who still sends
+        one. Making ``move`` required is what broke the rehearsal the moment we
+        stopped sending it, in a way no in-process test could see.
+        """
         return handlers.reveal_step({
             "game_id": game_id, "sub_game_number": sub_game_number, "step": step,
             "move": move, "hint": hint, "barrier": barrier,

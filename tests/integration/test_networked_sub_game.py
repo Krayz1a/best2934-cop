@@ -21,6 +21,7 @@ import pytest
 
 from p2pchase import constants
 from p2pchase.domain.crypto import audit_records
+from p2pchase.mcp import contracts
 from p2pchase.mcp.client import LoopbackClient
 from p2pchase.mcp.handlers import PeerHandlers
 from p2pchase.runtime.peer import PeerRunner
@@ -116,3 +117,47 @@ def test_a_reveal_without_a_prior_commitment_is_refused(peer_config):
     session = PeerSession(config=peer_config, role=constants.ROLE_COP, game_id=GAME_ID)
     with pytest.raises(ValueError, match="without a prior commitment"):
         session.on_reveal(1, "N", "heading north", None)
+
+
+class RecordingClient(LoopbackClient):
+    """A loopback client that keeps every payload it carried."""
+
+    def __init__(self, handlers) -> None:
+        super().__init__(handlers)
+        self.sent: list[tuple[str, dict]] = []
+
+    async def call(self, tool: str, payload: dict):
+        self.sent.append((tool, payload))
+        return await super().call(tool, payload)
+
+
+def test_nothing_we_send_mid_game_discloses_a_move_or_an_intent(peer_config, thief_config):
+    """I-5, asserted on the wire rather than on the object that builds it.
+
+    :meth:`CommitRecord.revealed_view` narrowing its output is necessary and not
+    sufficient: the payload is reassembled a layer up in
+    :func:`contracts.reveal_payload`, which still *accepts* a move so that we can
+    keep reading one from a peer who has not made this change. This is the test
+    that fails if that parameter is ever wired back up to our own record.
+    """
+    cop = PeerSession(config=peer_config, role=constants.ROLE_COP, game_id=GAME_ID, seed=5)
+    thief = PeerSession(config=thief_config, role=constants.ROLE_THIEF, game_id=GAME_ID, seed=6)
+    cop_client = RecordingClient(PeerHandlers(thief_config, thief))
+    thief_client = RecordingClient(PeerHandlers(peer_config, cop))
+    cop_runner = PeerRunner(peer_config, cop, cop_client)
+    thief_runner = PeerRunner(thief_config, thief, thief_client)
+
+    async def drive() -> None:
+        for step in range(1, 5):
+            await asyncio.gather(cop_runner.play_step(step), thief_runner.play_step(step))
+
+    asyncio.run(drive())
+
+    reveals = [body for client in (cop_client, thief_client)
+               for tool, body in client.sent if tool == contracts.TOOL_REVEAL]
+    assert len(reveals) == 8, "both peers should have revealed four steps each"
+    for body in reveals:
+        assert "move" not in body
+        assert "intent" not in body
+        assert "state" not in body
+        assert body["hint"], "the hint is the one thing a reveal is still for"

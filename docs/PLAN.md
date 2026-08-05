@@ -568,6 +568,93 @@ That is the intended reading of rule 35: the ending is the thing.
 
 ---
 
+### ADR-019 · We speak the opponent's tool surface, they do not speak ours
+
+**Status** Accepted.
+**Context** gal-roy1 publish six tools (`hello`, `propose_config`,
+`declare_step0`, `submit_turn`, `final_audit`, `agree_result`), each taking a
+single `payload` object. Ours name every field in the signature. Three names
+collide with different calling conventions; three do not exist on our side at
+all. Two teams that agree on every rule in the book still lose at move one
+(rule 6).
+**Decision** `mcp/interop.py` adapts their vocabulary to ours, and
+`mcp/interop_server.py` binds the three non-colliding names. For the three that
+collide, one endpoint answers both dialects by widening the signature —
+`agree_result(sha256="", expected="", payload=None)` — rather than by
+registering a second tool.
+**Rationale** Their shape matches the lecturer's reference server, so it is what
+a third team is likeliest to speak too; they dial out and drive, which makes our
+side mostly a matter of answering correctly; and `PeerHandlers` already took a
+single dict per call, so the whole mismatch lived in the server binding.
+**Trade-off** We carry the translation cost for both teams. Cheaper than a
+technical loss, and it means our native surface never has to change.
+**Note** The adapter was written, unit-tested and *never bound to the server*.
+Every test passed because they called the adapter directly. See ADR-016 — the
+same lesson, learned twice.
+
+---
+
+### ADR-020 · `propose_config` answers a proposal; two digests, separately named
+
+**Status** Accepted.
+**Context** Their preflight sends `{"config": {...}}`. We read it as our own
+older `{"handshake": {...}}` shape, found every field absent, and reported three
+mismatches against empty strings — refusing a peer who had proposed a perfectly
+legal config. Underneath sat a second fault: our published `config_sha256`
+covers `AGREED_SECTIONS`, a *subset*; theirs covers the whole file. Those two
+can never be equal, and their inequality says nothing about either config.
+**Decision** Branch on the shape of what arrived. For a proposal, hash their
+object under our encoding and return `config_sha256` (their object, our
+canonicaliser), `our_config_sha256` (our whole config), and
+`our_agreed_terms_sha256` (the subset) — each under its own name, plus
+`illegal_terms` and a recursive `differing_terms`.
+**Rationale** A matching digest proves the two *canonicalisations* agree, which
+is the thing most likely to break (their CONNECT.md §3, and HW6). It does not
+prove their defaults equal ours; conflating the two made rule 11 unsatisfiable
+rather than satisfied. Two questions, two fields.
+**Trade-off** Three digests in one reply is more surface to explain. Every one
+of them answers a different question, and the failure we shipped was caused by
+having one field answer two.
+
+---
+
+### ADR-021 · The mid-game reveal discloses the hint, the barrier, and nothing else
+
+**Status** Accepted. Agreed with gal-roy1 as interop item I-5.
+**Context** The reveal disclosed the entire sealed payload. Three fields should
+never have been in it. `move` gives our heading away. `intent` is the truth/lie
+flag, which annotates each sentence with whether to believe it — the deception
+layer, handed over for free. Worst is `state`:
+`SHA256({step, role, position, board})`, where every field but `position` is
+public, leaving 49 candidates on a 7×7 board. We brute-forced our own disclosed
+digest and recovered the exact cell in 49 hashes, every step, for both roles.
+The binding that stops a commitment being replayed in another context
+(book ch5.3.1) was also a plaintext position broadcast.
+**Decision** `CommitRecord.revealed_view()` emits `MID_GAME_FIELDS` only —
+`step`, `role`, `sub_game`, `hint`, `barrier`. The full payload is disclosed at
+the final audit, where the nonce makes it verifiable and the match is decided.
+We stopped *sending* `move` and `intent`; we still *accept* both, since a peer
+who has not made this change will keep sending them.
+**Rationale** The nonce is withheld until the audit (rule 18), so nothing
+disclosed mid-game can be checked when it arrives. The mid-game reveal buys no
+integrity whatsoever; it only gives information away. Barriers stay because
+rule 15 requires the cop to declare each placement openly — common knowledge by
+design, not a leak.
+**Trade-off** None measurable. `apply_opponent_move` never read `move` — it only
+ever consumed the barrier and counted the step — so we were disclosing ours
+every turn and discarding theirs unread.
+**Consequence** The capture claim is now the only position we disclose in the
+clear, and a cop that claims on every step broadcasts its exact track. That was
+free while the move sat beside it; it is a real disclosure now. Raised with
+gal-roy1 rather than changed unilaterally, because it alters when messages
+appear on the wire.
+**Note** All 461 in-process tests passed with the mandatory `move: str` still in
+the `reveal_step` signature; two real peers could not complete one step. Caught
+by the rehearsal gate, which is the third time a tool signature has been the
+wire contract (ADR-016, ADR-019).
+
+---
+
 ## 4. Interface contracts
 
 ### 4.1 MCP tools (eleven, symmetric)

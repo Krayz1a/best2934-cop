@@ -74,14 +74,21 @@ def commit_payload(game_id: str, sub_game: int, step: int, group: str, role: str
 
 
 def reveal_payload(game_id: str, sub_game: int, step: int, group: str, role: str,
-                   move: str, hint: str, barrier: list[int] | None,
+                   hint: str, barrier: list[int] | None,
+                   move: str | None = None,
                    intent: str | None = None,
                    capture_claim: list[int] | None = None) -> dict[str, Any]:
-    """REVEAL: the move, the hint and any barrier -- but never the nonce.
+    """REVEAL: the hint and any barrier -- never the nonce, and no longer the move.
 
-    ``intent`` is optional here on purpose. A peer may withhold its truth/lie
-    flag until the final audit; it is already sealed in the commitment, so
-    withholding it changes nothing about what can be proved later.
+    ``move`` and ``intent`` are both optional, and we now send neither (I-5;
+    see :data:`~p2pchase.domain.crypto.MID_GAME_FIELDS`). Both are already
+    sealed in the commitment, so withholding them changes nothing about what
+    can be proved at the audit -- and disclosing them mid-game was giving away
+    our heading and telling the opponent which of our sentences were lies.
+
+    ``move`` survives as a parameter because a peer that has not made this
+    change will still *send* one, and :func:`parse_reveal` still reads it. We
+    stopped disclosing; we did not start refusing.
     """
     body: dict[str, Any] = {
         "game_id": game_id,
@@ -89,16 +96,20 @@ def reveal_payload(game_id: str, sub_game: int, step: int, group: str, role: str
         "step": step,
         "sender_group": group,
         "sender_role": role,
-        "move": move,
         "hint": hint,
         "barrier": list(barrier) if barrier else None,
     }
+    if move is not None:
+        body["move"] = move
     if intent is not None:
         body["intent"] = intent
     if capture_claim is not None:
         # Rule 21: a cop that believes it has caught the thief must say so, and
-        # say it truthfully. The claim names a cell -- our own -- so answering
-        # it costs the thief nothing it did not already learn from our move.
+        # say it truthfully. The claim names a cell -- our own, after moving --
+        # so it is now the only position we disclose in the clear. That used to
+        # be free, because the move beside it gave the same thing away; with
+        # the move sealed it is a real disclosure, and a cop that claims every
+        # step broadcasts its exact track. See docs/PLAN.md (ADR-021).
         body["capture_claim"] = [int(capture_claim[0]), int(capture_claim[1])]
     return body
 
@@ -152,8 +163,14 @@ def parse_capture_claim(payload: dict[str, Any]) -> list[int] | None:
 
 
 def parse_reveal(payload: dict[str, Any]) -> tuple[str, str, list[int] | None]:
-    """Extract ``(move, hint, barrier)`` from a REVEAL body, defensively."""
-    move = str(payload.get("move", "STAY")).upper()
+    """Extract ``(move, hint, barrier)`` from a REVEAL body, defensively.
+
+    An absent ``move`` yields ``""``, not ``"STAY"``. Since I-5 a sealed move is
+    the normal case, and defaulting it to a real direction would record
+    "they stood still" for every step of every opponent who also seals -- a
+    fact we would then have invented rather than been told.
+    """
+    move = str(payload.get("move", "")).upper()
     hint = str(payload.get("hint", ""))
     barrier = payload.get("barrier")
     if barrier is not None:

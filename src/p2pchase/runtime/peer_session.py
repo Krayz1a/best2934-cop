@@ -111,7 +111,12 @@ class PeerSession:
         return record.commit
 
     def reveal(self) -> dict[str, Any]:
-        """The disclosed view of our pending step -- nonce withheld (rule 18)."""
+        """The disclosed view of our pending step.
+
+        Nonce withheld (rule 18), and since I-5 the move, the truth/lie flag and
+        the state digest with it -- see
+        :data:`~p2pchase.domain.crypto.MID_GAME_FIELDS`.
+        """
         if self._pending is None:
             raise RuntimeError("reveal() called before prepare_step()")
         return self._pending[2].revealed_view()
@@ -190,14 +195,13 @@ class PeerSession:
         if int(step) not in self.opponent_commitments:
             raise ValueError(f"reveal for step {step} arrived without a prior commitment")
         self.state.apply_opponent_move(move, barrier)
-        # The move is sealed in the commitment and therefore cannot lie -- but that
-        # is only true because :meth:`audit` cross-checks the disclosed seal against
-        # this one at the end. Nothing can enforce it *here*: the nonce is still
-        # secret, so the claim is uncheckable until the final audit. Only the
-        # sentence can. Cross-examining the move would confirm honesty every
-        # time and leave the trust estimator pinned at its ceiling, so it is the
-        # hint that gets judged -- and only once we have sampled the trail it
-        # has to agree with, which happens in :meth:`absorb_scent`.
+        # Since I-5 ``move`` is normally "" -- neither peer discloses one until
+        # the audit. That costs us nothing, because the hint was always the only
+        # thing worth judging: the move is sealed in the commitment and so
+        # cannot lie, and cross-examining a statement that cannot lie would
+        # confirm honesty every time and pin the trust estimator at its ceiling.
+        # So it is the sentence that gets judged, and only once we have sampled
+        # the trail it has to agree with, which happens in :meth:`absorb_scent`.
         claim = record_claim(self.state, hint)
         LOGGER.debug("step %d: opponent moved %s and claims %s (%r)",
                      step, move, claim or "nothing", hint[:40])

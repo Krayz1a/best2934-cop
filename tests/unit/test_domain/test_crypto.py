@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from p2pchase.domain.crypto import (
+    MID_GAME_FIELDS,
     audit_records,
     canonical_json,
     commit,
@@ -64,11 +65,58 @@ def test_the_sealed_view_leaks_nothing():
     assert "N" not in sealed.get("commit", "").upper() or True  # hash only
 
 
-def test_the_revealed_view_discloses_content_but_not_the_nonce():
+def test_the_revealed_view_discloses_the_hint_but_not_the_nonce():
     """Rule 18: nonces stay sealed until the end of the sub-game."""
     revealed = commit(PAYLOAD).revealed_view()
-    assert revealed["payload"]["move"] == "N"
+    assert revealed["payload"]["hint"] == "north past Harlem"
     assert "nonce" not in revealed
+
+
+#: A full sealed payload, exactly as :class:`StepIntent` builds one.
+FULL = {"step": 3, "role": "police", "sub_game": 1, "state": "deadbeef" * 8,
+        "move": "N", "intent": "lie", "hint": "north past Harlem"}
+
+
+def test_the_revealed_view_seals_the_move_the_intent_and_the_state():
+    """I-5. The three fields that give the position and the deception away."""
+    revealed = commit(FULL).revealed_view()["payload"]
+    assert set(revealed) <= set(MID_GAME_FIELDS)
+    for withheld in ("move", "intent", "state"):
+        assert withheld not in revealed
+    # Not just absent as keys -- absent as values. A field re-spelled under
+    # another name would pass the check above and leak just as much.
+    text = canonical_json(revealed)
+    assert "lie" not in text and "deadbeef" not in text
+
+
+def test_a_declared_barrier_is_still_disclosed():
+    """Rule 15: the cop declares each placement openly, so it is not a leak."""
+    assert commit({**FULL, "barrier": [2, 3]}).revealed_view()["payload"]["barrier"] == [2, 3]
+
+
+def test_the_full_payload_still_reaches_the_audit():
+    """Sealing is a delay, not a withholding: rule 19 needs every field."""
+    assert commit(FULL).audit_view()["payload"] == FULL
+
+
+def test_the_state_digest_would_have_given_the_position_away():
+    """Why ``state`` is sealed, demonstrated rather than asserted.
+
+    Every field but ``position`` is public, so the digest has 49 candidates on
+    a 7x7 board. This is the attack an opponent runs against what we used to
+    disclose every single step; it must no longer have anything to run against.
+    """
+    board = {"grid_size": 7, "barriers": []}
+    truth = {"step": 4, "role": "police", "position": [5, 2], "board": board}
+    leaked = digest_payload(truth)
+
+    recovered = [[r, c] for r in range(7) for c in range(7)
+                 if digest_payload({**truth, "position": [r, c]}) == leaked]
+    assert recovered == [[5, 2]]  # the whole search space is 49 hashes
+
+    sealed = commit({"step": 4, "role": "police", "move": "N", "hint": "hi",
+                     "state": leaked}).revealed_view()["payload"]
+    assert "state" not in sealed
 
 
 def test_the_audit_view_discloses_everything():

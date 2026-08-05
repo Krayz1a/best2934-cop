@@ -69,6 +69,25 @@ def test_a_reveal_payload_including_a_capture_claim_is_accepted(served):
     assert "caught" in answer
 
 
+def test_a_reveal_with_no_move_at_all_is_accepted(served):
+    """I-5, at the layer that actually rejected it.
+
+    A tool's Python signature *is* its published schema, so ``move: str`` with
+    no default made the field mandatory on the wire. Every in-process test
+    passed -- they call the handler directly -- and two real peers could not
+    complete a single step. This is that failure, pinned.
+    """
+    client, _ = served
+    _call(client, contracts.TOOL_COMMIT,
+          contracts.commit_payload(GAME_ID, 1, 2, "best2934", constants.ROLE_THIEF, "c" * 64))
+    reveal = contracts.reveal_payload(
+        GAME_ID, 1, 2, "best2934", constants.ROLE_THIEF,
+        hint="Somewhere near the docks.", barrier=None,
+    )
+    assert "move" not in reveal
+    assert _call(client, contracts.TOOL_REVEAL, reveal)["ok"] is True
+
+
 def test_a_final_reveal_payload_is_accepted(served):
     """`final_reveal` carries the game it belongs to, so the tool must take it."""
     client, _ = served
