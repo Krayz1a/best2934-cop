@@ -20,17 +20,16 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .. import constants
-from ..domain.audit import audit_against_commitments
 from ..domain.board import build_board
 from ..domain.brains import BrainBase, Decision, load_brain
 from ..domain.crypto import CommitRecord, commit
 from ..domain.own_state import build_own_state
-from ..domain.protocol import Phase, StateMachine, StepIntent
-from ..reports.artifacts import digest_payload
+from ..domain.protocol import StateMachine, StepIntent
 from ..shared.peer_config import PeerConfig
 from ..strategy.landmarks import heading_word, pick_landmark
 from ..strategy.talk_engine import build_talk_engine
 from ..strategy.talk_prompt import TalkRequest
+from . import session_disclosure as disclosure
 from .match_side import judge_claim, record_claim
 
 LOGGER = logging.getLogger(__name__)
@@ -104,7 +103,7 @@ class PeerSession:
             step=step, role=self.role, sub_game_number=self.sub_game,
             move=decision.move, hint=hint, intent=decision.intent,
             barrier=list(decision.barrier) if decision.barrier else None,
-            state_digest=digest_payload(self.state.state_digest_source()),
+            position=self.state.settled_position(decision.move, decision.barrier),
         )
         record = commit(intent.payload())
         self._pending = (decision, hint, record)
@@ -114,12 +113,26 @@ class PeerSession:
         """The disclosed view of our pending step.
 
         Nonce withheld (rule 18), and since I-5 the move, the truth/lie flag and
-        the state digest with it -- see
+        the sealed position with it -- see
         :data:`~p2pchase.domain.crypto.MID_GAME_FIELDS`.
         """
         if self._pending is None:
             raise RuntimeError("reveal() called before prepare_step()")
         return self._pending[2].revealed_view()
+
+    def pending_declaration(self) -> tuple[str, list[int] | None]:
+        """The sentence and any barrier our sealed step declares openly.
+
+        One call, so a caller building a wire message never has to reach into
+        the pending tuple. Both are already committed, and rule 15 obliges the
+        barrier regardless.
+        """
+        if self._pending is None:
+            raise RuntimeError("pending_declaration() called before prepare_step()")
+        decision, hint, _record = self._pending
+        barrier = ([int(decision.barrier[0]), int(decision.barrier[1])]
+                   if decision.barrier else None)
+        return hint, barrier
 
     def pending_cell(self) -> tuple[int, int] | None:
         """Where our pending move puts us -- or the cell we are about to seal.
@@ -243,43 +256,9 @@ class PeerSession:
         self.state.end_of_full_turn()
 
     def final_reveal(self) -> list[dict[str, Any]]:
-        """Our complete audit view, nonces included, once the sub-game is over.
-
-        Includes the *pending* step, if the sub-game ended between our
-        commitment going out and the step being applied. That happens on nearly
-        every capture: the winning claim is answered inside the loser's server,
-        the loser exits, and the winner's own step never completes -- so the
-        opponent holds a commitment for a step we would otherwise never
-        disclose.
-
-        Withholding it is not an option, however innocent the cause. An auditor
-        that cross-checks live commitments reads the gap as concealment, and it
-        is right to: "the last step need not be disclosed" is precisely the
-        loophole worth exploiting -- commit, see how the round turned out, then
-        stay silent about it. The payload was sealed before the outcome was
-        known, so disclosing it costs nothing and proves that.
-        """
-        self.machine.phase = Phase.FINALISING
-        disclosed = list(self.records)
-        if self._pending is not None:
-            disclosed.append(self._pending[2].audit_view())
-        return disclosed
+        """Our complete chain, nonces included. See :mod:`session_disclosure`."""
+        return disclosure.final_reveal(self)
 
     def audit(self, records: list[dict[str, Any]]) -> dict[str, Any]:
-        """Verify the opponent's disclosed chain (rules 19, 36).
-
-        Cross-checked against ``opponent_commitments`` -- the seals that arrived
-        during play -- and not merely against the ``commit`` each disclosed
-        record carries about itself. Self-consistency is free to forge: rewrite
-        the payload, keep the nonce, recompute the hash, and the record verifies
-        against its own new seal. What a forger cannot change is what we were
-        handed at the time.
-
-        The verdict is kept because the chain can arrive either way round: we
-        ask for it, or they push it when they stop first. The second case
-        happens exactly when they have gone, so there is nobody left to ask.
-        """
-        self.opponent_records = list(records)
-        self.last_audit = audit_against_commitments(
-            records, dict(self.opponent_commitments)).as_dict()
-        return self.last_audit
+        """Verify their chain against the seals we hold. See :mod:`session_disclosure`."""
+        return disclosure.audit(self, records)

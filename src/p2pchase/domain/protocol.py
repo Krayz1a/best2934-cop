@@ -138,9 +138,36 @@ class Envelope:
         )
 
 
+#: Their spelling for the sealed ``role``. Ours follows the book's Hebrew.
+WIRE_ROLE = {constants.ROLE_COP: "COP", constants.ROLE_THIEF: "THIEF"}
+
+
+def wire_move(move: str, barrier: list[int] | None) -> str:
+    """One string for both kinds of action, as gal-roy1's INTEROP.md §2 seals it.
+
+    ``"MOVE:N"`` or ``"BARRIER:r,c"``. A barrier is an *alternative* to moving
+    rather than an extra field beside one -- the privilege is bought by forgoing
+    movement -- so folding it into the same slot means a sealed action can only
+    ever be one thing, which a separate ``barrier`` key alongside ``move`` could
+    not promise.
+    """
+    if barrier is not None:
+        return f"BARRIER:{int(barrier[0])},{int(barrier[1])}"
+    return f"MOVE:{move}"
+
+
 @dataclass
 class StepIntent:
     """What this peer decided to do on one step, before it is sealed.
+
+    The payload is gal-roy1's, field for field (their INTEROP.md §2). Adopting
+    it is not cosmetic. Ours sealed ``state`` as a *digest* of the board, which
+    at the audit leaves an opponent brute-forcing 49 cells to recover the
+    position it is entitled to read -- and rules 21/22 make that position
+    load-bearing: a thief that denies a capture claim can only be convicted if
+    the cop can read the thief's sealed cell afterwards. Their ``state`` is the
+    cell itself. Same secrecy during play, since neither is disclosed until the
+    audit, and the obligation becomes checkable instead of merely brute-forcible.
 
     ``intent`` is the truth/lie flag. It is committed BEFORE the hint is
     revealed, which is what stops an agent from claiming after the fact that it
@@ -154,22 +181,28 @@ class StepIntent:
     hint: str
     intent: str = constants.INTENT_TRUTH
     barrier: list[int] | None = None
-    state_digest: str = ""
+    #: Our position AFTER the action -- the cell the move settles on, or the
+    #: cell we stayed on to place a barrier.
+    position: tuple[int, int] = (0, 0)
 
     def payload(self) -> dict[str, Any]:
-        """The object that gets sealed into the SHA-256 commitment."""
-        body: dict[str, Any] = {
+        """The object that gets sealed into the SHA-256 commitment.
+
+        No ``sub_game``. Ours carried one and theirs does not, and a hashed
+        object is the last place to be unilaterally clever: an extra field is
+        invisible to us and fatal to a peer that checks the shape. Raised with
+        them as a question instead -- across sub-games a replayed commitment
+        would need the same step, role, position, action, hint and nonce, which
+        is a narrow enough gap to discuss rather than to patch alone.
+        """
+        return {
             "step": self.step,
-            "role": self.role,
-            "sub_game": self.sub_game_number,
-            "state": self.state_digest,
-            "move": self.move,
+            "role": WIRE_ROLE.get(self.role, self.role.upper()),
+            "state": [int(self.position[0]), int(self.position[1])],
+            "move": wire_move(self.move, self.barrier),
             "intent": self.intent,
             "hint": self.hint,
         }
-        if self.barrier is not None:
-            body["barrier"] = list(self.barrier)
-        return body
 
 
 @dataclass

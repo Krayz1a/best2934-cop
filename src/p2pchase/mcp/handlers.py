@@ -65,7 +65,7 @@ class PeerHandlers:
     def hello(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         """Identify ourselves and publish the fingerprints a match depends on."""
         return contracts.ok(handshake=self.negotiation.handshake().as_dict(),
-                    tools=list(contracts.ALL_TOOLS))
+                    tools=list(contracts.PUBLISHED_TOOLS))
 
     def negotiate(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Compare the opponent's fingerprints against ours (rule 11)."""

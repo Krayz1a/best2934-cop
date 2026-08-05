@@ -35,7 +35,7 @@ def test_hello_publishes_the_fingerprints_and_the_tool_list(handlers):
     response = handlers.hello()
     assert response["ok"]
     assert response["handshake"]["config_sha256"]
-    assert set(response["tools"]) == set(contracts.ALL_TOOLS)
+    assert set(response["tools"]) == set(contracts.PUBLISHED_TOOLS)
 
 
 def test_negotiation_agrees_with_a_matching_opponent(handlers, opponent):

@@ -704,6 +704,46 @@ against the live field and cannot be assumed to survive.
 
 ---
 
+### ADR-023 · Alternating turns are reconciled at the round, not at the message
+
+**Status** Accepted. Agreed with gal-roy1 as interop item I-7.
+**Context** Their protocol is alternating with a turn token: receiving a
+`TurnMessage` makes it your move. Ours is simultaneous — both commit, both
+reveal, both apply. `submit_turn` refused for weeks rather than guess, because a
+translator built on a guess passes its own tests and desynchronises a real match.
+**Decision** `runtime/turn_loop.py` drives one *side* of a round at a time:
+absorb what arrived, then act. A round means the same thing in both protocols —
+one action from each side, then the trails decay — so that is where the two
+models meet. The engine underneath is untouched; `PeerSession` still holds the
+board, the posterior and the commit chain, and the same audit runs over the same
+records (rule 36). Our reply rides home in `reply_turn`, so they can drive the
+whole match over outbound connections only and neither peer needs to be dialable.
+**Rationale** Reconciling at the message would have meant a second engine.
+Reconciling at the round is a ~120-line adapter.
+**Trade-off** Mid-round the two peers are one action apart by construction. That
+is correct and had to be written into the tests as an invariant, because the
+obvious assertion — equality — is an assertion that the protocol is simultaneous.
+
+**The bug this shape invites.** The first version echoed the sender's step back.
+That pins both peers on step 1 forever: every commitment recorded under one key,
+each overwriting the last, and an audit reporting five forgeries at step 1
+because five payloads were announced under one commitment. The fix is that the
+reply step depends on whether *we* have already acted in that round —
+`theirs if self.round < theirs else theirs + 1`.
+
+**The gap it exposed in our own auditor.** Whoever moves last always has a turn
+in flight, so the disclosed chain legitimately contains one step the other side
+never received a commitment for. We already failed the mirror case
+(`withheld_steps`); we silently *accepted* this one — meaning a peer could append
+fabricated steps at audit time, written after the outcome was known, bound by
+nothing. Now reported as `unsolicited_steps`, and the rule is positional rather
+than absolute: a disclosure past the last seal we hold is an in-flight turn and
+is fine; a disclosure in a *gap* below it is a step that was never played and
+fails. Failing all of them would fail every honest alternating match on its final
+step, which is the same mistake as ADR-021's, from the other side.
+
+---
+
 ## 4. Interface contracts
 
 ### 4.1 MCP tools (eleven, symmetric)

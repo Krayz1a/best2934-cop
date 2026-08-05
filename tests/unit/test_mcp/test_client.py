@@ -87,7 +87,7 @@ def test_a_transport_failure_names_the_tool_that_failed(monkeypatch):
 def test_the_loopback_client_reaches_every_contract_tool(loopback):
     answer = asyncio.run(loopback.hello())
     assert answer["ok"] is True
-    assert set(answer["tools"]) == set(contracts.ALL_TOOLS)
+    assert set(answer["tools"]) == set(contracts.PUBLISHED_TOOLS)
 
 
 def test_an_unknown_tool_is_refused_rather_than_raising(loopback):

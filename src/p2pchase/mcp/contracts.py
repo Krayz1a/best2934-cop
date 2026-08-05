@@ -43,6 +43,21 @@ ALL_TOOLS: tuple[str, ...] = (
     TOOL_SCENT, TOOL_FINAL_REVEAL, TOOL_AUDIT, TOOL_AGREE, TOOL_ABORT,
 )
 
+#: The opponent's dialect, as their CONNECT.md and INTEROP.md name it (ADR-019).
+#: Three of these collide with ours and three do not, which is what decides
+#: where each gets bound -- see :mod:`p2pchase.mcp.interop_server`.
+INTEROP_TOOLS: tuple[str, ...] = (
+    "hello", "propose_config", "declare_step0", "submit_turn", "confirm_result",
+    "final_audit", "agree_result",
+)
+
+#: Everything this server actually answers to, and so everything ``hello`` must
+#: advertise. gal-roy1 caught us publishing ``ALL_TOOLS`` here while the dialect
+#: tools were registered and unlisted: an opponent trusting the array would
+#: conclude ``propose_config`` does not exist and give up before calling it. A
+#: tool list is a promise, and an incomplete one is a promise broken quietly.
+PUBLISHED_TOOLS: tuple[str, ...] = tuple(sorted(set(ALL_TOOLS) | set(INTEROP_TOOLS)))
+
 
 def ok(**fields: Any) -> dict[str, Any]:
     """A successful tool response."""

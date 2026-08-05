@@ -24,9 +24,21 @@ Two failure modes, kept apart because they mean different things:
     A step we hold a live commitment for that never appeared in the disclosure.
     Absence must fail; otherwise the cheapest attack is to omit the bad step.
 
-Credit where due: gal-roy1 hit this in their own audit and told us, on the
-reasoning that rule 35 does not care which team forged a log -- if either peer
-can forge one undetected, neither team's report is worth anything.
+``unsolicited_steps``
+    The mirror image, and the one we missed until an alternating match made it
+    visible: a step disclosed at audit time that we never received a commitment
+    for during play. Nothing binds it -- it can be written after the outcome is
+    known, which is exactly what commit-reveal exists to prevent.
+
+    It cannot simply be failed, because the *last* one is honest: whoever moves
+    last in an alternating protocol always has a turn in flight when the
+    sub-game ends. So the rule is positional rather than absolute -- a
+    disclosure past the final commitment we hold is a turn we never got, and a
+    disclosure in a *gap* below it is a step that was never played.
+
+Credit where due: gal-roy1 hit the forgery case in their own audit and told us,
+on the reasoning that rule 35 does not care which team forged a log -- if either
+peer can forge one undetected, neither team's report is worth anything.
 """
 
 from __future__ import annotations
@@ -46,6 +58,7 @@ class CrossCheckedAudit:
     failed_steps: list[int] = field(default_factory=list)
     forged_steps: list[int] = field(default_factory=list)
     withheld_steps: list[int] = field(default_factory=list)
+    unsolicited_steps: list[int] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -54,6 +67,7 @@ class CrossCheckedAudit:
             "failed_steps": self.failed_steps,
             "forged_steps": self.forged_steps,
             "withheld_steps": self.withheld_steps,
+            "unsolicited_steps": self.unsolicited_steps,
         }
 
 
@@ -81,8 +95,13 @@ def audit_against_commitments(
     """
     failed: list[int] = []
     forged: list[int] = []
+    unsolicited: list[int] = []
     verified = 0
     seen: set[int] = set()
+    # The last step we were ever handed a seal for. Anything disclosed beyond it
+    # is a turn that was still in flight when the sub-game ended; anything
+    # disclosed *below* it that we never received is a step that never happened.
+    last_sealed = max(received) if received else 0
 
     for index, record in enumerate(records):
         step = _step_of(record, index)
@@ -99,6 +118,11 @@ def audit_against_commitments(
             forged.append(step)
             failed.append(step)
             continue
+        if received and step not in received and step < last_sealed:
+            # Unbound, and not the in-flight tail: invented after the fact.
+            unsolicited.append(step)
+            failed.append(step)
+            continue
         if verify(payload, nonce, announced):
             verified += 1
         else:
@@ -108,7 +132,8 @@ def audit_against_commitments(
     failed.extend(step for step in withheld if step not in failed)
     return CrossCheckedAudit(passed=not failed, verified_steps=verified,
                              failed_steps=sorted(failed), forged_steps=sorted(forged),
-                             withheld_steps=withheld)
+                             withheld_steps=withheld,
+                             unsolicited_steps=sorted(unsolicited))
 
 
 def audit_records(records: list[dict[str, Any]]) -> AuditResult:

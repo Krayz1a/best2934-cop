@@ -15,13 +15,13 @@ too; they dial out and drive, which makes our side mostly a matter of answering
 correctly; and :class:`~p2pchase.mcp.handlers.PeerHandlers` already takes a
 single dict per call, so the whole mismatch was ever only in the server binding.
 
-What is *not* settled here is the turn message itself. ``submit_turn`` is
-alternating and carries a turn token, where ours is simultaneous commit-reveal,
-and the field-by-field schema lives in their ``docs/INTEROP.md``, which we have
-asked for and not yet received. Guessing it would produce a translator that
-looks finished and is wrong, so :func:`submit_turn` refuses in a legible way
-instead -- an answer they can read is worth more than a crash they have to
-diagnose.
+The turn message was the last thing to land, and it was the only part that was
+never a renaming problem. ``submit_turn`` is alternating and carries a turn
+token; ours is simultaneous commit-reveal. It refused for weeks rather than
+guess, because a translator built on a guess would have passed its own tests and
+desynchronised a real match. The reconciliation is in
+:mod:`p2pchase.runtime.turn_loop`: a *round* means the same thing in both
+protocols, so we drive one side of a round at a time.
 """
 
 from __future__ import annotations
@@ -40,9 +40,7 @@ TOOL_DECLARE_STEP0 = "declare_step0"
 TOOL_SUBMIT_TURN = "submit_turn"
 TOOL_FINAL_AUDIT = "final_audit"
 TOOL_AGREE_RESULT = "agree_result"
-
-#: Named so the refusal below cannot drift from what we asked them for.
-PENDING_SPEC = "docs/INTEROP.md"
+TOOL_CONFIRM_RESULT = "confirm_result"
 
 
 class InteropAdapter:
@@ -56,6 +54,9 @@ class InteropAdapter:
 
     def __init__(self, handlers: PeerHandlers) -> None:
         self.handlers = handlers
+        #: The alternating turn loop, once a sub-game is running. Holds the
+        #: round counter, so it outlives a single call.
+        self._turns: Any = None
 
     # ------------------------------------------------------------- handshake
     def hello(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -105,21 +106,63 @@ class InteropAdapter:
 
     # ------------------------------------------------------------------ play
     def submit_turn(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Not yet implementable, and saying so plainly is the honest answer.
+        """Their turn arrives; ours rides home in ``reply_turn`` (I-7).
 
-        Two things are open: their ``TurnMessage`` schema, and whether play is
-        alternating with a turn token (which is how we read ``submit_turn``)
-        or simultaneous (which is what our engine does today). Neither can be
-        inferred safely, and a translator built on a guess would pass its own
-        tests and desynchronise a real match.
+        Receiving a ``TurnMessage`` makes it our move, so one call carries a
+        whole round. Piggybacking the reply is what lets them drive the entire
+        match over outbound connections only -- neither peer needs the other to
+        be dialable, which removes the failure mode a rotating tunnel URL would
+        otherwise create.
         """
-        step = payload.get("step", "?")
-        LOGGER.warning("submit_turn refused at step %s: %s not yet agreed", step, PENDING_SPEC)
-        return {"ok": False, "error": "turn schema not yet agreed",
-                "need": [f"{PENDING_SPEC} (TurnMessage field list)",
-                         "confirm alternating vs simultaneous",
-                         "confirm which role moves first in a sub-game"],
-                "step": step}
+        session = self.handlers.session
+        if session is None:
+            return {"ack": False, "error": "no sub-game is in progress"}
+        try:
+            return self.turns(session).receive(payload)
+        except ValueError as error:
+            # A turn we cannot apply -- most often a commitment we never saw.
+            # Answered rather than raised: an exception crosses MCP as an opaque
+            # transport failure and rule 6 charges both teams for the stall.
+            LOGGER.warning("refusing a turn at step %s: %s", payload.get("step"), error)
+            return {"ack": False, "step": payload.get("step"), "error": str(error)}
+
+    def turns(self, session: Any) -> Any:
+        """The turn loop bound to this sub-game, created once and kept.
+
+        Kept because it holds the round counter. Rebuilding it per call would
+        restart that at zero every turn, and a nil turn would stop being
+        distinguishable from the opening one.
+        """
+        from ..runtime.turn_loop import TurnLoop
+
+        if self._turns is None or self._turns.session is not session:
+            self._turns = TurnLoop(session)
+        return self._turns
+
+    def confirm_result(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """A concession, and only ever that (their INTEROP.md section 3).
+
+        When a capture lands inside a piggybacked reply, the winner learns it
+        won from ``claim_response`` -- but the *loser* is the only side that can
+        confirm it, and without that the two peers reach ``agree_result``
+        reading the sub-game differently, which voids the match for both of us
+        (rule 35). They found this in their own rehearsal and asked us to
+        implement it.
+
+        We record what they concede and never let it *award* us anything. A
+        message saying we lost is believed, because nobody concedes a game they
+        won. A message saying we won is recorded and still checked against our
+        own board, because that direction is exactly where a lie would pay.
+        """
+        session = self.handlers.session
+        if session is None:
+            return {"ack": False, "error": "no sub-game is in progress"}
+        outcome = str(payload.get("outcome", "") or "")
+        session.on_opponent_finished(outcome)
+        if payload.get("caught"):
+            LOGGER.info("opponent concedes capture at %s", payload.get("cell"))
+        return {"ack": True, "recorded": True,
+                "our_outcome": self.turns(session).finished or outcome}
 
     # -------------------------------------------------------------- endgame
     def final_audit(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -161,6 +204,7 @@ class InteropAdapter:
             TOOL_PROPOSE_CONFIG: self.propose_config,
             TOOL_DECLARE_STEP0: self.declare_step0,
             TOOL_SUBMIT_TURN: self.submit_turn,
+            TOOL_CONFIRM_RESULT: self.confirm_result,
             TOOL_FINAL_AUDIT: self.final_audit,
             TOOL_AGREE_RESULT: self.agree_result,
         }

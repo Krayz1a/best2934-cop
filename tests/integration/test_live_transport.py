@@ -102,10 +102,22 @@ def test_a_scent_query_is_accepted(served):
 
 
 def test_every_published_tool_is_reachable(served):
-    """The tool list in `hello` is a promise; an opponent will hold us to it."""
-    client, _ = served
+    """The tool list in ``hello`` is a promise; an opponent will hold us to it.
+
+    Asserted as "everything advertised can actually be called", not as equality
+    with our native contract. That equality is what we used to assert, and it
+    was the bug: the dialect tools were registered and unlisted, so an opponent
+    trusting the array would conclude ``propose_config`` did not exist and give
+    up before calling it. gal-roy1 found that from the outside. Equality would
+    pass again the moment someone advertised a name nothing serves, which is the
+    same promise broken from the other end.
+    """
+    client, session = served
     advertised = set(_call(client, contracts.TOOL_HELLO, {})["tools"])
-    assert advertised == set(contracts.ALL_TOOLS)
+    server = build_server(PeerHandlers(session.config, session))
+    registered = {tool.name for tool in asyncio.run(server.list_tools())}
+    assert advertised == registered
+    assert {"propose_config", "submit_turn", "confirm_result"} <= advertised
 
 
 def test_an_undeclared_argument_is_refused_by_the_transport(served):

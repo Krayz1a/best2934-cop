@@ -86,3 +86,47 @@ def test_the_replay_path_degrades_to_self_consistency_and_says_so():
     evidence about our own record rather than proof about theirs."""
     view, _ = _sealed(1, "N")
     assert audit_records([view]).passed
+
+
+def _view(step: int, move: str = "N") -> dict:
+    """Just the disclosed view -- the live commitment is read off it."""
+    return _sealed(step, move)[0]
+
+
+def test_the_turn_still_in_flight_is_accepted():
+    """Whoever moves last in an alternating round has a turn nobody received.
+
+    Failing it would fail every honest alternating match on its final step,
+    which is the same mistake as failing an honest simultaneous match on its
+    undisclosed pending step -- from the other side.
+    """
+    records = [_view(step) for step in (1, 2, 3)]
+    received = {step: records[step - 1]["commit"] for step in (1, 2)}
+
+    verdict = audit_against_commitments(records, received)
+    assert verdict.passed is True
+    assert verdict.unsolicited_steps == []
+
+
+def test_a_step_invented_below_the_last_seal_is_caught():
+    """The attack the tolerance above would otherwise open.
+
+    A record we never received a commitment for is bound by nothing: it can be
+    written after the outcome is known, which is precisely what commit-reveal
+    exists to prevent. Tolerating the in-flight tail is safe only because a
+    disclosure in a *gap* is not tolerated with it.
+    """
+    records = [_view(step) for step in (1, 2, 3)]
+    received = {1: records[0]["commit"], 3: records[2]["commit"]}
+
+    verdict = audit_against_commitments(records, received)
+    assert verdict.passed is False
+    assert verdict.unsolicited_steps == [2]
+    assert verdict.forged_steps == []
+
+
+def test_a_replay_from_disk_still_only_checks_itself():
+    """No live channel, so no cross-check is possible and none is claimed."""
+    verdict = audit_against_commitments([_view(1), _view(2)], None)
+    assert verdict.passed is True
+    assert verdict.unsolicited_steps == []

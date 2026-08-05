@@ -23,14 +23,20 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from . import contracts
 from .interop import InteropAdapter
 
 LOGGER = logging.getLogger(__name__)
 
 #: Registered here because nothing of ours already claims these names.
-DISTINCT_TOOLS = ("propose_config", "submit_turn", "final_audit")
+#: Derived rather than listed: the split *is* "does one of our tools already own
+#: this name", so computing it means a new dialect tool cannot be added to one
+#: list and forgotten in the other.
+DISTINCT_TOOLS = tuple(name for name in contracts.INTEROP_TOOLS
+                       if name not in contracts.ALL_TOOLS)
 #: Registered in :mod:`p2pchase.mcp.server`, with widened signatures.
-SHARED_NAMES = ("hello", "declare_step0", "agree_result")
+SHARED_NAMES = tuple(name for name in contracts.INTEROP_TOOLS
+                     if name in contracts.ALL_TOOLS)
 
 
 def register_interop(mcp: Any, adapter: InteropAdapter) -> tuple[str, ...]:
@@ -47,8 +53,13 @@ def register_interop(mcp: Any, adapter: InteropAdapter) -> tuple[str, ...]:
 
     @mcp.tool
     def submit_turn(payload: dict[str, Any]) -> dict[str, Any]:
-        """One alternating turn. Refuses legibly while the schema is unagreed."""
+        """One alternating turn in, ours back in ``reply_turn``."""
         return adapter.submit_turn(payload)
+
+    @mcp.tool
+    def confirm_result(payload: dict[str, Any]) -> dict[str, Any]:
+        """A conceded ending, so the winner of a piggybacked capture learns it won."""
+        return adapter.confirm_result(payload)
 
     @mcp.tool
     def final_audit(payload: dict[str, Any]) -> dict[str, Any]:

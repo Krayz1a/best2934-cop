@@ -26,7 +26,6 @@ from ..domain.brains import BrainBase, Decision
 from ..domain.crypto import commit
 from ..domain.own_state import OwnState
 from ..domain.protocol import StepIntent
-from ..reports.artifacts import digest_payload
 from ..strategy.hint_decoder import heading_from_hint
 from ..strategy.talk_engine import TalkEngine
 
@@ -67,7 +66,7 @@ class Side:
             hint=hint,
             intent=decision.intent,
             barrier=list(decision.barrier) if decision.barrier else None,
-            state_digest=digest_payload(self.state.state_digest_source()),
+            position=self.state.settled_position(decision.move, decision.barrier),
         )
         self.records.append(commit(intent.payload()).audit_view())
 

@@ -91,9 +91,27 @@ def test_agree_result_answers_their_payload_form(server):
     assert "digest_covers" in answer
 
 
-def test_submit_turn_refuses_rather_than_pretending_to_have_moved(server):
-    """Until the turn schema is agreed, a refusal an opponent can read beats a
-    guess that desynchronises two boards and surfaces at the audit."""
-    answer = _call(server, "submit_turn", {"payload": {"step": 3}})
-    assert answer["ok"] is False
-    assert answer["need"]
+def test_submit_turn_answers_a_nil_opening_with_a_real_turn(server):
+    """The opening handover, over the published tool rather than the adapter.
+
+    A nil turn carries no commitment and must not advance a round counter, but
+    it does pass the token -- so the answer to one is our first real move.
+    """
+    answer = _call(server, "submit_turn", {"payload": {
+        "step": 0, "sender": "THIEF", "commit": None, "hint": None,
+        "scent_grid": {}, "nil": True}})
+
+    assert answer["ack"] is True
+    reply = answer["reply_turn"]
+    assert reply["step"] == 1
+    assert len(reply["commit"]) == 64
+    assert "move" not in reply and "state" not in reply  # I-5
+
+
+def test_confirm_result_is_published_and_records_a_concession(server):
+    """They asked for this one: without it the winner of a piggybacked capture
+    never learns it won, and rule 35 voids the match for both teams."""
+    answer = _call(server, "confirm_result", {"payload": {
+        "outcome": "capture", "caught": True, "cell": [2, 2]}})
+    assert answer["ack"] is True
+    assert answer["recorded"] is True

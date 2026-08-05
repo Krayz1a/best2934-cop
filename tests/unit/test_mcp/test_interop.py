@@ -14,8 +14,11 @@ import pytest
 from p2pchase.mcp.handlers import PeerHandlers
 from p2pchase.mcp.interop import InteropAdapter
 
+#: Their INTEROP.md section 3 table. ``confirm_result`` is the seventh, added
+#: after they hit the case it exists for: a capture that lands inside a
+#: piggybacked reply leaves the winner unaware it won until the loser concedes.
 THEIR_TOOLS = {"hello", "propose_config", "declare_step0", "submit_turn",
-               "final_audit", "agree_result"}
+               "confirm_result", "final_audit", "agree_result"}
 
 
 @pytest.fixture
@@ -63,14 +66,12 @@ def test_an_agreed_config_is_accepted(adapter, peer_config):
     assert len(answer["config_sha256"]) == 64
 
 
-def test_submit_turn_refuses_legibly_rather_than_guessing(adapter):
-    """Their TurnMessage schema is not agreed yet. A translator built on a
-    guess would pass its own tests and desynchronise a real match, so this
-    answers with what it needs instead of with a move."""
-    answer = adapter.submit_turn({"step": 7})
-    assert answer["ok"] is False
-    assert answer["step"] == 7
-    assert any("INTEROP" in need for need in answer["need"])
+def test_submit_turn_without_a_sub_game_refuses_instead_of_raising(adapter):
+    """An exception crosses MCP as an opaque transport failure the opponent
+    cannot tell from a crash, and rule 6 charges both teams for the stall."""
+    answer = adapter.submit_turn({"step": 7, "commit": "a" * 64})
+    assert answer["ack"] is False
+    assert "no sub-game" in answer["error"]
 
 
 def test_agree_result_says_what_its_digest_covers(adapter):

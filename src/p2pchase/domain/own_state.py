@@ -183,11 +183,25 @@ class OwnState:
             "outcome": self.outcome,
         }
 
-    def state_digest_source(self) -> dict[str, Any]:
-        """The board snapshot sealed into each commitment.
+    def settled_position(self, move: str, barrier: Coord | None = None) -> Coord:
+        """Where an action leaves us -- the cell sealed as ``state``.
 
-        Binding the commitment to a state snapshot is what stops an old
-        commitment being replayed in a new context (book ch5.3.1).
+        A barrier is placed from a standstill (rule: the privilege is bought by
+        forgoing movement), so it leaves the position untouched. Anything else
+        settles through :meth:`settle_move`, which is what makes this the cell
+        we will actually be standing on rather than the one we aimed at.
+        """
+        if barrier is not None:
+            return self.position
+        return self.settle_move(move)
+
+    def state_digest_source(self) -> dict[str, Any]:
+        """The board snapshot, for anything that still wants a state digest.
+
+        No longer sealed into commitments -- those now carry the position
+        itself, in gal-roy1's shape (see :class:`~p2pchase.domain.protocol.
+        StepIntent`). Kept because the replay viewer and the log artifacts use
+        it to key a board state, where a digest is the right thing.
         """
         return {
             "step": self.step,
