@@ -37,9 +37,12 @@ KNOCK_INTERVAL_SEC = 1.0
 
 
 async def _serve_forever(handlers: PeerHandlers, host: str, port: int, name: str) -> None:
+    from ..mcp.accept_probe import probe_middleware
+
     server = build_server(handlers, name=name)
     LOGGER.info("peer server listening on http://%s:%d/mcp", host, port)
-    await server.run_http_async(host=host, port=port, show_banner=False)
+    await server.run_http_async(host=host, port=port, show_banner=False,
+                                middleware=probe_middleware())
 
 
 async def _await_opponent(runner: PeerRunner, url: str,
@@ -63,6 +66,44 @@ async def _await_opponent(runner: PeerRunner, url: str,
     raise TransportError(f"opponent at {url} never answered within {timeout:.0f}s: {last}")
 
 
+async def declare_step0(runner: PeerRunner) -> str:
+    """Declare our hardware and our role before move one (rules 24, 53).
+
+    Returns the opponent's refusal, or ``""`` if they accepted. The refusal that
+    matters is a role clash: both peers derive the assignment from the same rule
+    (:mod:`p2pchase.domain.roles`), so if they read the pairing differently then
+    one of the two implementations is wrong and the sub-game is unplayable. Two
+    cops chase nobody. Finding that here costs a handshake; finding it at move
+    one costs both teams a technical loss under rule 6.
+
+    A peer that does not implement ``declare_step0`` at all is *not* refused --
+    that would be inventing a requirement the rulebook does not make, and our own
+    declaration is committed as step 0 of our chain either way, which is what
+    rule 24 actually asks for.
+    """
+    from ..infra.sysinfo import build_step0
+    from ..mcp import contracts
+
+    session, config = runner.session, runner.config
+    declaration = build_step0(
+        group_name=config.group_name, sub_game_number=session.sub_game,
+        llm_model=str(config.llm.get("model", "template")),
+        signing_secret=runner.signing_secret, role=session.role,
+        group_id=session.group_id,
+    )
+    try:
+        answer = await runner.client.call(contracts.TOOL_STEP0, contracts.step0_payload(
+            session.game_id, session.sub_game, session.group_id, session.role, declaration))
+    except Exception as error:  # noqa: BLE001 -- an unimplemented tool is not a clash
+        LOGGER.info("opponent did not accept a step-0 declaration (%s); continuing", error)
+        return ""
+    if answer.get("ok") is False:
+        return str(answer.get("reason", "opponent refused our step-0 declaration"))
+    LOGGER.info("step 0 declared: we are the %s, they answer %s",
+                session.role, answer.get("their_role") or "no role")
+    return ""
+
+
 async def host_and_play(runner: PeerRunner, handlers: PeerHandlers, host: str, port: int,
                         url: str, on_handshake) -> tuple[PeerOutcome, dict[str, Any]]:
     """Bring our server up, wait for theirs, play one sub-game, then stop.
@@ -83,6 +124,14 @@ async def host_and_play(runner: PeerRunner, handlers: PeerHandlers, host: str, p
         # One session for the whole sub-game: see PeerClient.open.
         await runner.client.open()
         try:
+            # Step 0 before step 1, and it is the last cheap moment to find a
+            # role clash: two peers that both think they are the cop chase
+            # nobody, and rule 6 charges both teams for the sub-game that never
+            # happens. See declare_step0 above.
+            clash = await declare_step0(runner)
+            if clash:
+                LOGGER.error("refusing to play %s: %s", url, clash)
+                return await runner.abort(f"role clash at step 0: {clash}", 0), handshake
             return await runner.run_sub_game(), handshake
         finally:
             await runner.client.close()

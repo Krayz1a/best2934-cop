@@ -14,6 +14,7 @@ import logging
 import os
 from typing import Any
 
+from ..domain import roles
 from ..mcp.client import PeerClient
 from ..mcp.handlers import PeerHandlers
 from ..reports.naming import now_iso
@@ -34,6 +35,43 @@ def _sdk(args: Any) -> P2PChaseSDK:
     )
 
 
+class RoleClashError(RuntimeError):
+    """``--role`` contradicts the role the agreed rule derives for this sub-game."""
+
+
+def _sdk_for_sub_game(args: Any) -> P2PChaseSDK:
+    """Load the SDK for the side we are actually meant to be playing.
+
+    Roles across a series are derived, not chosen (:mod:`p2pchase.domain.roles`),
+    so once ``--opponent`` names who we are playing there is exactly one right
+    answer and the operator should not have to work it out at the keyboard at
+    match time. Omitting ``--role`` lets the rule pick, including which config
+    directory to load.
+
+    Naming a side that contradicts the rule is refused rather than silently
+    corrected. Both are defensible; refusing wins because an operator who typed
+    a role meant it, and a peer that quietly played the other side would be a
+    stranger thing to debug than a message saying which side it should be.
+    """
+    sdk = _sdk(args)
+    opponent = str(getattr(args, "opponent", "") or "")
+    if not opponent or opponent == sdk.config.group_id:
+        return sdk
+    derived = roles.role_for(sdk.config.group_id, opponent,
+                             int(getattr(args, "sub_game", 1)), sdk.config.num_sub_games)
+    if derived == args.role:
+        return sdk
+    if getattr(args, "role_explicit", False):
+        raise RoleClashError(
+            f"--role {args.role} contradicts the agreed rule: sub-game "
+            f"{args.sub_game} against {opponent} makes us the {derived}. "
+            f"Drop --role to let the rule decide, or fix the sub-game number.")
+    LOGGER.info("the role rule makes us the %s for sub-game %s against %s",
+                derived, getattr(args, "sub_game", 1), opponent)
+    args.role = derived
+    return _sdk(args)
+
+
 def serve(args: Any) -> int:
     """Run only the server half of this peer, until interrupted.
 
@@ -48,7 +86,11 @@ def serve(args: Any) -> int:
     from ..mcp.server import MissingTransportError
     from ..mcp.server import serve as run_server
 
-    sdk = _sdk(args)
+    try:
+        sdk = _sdk_for_sub_game(args)
+    except RoleClashError as error:
+        print(error)
+        return EXIT_CONFIG
     session = PeerSession(sdk.config, args.role, args.game_id, sub_game=args.sub_game)
     handlers = PeerHandlers(sdk.config, session)
     try:
@@ -68,16 +110,22 @@ def play(args: Any) -> int:
     one session. See :mod:`p2pchase.runtime.peer_host` for why that cannot be
     split across two processes.
     """
-    sdk = _sdk(args)
+    try:
+        sdk = _sdk_for_sub_game(args)
+    except RoleClashError as error:
+        print(error)
+        return EXIT_CONFIG
     url = args.opponent_url or sdk.config.opponent_url
     if not url:
         print("no opponent URL: pass --opponent-url or set network.opponent_url")
         return EXIT_CONFIG
+    print(f"role           : {args.role} (sub-game {args.sub_game})")
 
     session = PeerSession(sdk.config, args.role, args.game_id,
                           sub_game=args.sub_game, seed=args.seed)
     client = PeerClient(url, timeout=float(sdk.config.turn_timeout))
-    runner = PeerRunner(sdk.config, session, client)
+    runner = PeerRunner(sdk.config, session, client,
+                        signing_secret=os.environ.get("P2PCHASE_SIGNING_SECRET", ""))
     handlers = PeerHandlers(sdk.config, session)
     port = args.port or sdk.config.my_port
 

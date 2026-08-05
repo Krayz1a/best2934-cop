@@ -191,3 +191,48 @@ def test_tools_are_refused_cleanly_before_a_sub_game_starts(peer_config):
     assert not idle.commit_step({"step": 1, "commit": "a" * 64})["ok"]
     assert not idle.final_reveal({})["ok"]
     assert not idle.audit_result({"records": []})["ok"]
+
+
+def test_step0_accepts_the_complementary_role(handlers):
+    """The ordinary case: they declare the other side, and we record it.
+
+    ``rival999`` sorts before ``test1234``, so sub-game 4 is the one where the
+    agreed rule makes us the cop against them.
+    """
+    handlers.session.sub_game = 4
+    response = handlers.declare_step0({"role": "THIEF", "group_id": "rival999",
+                                       "spec": {"os": "linux"}})
+    assert response["ok"], response.get("reason")
+    assert response["role_checked"] is True
+    assert handlers.session.opponent_records
+
+
+def test_step0_refuses_a_peer_that_also_thinks_it_is_the_cop(handlers):
+    """Two cops chase nobody, and rule 6 charges both teams for the stall.
+
+    Caught before move one is the whole point: caught at move one, it is an
+    unplayable sub-game neither side can rescue.
+    """
+    response = handlers.declare_step0({"role": "COP", "group_id": "rival999"})
+    assert response["ok"] is False
+    assert "role clash" in response["reason"]
+    assert not handlers.session.opponent_records, "a refused declaration is not recorded"
+
+
+def test_step0_refuses_a_complementary_pair_that_has_the_series_backwards(handlers):
+    """Playable, complementary, and scored against the wrong halves.
+
+    Our session is the cop at sub-game 1, where the rule makes ``rival999`` the
+    cop; a check that only looked for one-of-each would wave this through.
+    """
+    response = handlers.declare_step0({"role": "THIEF", "group_id": "rival999"})
+    assert response["ok"] is False
+    assert "sub-game 1" in response["reason"]
+
+
+def test_step0_records_an_undeclared_role_without_inventing_a_verdict(handlers):
+    """A peer that declares no role cannot be checked, and the answer says so."""
+    response = handlers.declare_step0({"spec": {"os": "linux"}, "group_id": "rival999"})
+    assert response["ok"]
+    assert response["role_checked"] is False
+    assert handlers.session.opponent_records

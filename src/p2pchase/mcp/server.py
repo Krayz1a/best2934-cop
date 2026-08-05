@@ -181,9 +181,12 @@ def serve(config: PeerConfig, handlers: PeerHandlers | None = None,
     tunnel's job (ngrok / Localtonet), not this process's, so nothing is
     published by accident during development.
     """
+    from .accept_probe import probe_middleware
+
     handlers = handlers or PeerHandlers(config)
     server = build_server(handlers, name=f"p2pchase-{config.group_id}-{config.role}")
     bind_port = port or config.my_port
     LOGGER.info("peer server listening on http://%s:%d/mcp (role=%s, group=%s)",
                 host, bind_port, config.role, config.group_id)
-    server.run(transport="http", host=host, port=bind_port)
+    server.run(transport="http", host=host, port=bind_port,
+               middleware=probe_middleware())

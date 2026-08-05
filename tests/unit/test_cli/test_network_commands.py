@@ -141,3 +141,37 @@ def test_the_text_gui_runs_a_real_sub_game(args, capsys):
     """The text renderer is the one a headless grader will actually see."""
     assert network_commands.gui(args) == EXIT_OK
     assert "p2pchase live view" in capsys.readouterr().out
+
+
+def test_the_role_rule_picks_the_side_when_none_was_named(args, monkeypatch):
+    """Roles are derived, not chosen, so the operator should not have to work
+    out at match time which side sub-game 4 makes us.
+
+    ``rival999`` sorts before ``test1234``, so we are the thief for the first
+    half of the series and the cop for the second.
+    """
+    args.role, args.role_explicit = "police", False
+    args.sub_game = 1
+    assert network_commands._sdk_for_sub_game(args).config.role == "thief"
+    assert args.role == "thief"
+
+    args.role, args.sub_game = "police", 4
+    assert network_commands._sdk_for_sub_game(args).config.role == "police"
+
+
+def test_a_role_that_contradicts_the_rule_is_refused_not_corrected(args, capsys):
+    """An operator who typed a role meant it, and a peer that quietly played the
+    other side would be a stranger thing to debug than a message saying so."""
+    args.role, args.role_explicit, args.sub_game = "police", True, 1
+    assert network_commands.play(args) == EXIT_CONFIG
+    out = capsys.readouterr().out
+    assert "contradicts the agreed rule" in out
+    assert "makes us the thief" in out
+
+
+def test_our_own_two_peers_rehearsing_are_left_alone(args):
+    """The rehearsal gate runs both our sides under one group id, where the rule
+    has nothing to say. Overriding there would break the gate that has to pass
+    before every counted game."""
+    args.role, args.role_explicit, args.opponent = "police", False, "test1234"
+    assert network_commands._sdk_for_sub_game(args).config.role == "police"

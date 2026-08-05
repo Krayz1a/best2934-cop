@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from ..domain import roles
 from ..runtime.peer_session import PeerSession
 from ..services.negotiation_service import NegotiationService
 from ..shared.peer_config import PeerConfig
@@ -75,12 +76,36 @@ class PeerHandlers:
         return contracts.ok(**agreement.as_dict())
 
     def declare_step0(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Accept the opponent's signed hardware declaration (rule 24)."""
+        """Accept the opponent's signed hardware declaration (rule 24).
+
+        Also the last moment a role clash is cheap. Two peers that both think
+        they are the cop chase nobody, and neither discovers it until the moves
+        stop making sense -- by which time rule 6 has charged both teams for a
+        sub-game that could never have been played. gal-roy1 asked for this
+        check and they are right to: the roles are derivable from the sub-game
+        number and the two group ids (:mod:`p2pchase.domain.roles`), so a
+        disagreement here is a bug in one of the two implementations and is worth
+        refusing loudly rather than playing through.
+
+        A peer that declares no role at all is accepted, because we cannot check
+        what nobody stated -- but the answer says so plainly rather than reading
+        as a clean bill of health.
+        """
         session = self._require_session()
         if session is None:
             return contracts.error("no sub-game is in progress")
+        theirs = roles.normalise_role(str(payload.get("role", "")))
+        clash = roles.role_clash(session.role, theirs, session.group_id,
+                                 str(payload.get("group_id", "")
+                                     or payload.get("group_name", "")),
+                                 session.sub_game, self.config.num_sub_games)
+        if clash:
+            LOGGER.error("refusing step 0: %s", clash)
+            return contracts.error(f"role clash: {clash}", our_role=session.role,
+                                   their_role=theirs, sub_game=session.sub_game)
         session.opponent_records.append(dict(payload))
-        return contracts.ok(step=0)
+        return contracts.ok(step=0, our_role=session.role, their_role=theirs,
+                            role_checked=bool(theirs))
 
     def commit_step(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Receive a sealed step. The hash alone reveals nothing."""

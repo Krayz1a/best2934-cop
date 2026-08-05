@@ -122,5 +122,8 @@ def test_serve_binds_loopback_and_the_configured_port(peer_config, handlers, mon
     monkeypatch.setattr("p2pchase.mcp.server.build_server", lambda *a, **kw: _Recorder())
     serve(peer_config, handlers)
 
-    assert captured == {"transport": "http", "host": "127.0.0.1",
-                        "port": peer_config.my_port}
+    assert captured["transport"] == "http"
+    assert captured["host"] == "127.0.0.1"
+    assert captured["port"] == peer_config.my_port
+    # The 406 diagnostic rides along on every served request; see accept_probe.
+    assert len(captured["middleware"]) == 1

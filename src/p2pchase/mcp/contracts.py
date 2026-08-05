@@ -129,6 +129,25 @@ def reveal_payload(game_id: str, sub_game: int, step: int, group: str, role: str
     return body
 
 
+def step0_payload(game_id: str, sub_game: int, group: str, role: str,
+                  declaration: dict[str, Any]) -> dict[str, Any]:
+    """STEP 0: our signed hardware declaration, and which side we are playing.
+
+    ``role`` and ``group_id`` are lifted to the top level as well as being
+    sealed inside ``declaration``. The opponent needs them to check the pairing
+    is complementary before move one, and making them dig through a signed blob
+    for it -- a blob whose exact shape we have never agreed with anyone -- would
+    be a poor place to be clever.
+    """
+    return {
+        **declaration,
+        "game_id": game_id,
+        "sub_game_number": sub_game,
+        "group_id": group,
+        "role": role,
+    }
+
+
 def scent_query(game_id: str, sub_game: int, step: int, cells: list[list[int]]) -> dict[str, Any]:
     """Ask the opponent for its pheromone intensity at specific cells.
 

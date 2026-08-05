@@ -33,13 +33,22 @@ def series(sdk):
     return sdk.run_series(OPPONENT, sub_games=2, seed=3)
 
 
-def test_the_roles_swap_between_sub_games(peer_config):
-    """Rule 12: neither team may keep the easier half of the asymmetry."""
-    first = roles_for_sub_game(1, "us", "them")
-    second = roles_for_sub_game(2, "us", "them")
-    assert first["us"] == constants.ROLE_COP
-    assert second["us"] == constants.ROLE_THIEF
-    assert first["them"] != second["them"]
+def test_the_roles_swap_halfway_through_the_series(peer_config):
+    """Rule 12: neither team may keep the easier half of the asymmetry.
+
+    Three and three, and the cop for the first half is the lower group id -- the
+    rule agreed with gal-roy1. This used to assert that the *locally named* team
+    was the cop in every odd sub-game, which is the version that had both peers
+    computing themselves as the cop and disagreeing about all six.
+    """
+    played = [roles_for_sub_game(n, "us", "them") for n in range(1, 7)]
+    mine = [assignment["us"] for assignment in played]
+
+    assert mine == [constants.ROLE_THIEF] * 3 + [constants.ROLE_COP] * 3, (
+        '"them" sorts before "us", so they hold the cop for sub-games 1-3')
+    for assignment in played:
+        assert set(assignment.values()) == {constants.ROLE_COP, constants.ROLE_THIEF}
+    assert mine.count(constants.ROLE_COP) == mine.count(constants.ROLE_THIEF) == 3
 
 
 def test_a_series_writes_every_mandatory_artifact(series, tmp_path):

@@ -126,8 +126,19 @@ def build_step0(
     llm_model: str,
     signing_secret: str,
     repo_dir: str | None = None,
+    role: str = "",
+    group_id: str = "",
 ) -> dict[str, Any]:
-    """The signed Step-0 record, written as step 0 of the match log."""
+    """The signed Step-0 record, written as step 0 of the match log.
+
+    ``role`` and ``group_id`` ride inside the signed payload rather than beside
+    it, because the role is the one field an opponent may want to argue about
+    afterwards. Both peers derive the assignment from the same rule
+    (:mod:`p2pchase.domain.roles`), so a signed, committed declaration of which
+    side we believed we were playing turns a post-hoc dispute into a lookup.
+    They default to empty for the callers that build a declaration outside a
+    sub-game, where there is no role to state.
+    """
     payload = {
         "step": 0,
         "type": "system_spec",
@@ -135,6 +146,8 @@ def build_step0(
         "model": llm_model,
         "code_version": constants.CODE_VERSION,
         "group_name": group_name,
+        "group_id": group_id or group_name,
+        "role": role,
         "sub_game_number": sub_game_number,
         "github_commit": git_commit(repo_dir),
     }

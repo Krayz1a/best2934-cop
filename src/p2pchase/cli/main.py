@@ -23,10 +23,15 @@ from . import commands, network_commands
 
 
 def _add_common(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--role", default=constants.DEFAULT_ROLE,
+    # Defaulted in main() rather than here, so a command can tell an explicit
+    # ``--role`` from an omitted one. Over the network the agreed rule derives
+    # the role from the sub-game number, and silently overriding a side the
+    # operator actually asked for would be worse than refusing.
+    parser.add_argument("--role", default=None,
                         choices=[constants.ROLE_COP, constants.ROLE_THIEF],
                         help=f"which side this process plays "
-                             f"(default: {constants.DEFAULT_ROLE})")
+                             f"(default: {constants.DEFAULT_ROLE}, or the agreed "
+                             f"role rule when --opponent is given)")
     parser.add_argument("--config-dir", default=None,
                         help="override the config directory (default: config/<role>)")
 
@@ -86,6 +91,8 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--port", type=int, default=None, help="bind port")
     serve.add_argument("--game-id", default="local-rehearsal", help="game id to serve")
     serve.add_argument("--sub-game", type=int, default=1, help="sub-game number")
+    serve.add_argument("--opponent", default="",
+                       help="opponent group id; with it, the agreed role rule picks the side")
     serve.set_defaults(func=network_commands.serve)
 
     play = sub.add_parser("play", help="serve our tools and play one sub-game")
@@ -95,6 +102,8 @@ def build_parser() -> argparse.ArgumentParser:
     play.add_argument("--port", type=int, default=None, help="bind port (default: my_port)")
     play.add_argument("--game-id", default="local-rehearsal", help="agreed game id")
     play.add_argument("--sub-game", type=int, default=1, help="sub-game number")
+    play.add_argument("--opponent", default="",
+                      help="opponent group id; with it, the agreed role rule picks the side")
     play.add_argument("--seed", type=int, default=0, help="seed for reproducibility")
     play.set_defaults(func=network_commands.play)
 
@@ -111,6 +120,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    args.role_explicit = args.role is not None
+    args.role = args.role or constants.DEFAULT_ROLE
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)-7s %(name)-28s %(message)s",

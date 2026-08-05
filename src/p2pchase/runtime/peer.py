@@ -62,13 +62,16 @@ class PeerRunner:
     Input:  a :class:`PeerSession` (our private world) and a client that can
             reach the opponent's MCP server.
     Output: a :class:`PeerOutcome` plus a complete, disclosable commit chain.
-    Setup:  timeouts come from the agreed config, never from literals.
+    Setup:  timeouts come from the agreed config, never from literals;
+            ``signing_secret`` signs the step-0 declaration (rule 24).
     """
 
-    def __init__(self, config: PeerConfig, session: PeerSession, client: Any) -> None:
+    def __init__(self, config: PeerConfig, session: PeerSession, client: Any,
+                 signing_secret: str = "") -> None:
         self.config = config
         self.session = session
         self.client = client
+        self.signing_secret = signing_secret
         self.watchdog = Watchdog(timeout_sec=float(config.watchdog_timeout))
         self.turn_timeout = float(config.turn_timeout)
         #: True once the opponent has confirmed one of our capture claims.

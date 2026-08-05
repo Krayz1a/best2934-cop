@@ -868,6 +868,89 @@ is not obliged to be tidy, and the protocol has to be right when they are not.
 
 ---
 
+### ADR-028 · Roles across a series are derived, never named
+
+**Status** Accepted. Agreed with gal-roy1 (channel seq 37 asked, seq 39
+confirmed); `CONNECT.md` §6 had proposed 3-and-3 without pinning the form.
+**Context** The rulebook never assigns roles across a series, and the scoring is
+asymmetric — capture pays the cop 20, survival pays the thief 10 — so a pairing
+where one team always played cop would be structurally unfair.
+
+Our rule was `roles_for_sub_game(sub_game, group_a, group_b)`, swapping on the
+parity of the sub-game number with the *locally named* team first. It reads as
+3-and-3 and it is not a rule at all: it is a function of argument order. Each
+peer calls it as `(us, them)`, so **each peer computes itself as the cop in
+every odd sub-game** and the two sides disagree about all six.
+
+Nothing caught it because only one side ever ran it. The local harness plays
+both halves in one process, where a self-consistent wrong answer is
+indistinguishable from a right one — the same shape as ADR-026, found the same
+way, one layer up.
+
+**Decision** The cop for the first half of the series is `sorted(group_ids)[0]`,
+and the second half the other team. The halfway point is derived from the agreed
+`num_sub_games` rather than hard-coded at 3, so it cannot drift from what both
+peers fingerprinted. The rule lives in `p2pchase.domain.roles` — a rule, not a
+service — because the MCP handlers and the CLI both have to reach it without
+importing a series runner.
+
+Three consequences follow, and the first two are the point:
+
+* `declare_step0` **refuses** a peer whose declared role is not complementary,
+  *and* refuses a complementary pair that has the series backwards. A check for
+  one-of-each alone would wave through two internally-consistent peers playing
+  the wrong halves.
+* We now **send** a step-0 declaration naming our role, so they can refuse us
+  too. A check that only ran inbound would leave the opponent blind.
+* Omitting `--role` lets the rule pick the side, including which config to load.
+  A `--role` that contradicts it is refused rather than silently corrected.
+
+**Rationale** Sorting is what makes the assignment derivable rather than
+negotiable: both peers compute the same answer from the two group ids and the
+sub-game number alone, with no message to exchange. A role clash is not a bad
+sub-game, it is an unplayable one — two cops chase nobody — and rule 6 charges
+*both* teams for the stall.
+**Trade-off** An odd series cannot be split evenly, and the extra sub-game falls
+to the second-sorted team. That is arbitrary, but it is arbitrary *identically
+on both sides*, which is the only property that matters. A peer that declares no
+role is accepted, because we cannot check what nobody stated; the response says
+`role_checked: false` rather than reading as a clean bill of health.
+**Lesson.** An agreement between two peers that only one peer ever evaluates is
+not an agreement, it is a local convention. The test that matters computes the
+assignment from both sides and asserts they are complements — which the parity
+rule fails on all six sub-games and passes zero times.
+
+---
+
+### ADR-029 · A 406 explains itself in our log
+
+**Status** Accepted.
+**Context** Our peer server exchanged tools cleanly with gal-roy1 for four
+minutes at 20:55, went quiet, and from 00:10 was POSTed every thirty seconds
+from two addresses — 96 requests, every one answered `406 Not Acceptable`
+before any of our code ran. MCP's streamable-HTTP transport requires an
+`Accept` header naming both `application/json` and `text/event-stream`, and
+refuses the request in the SDK when it does not.
+
+From our side an opponent being turned away at the door looks exactly like an
+opponent who never knocked. That is a rule 6 technical loss for both teams,
+arrived at without either side doing anything wrong.
+
+**Decision** A pure-ASGI passthrough in front of the transport logs the
+offending `Accept` header, what was missing, and the exact header a client must
+send. It changes no behaviour.
+**Rationale** Being lenient was the tempting option and is wrong: rewriting the
+header would answer with an event stream to a client that has just said it
+cannot read one, which fails later and quieter than an honest refusal. The SDK
+does have a JSON-only response mode, but switching the live wire format
+unilaterally to accommodate a client we cannot inspect would risk the path that
+already works — so it stays available and unused, and they get told instead.
+**Lesson.** This was only diagnosable because the server's output was going to a
+file by then (the fix from the previous session). Logging made it findable; this
+makes it findable *without* someone who happens to know what a 406 means here.
+
+---
+
 ## 4. Interface contracts
 
 ### 4.1 MCP tools (eleven, symmetric)
@@ -876,7 +959,7 @@ is not obliged to be tidy, and the protocol has to be right when they are not.
 |---|---|---|---|
 | `hello` | both | — | `{ok, handshake, tools}` |
 | `negotiate` | both | `{handshake}` | `{ok, agreed, mismatches}` |
-| `declare_step0` | both | signed declaration | `{ok}` |
+| `declare_step0` | both | signed declaration + `{group_id, role}` | `{ok, our_role, their_role, role_checked}`; refuses a role clash (ADR-028) |
 | `commit_step` | both | `{game_id, sub_game_number, step, commit, sender_group, sender_role}` | `{ok}` |
 | `acknowledge_step` | both | `{game_id, sub_game_number, step}` | `{ok, held}` |
 | `reveal_step` | both | `{…, move, hint, barrier?, capture_claim?}` | `{ok, caught}` |

@@ -1,8 +1,10 @@
 """Running a series and turning it into the four mandatory artifacts.
 
 A *game* between two teams is a series of sub-games (six by default), and the
-roles swap between them so neither side gets the easier half of the asymmetry.
-That swap is the reason so little state carries across a sub-game: each one gets
+roles swap halfway through so neither side gets the easier half of the asymmetry
+(:mod:`p2pchase.domain.roles` holds the rule and why it is derived, not agreed
+move by move). That swap is the reason so little state carries across a
+sub-game: each one gets
 a fresh board, fresh beliefs and a fresh commit chain, while the declaration and
 the running tally span the whole series.
 
@@ -19,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import constants
+from ..domain import roles
 from ..domain.crypto import commit
 from ..domain.scoring import ScoreTable, SeriesTally, build_score_table
 from ..infra.sysinfo import build_step0, collect_hardware, git_commit
@@ -30,16 +33,11 @@ from ..shared.peer_config import PeerConfig
 LOGGER = logging.getLogger(__name__)
 
 
-def roles_for_sub_game(sub_game: int, group_a: str, group_b: str) -> dict[str, str]:
-    """Which team plays which role. Odd sub-games: ``group_a`` is the cop.
-
-    Swapping on parity rather than randomly means both peers derive the same
-    assignment from the sub-game number alone, with nothing to negotiate and
-    nothing to disagree about mid-series.
-    """
-    if sub_game % 2 == 1:
-        return {group_a: constants.ROLE_COP, group_b: constants.ROLE_THIEF}
-    return {group_a: constants.ROLE_THIEF, group_b: constants.ROLE_COP}
+#: Re-exported: the role rule lives in the domain because it is a rule, not a
+#: service, and both the MCP handlers and the CLI have to derive the same answer
+#: without importing a series runner. See :mod:`p2pchase.domain.roles` for why
+#: the parity rule that used to live here disagreed with itself across peers.
+roles_for_sub_game = roles.roles_for_sub_game
 
 
 @dataclass
@@ -84,7 +82,7 @@ class MatchService:
             hardware_spec=collect_hardware().as_dict(),
         )
 
-    def step_zero(self, sub_game: int) -> dict[str, Any]:
+    def step_zero(self, sub_game: int, role: str = "") -> dict[str, Any]:
         """Signed hardware declaration, committed as step 0 of every log.
 
         It is wrapped in a commit record like any other step, not written raw.
@@ -98,6 +96,8 @@ class MatchService:
             sub_game_number=sub_game,
             llm_model=str(self.config.llm.get("model", "template")),
             signing_secret=self.signing_secret,
+            role=role or self.config.role,
+            group_id=self.config.group_id,
         )
         return commit(payload).audit_view()
 
@@ -117,8 +117,13 @@ class MatchService:
         result.paths.append(self._write_declaration(names, game_id, game_uid, theirs, started))
 
         for number in range(1, count + 1):
+            # ``count``, not the configured length: the roles swap at the halfway
+            # point of the series actually being played, so a two-sub-game
+            # rehearsal swaps after one rather than pretending it is six.
+            assignment = roles.roles_for_sub_game(number, mine, theirs, count)
             result.outcomes.append(self._play_one(names, game_id, game_uid, number,
-                                                  theirs, tally, seed + number, result))
+                                                  theirs, tally, seed + number, result,
+                                                  assignment))
 
         result.final_result = tally.finalise()
         result.tokens = {mine: sum(o.tokens.get(mine, 0) for o in result.outcomes),
@@ -147,38 +152,43 @@ class MatchService:
         return artifacts.write_json(names.declaration(), payload)
 
     def _play_one(self, names: artifacts.ArtifactSet, game_id: str, game_uid: str, number: int,
-                  opponent: str, tally: SeriesTally, seed: int,
-                  result: SeriesResult) -> artifacts.SubGameOutcome:
+                  opponent: str, tally: SeriesTally, seed: int, result: SeriesResult,
+                  assignment: dict[str, str]) -> artifacts.SubGameOutcome:
         """Play one sub-game, write its config and both logs, and score it."""
         mine = self.config.group_id
-        roles = roles_for_sub_game(number, mine, opponent)
         started = artifacts.now_iso()
 
         config_payload = artifacts.build_config_artifact(self.config.agreed_terms(), game_id,
                                                  game_uid, number, [mine, opponent])
         result.paths.append(artifacts.write_json(names.config(number), config_payload))
 
+        # Whose group id labels which side follows the assignment rather than
+        # always naming us the cop. Under the old parity rule those two agreed by
+        # accident in odd sub-games and the log quietly misattributed the rest.
+        i_am_cop = assignment[mine] == constants.ROLE_COP
         report, cop, thief = run_local_match(
-            self.config.shared, cop_group=mine, thief_group=opponent, sub_game=number,
+            self.config.shared, cop_group=mine if i_am_cop else opponent,
+            thief_group=opponent if i_am_cop else mine, sub_game=number,
             seed=seed, strategy_cfg=self.config.strategy,
             trash_talk_cfg=self.config.trash_talk, llm_cfg=self.config.llm,
         )
         ended = artifacts.now_iso()
-        mine_side = cop if roles[mine] == constants.ROLE_COP else thief
-        audit = report.cop_audit if roles[mine] == constants.ROLE_COP else report.thief_audit
+        mine_side = cop if i_am_cop else thief
+        audit = report.cop_audit if i_am_cop else report.thief_audit
 
         log = artifacts.build_log_artifact(
-            game_id, game_uid, number, mine, roles[mine], opponent, report.outcome,
-            report.winner_role, [self.step_zero(number), *mine_side.records],
+            game_id, game_uid, number, mine, assignment[mine], opponent, report.outcome,
+            report.winner_role, [self.step_zero(number, assignment[mine]), *mine_side.records],
             started, ended, mine_side.talk.tokens_used, audit,
         )
         result.paths.append(artifacts.write_json(names.log(number), log))
 
-        score = tally.record(roles, report.outcome, self.table)
+        score = tally.record(assignment, report.outcome, self.table)
         return artifacts.SubGameOutcome(
-            sub_game_number=number, roles=roles, started_at=started, ended_at=ended,
+            sub_game_number=number, roles=assignment, started_at=started, ended_at=ended,
             result=report.outcome,
-            winner_group=next((g for g, r in roles.items() if r == report.winner_role), None),
+            winner_group=next((g for g, r in assignment.items() if r == report.winner_role),
+                              None),
             github_commit={mine: git_commit()},
             tokens={mine: mine_side.talk.tokens_used, opponent: 0},
             score=score, log_files={mine: names.log(number).name}, audit=audit,
