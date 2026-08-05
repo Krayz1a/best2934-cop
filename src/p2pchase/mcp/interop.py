@@ -72,13 +72,25 @@ class InteropAdapter:
                 "counted_games_played": self.counted_games_played()}
 
     def propose_config(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Their name for our ``negotiate``: compare fingerprints (rule 11).
+        """Judge a proposed config, or compare fingerprints -- whichever arrived.
 
-        They expect ``{accepted, config_sha256}``. We answer with both, and
-        keep our own richer verdict alongside so a refusal says *why* rather
-        than only *no* -- a mismatch found here is free, and the same mismatch
-        found at the audit is a void match for both teams.
+        ``{"config": {...}}`` is a *proposal*: hash their object under our
+        encoding and answer with the digest, which is what proves the two
+        canonicalisations agree (see
+        :mod:`p2pchase.services.config_proposal`). ``{"handshake": {...}}`` is
+        our own older shape, a comparison of fingerprints already computed.
+
+        Reading the first as the second is the bug that cost a preflight: every
+        handshake field was absent from their payload, so we reported three
+        mismatches against empty strings and refused a peer who had proposed a
+        perfectly legal config.
         """
+        proposed = payload.get("config")
+        if isinstance(proposed, dict):
+            from ..services.config_proposal import ConfigProposalService
+
+            return ConfigProposalService(self.handlers.config).answer(proposed)
+
         verdict = self.handlers.negotiate(payload)
         # Our own digest lives under ``ours`` and is present on a refusal too.
         # Sending it only on success would be exactly backwards: the digest is
@@ -122,12 +134,12 @@ class InteropAdapter:
         the first question is whether it is over the same object, and that is
         cheaper to answer here than by comparing two filed reports afterwards.
         """
-        from ..reports.result import AGREED_FINAL_FIELDS, AGREED_SUB_GAME_FIELDS
+        from ..reports.agreed import AGREED_SUB_GAME_FIELDS, AGREED_TOTALS_FIELDS
 
         verdict = self.handlers.agree_result(payload)
         return {**verdict, "digest_covers": {
             "sub_game": list(AGREED_SUB_GAME_FIELDS),
-            "final_result": list(AGREED_FINAL_FIELDS)}}
+            "totals": list(AGREED_TOTALS_FIELDS)}}
 
     # ----------------------------------------------------------------- misc
     def counted_games_played(self) -> int:

@@ -19,6 +19,7 @@ from typing import Any
 
 from .. import constants
 from ..domain.crypto import mutual_agreement_hash
+from .agreed import agreed_summary as build_agreed_summary
 from .naming import TIMEZONE, links_block
 
 
@@ -63,39 +64,19 @@ class SubGameOutcome:
         }
 
 
-#: Sub-game facts both teams derive from the same protocol messages.
-AGREED_SUB_GAME_FIELDS = ("sub_game_number", "roles", "result", "winner_group", "tie", "score")
-#: Series facts, all of them computed from the sub-game results by one score table.
-AGREED_FINAL_FIELDS = ("total_score", "raw_score", "sub_games_won", "ties",
-                       "winner_group", "series_tie")
-
-
 def agreed_summary(game_id: str, groups: list[str], sub_games: list[SubGameOutcome],
-                   final_result: dict[str, Any]) -> dict[str, Any]:
+                   final_result: dict[str, Any] | None = None) -> dict[str, Any]:
     """The part of the result the two teams must agree on, and only that (rule 35).
 
-    The digest has to certify agreement, which means it may only cover facts
-    both peers can derive independently. Most of the report cannot qualify:
-    ``started_at`` and ``ended_at`` differ by the microseconds between two
-    processes, ``tokens`` and ``github_commit`` are each team's own, ``audit``
-    is a statement *about* the other side, and ``game_uid`` is minted locally
-    because the protocol never negotiates one. Hashing any of them would make
-    two perfectly honest teams contradict each other on every single match --
-    and rule 35 answers a contradiction by voiding the match for both.
-
-    What is left is what the match actually was: who played, which roles, how
-    each sub-game ended, and the score that follows from it.
+    The shape and the spelling live in :mod:`p2pchase.reports.agreed`, which is
+    where the reasoning is. This wrapper keeps the report's own call site
+    unchanged and drops ``final_result``: totals are recomputed from the
+    sub-games rather than taken from our scoring engine, so that both peers
+    derive the hashed number from the same six facts instead of each trusting
+    its own aggregator. Our engine's figures are still reported -- they are
+    just no longer the thing that is hashed.
     """
-    return {
-        "game_id": game_id,
-        "groups": sorted(groups),
-        "sub_games": [
-            {key: sub_game.as_dict()[key] for key in AGREED_SUB_GAME_FIELDS}
-            for sub_game in sub_games
-        ],
-        "final_result": {key: final_result[key]
-                         for key in AGREED_FINAL_FIELDS if key in final_result},
-    }
+    return build_agreed_summary(game_id, groups, sub_games, with_totals=True)
 
 
 def build_result_artifact(

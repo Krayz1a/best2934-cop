@@ -115,13 +115,47 @@ def test_the_result_carries_an_agreement_digest():
     assert body["num_sub_games"] == 1
 
 
-def test_a_different_result_produces_a_different_digest():
-    """Rule 35: a contradiction must be provable, not arguable."""
+def test_a_different_match_produces_a_different_digest():
+    """Rule 35: a contradiction must be provable, not arguable.
+
+    The contradiction has to be about the *match*. This used to vary the
+    ``final_result`` dict each side passes in, which no longer moves the digest
+    -- totals are now recomputed from the sub-games so that both peers derive
+    the hashed number from the same six facts rather than each trusting its own
+    aggregator. So the disagreement is expressed where a real one lives: in who
+    won a sub-game.
+    """
+    theirs = outcome()
+    theirs.winner_group = "b"
     ours = artifacts.build_result_artifact(
-        "a-vs-b", "uid", ["a", "b"], [outcome()], {"winner_group": "a"}, {})
-    theirs = artifacts.build_result_artifact(
-        "a-vs-b", "uid", ["a", "b"], [outcome()], {"winner_group": "b"}, {})
-    assert ours["mutual_agreement"]["sha256"] != theirs["mutual_agreement"]["sha256"]
+        "a-vs-b", "uid", ["a", "b"], [outcome()], {}, {})
+    contradicting = artifacts.build_result_artifact(
+        "a-vs-b", "uid", ["a", "b"], [theirs], {}, {})
+    assert ours["mutual_agreement"]["sha256"] != contradicting["mutual_agreement"]["sha256"]
+
+
+def test_our_own_scoring_engine_agrees_with_the_hashed_totals():
+    """The gap that recomputing totals opens, closed.
+
+    The digest covers totals derived from the sub-games; the report body still
+    carries our scoring engine's own figures. If those two ever disagree we
+    would file a report whose text contradicts its own digest -- which is the
+    rule 35 void, self-inflicted and against nobody.
+    """
+    from p2pchase.domain.scoring import ScoreTable, SeriesTally
+    from p2pchase.reports.agreed import agreed_summary
+
+    won = outcome()  # a capture: cop "a" takes 20, thief "b" takes 5
+    tally = SeriesTally(group_a="a", group_b="b")
+    tally.record(won.roles, won.result, ScoreTable())
+
+    derived = agreed_summary("a-vs-b", ["a", "b"], [won], with_totals=True)["totals"]
+    engine = tally.finalise()
+    assert derived["scores"] == engine["raw_score"]
+    assert derived["total_score"] == engine["total_score"]
+    assert derived["sub_games_won"] == engine["sub_games_won"]
+    assert derived["series_tie"] == engine["series_tie"]
+    assert derived["winner"] == engine["winner_group"]
 
 
 def test_writing_creates_parents_and_valid_json(tmp_path):

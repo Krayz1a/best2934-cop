@@ -79,6 +79,6 @@ def test_agree_result_says_what_its_digest_covers(adapter):
     compare the field lists here than to compare two filed reports later."""
     answer = adapter.agree_result({"sha256": "abc"})
     covers = answer["digest_covers"]
-    assert "score" in covers["sub_game"] and "winner_group" in covers["sub_game"]
+    assert "scores" in covers["sub_game"] and "winner" in covers["sub_game"]
     assert "started_at" not in covers["sub_game"], "a private clock must not be in it"
     assert "tokens" not in covers["sub_game"]
