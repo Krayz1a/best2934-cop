@@ -120,16 +120,63 @@ def test_every_published_tool_is_reachable(served):
     assert {"propose_config", "submit_turn", "confirm_result"} <= advertised
 
 
-def test_an_undeclared_argument_is_refused_by_the_transport(served):
+def test_an_undeclared_argument_is_refused_and_says_which_one(served):
     """The failure mode this file exists for, pinned so it stays visible.
 
-    A future key added to a payload builder and not to the tool signature comes
-    back as a `TransportError`, not as a quietly ignored field.
-    """
-    from p2pchase.mcp.client import TransportError
+    A future key added to a payload builder and not to the tool signature is
+    *refused*, never quietly ignored -- because a silently dropped field is a
+    move the opponent thinks they sent and we never received.
 
+    It used to surface as a `TransportError`. Since the tool guard it comes back
+    as a structured refusal naming the argument, which is both louder and
+    survivable: an exception crossing MCP is indistinguishable from a crash, and
+    rule 6 charges both teams for the stall. The property being pinned is that
+    the drift is visible, not which mechanism makes it visible.
+    """
     client, _ = served
     payload = contracts.commit_payload(GAME_ID, 1, 1, "best2934", constants.ROLE_COP, "c" * 64)
     payload["a_key_no_tool_declares"] = 1
-    with pytest.raises(TransportError):
-        _call(client, contracts.TOOL_COMMIT, payload)
+
+    answer = _call(client, contracts.TOOL_COMMIT, payload)
+    assert answer["ok"] is False
+    assert answer["fault"] is True
+    assert "a_key_no_tool_declares" in answer["reason"]
+
+
+def test_an_unexpected_fault_comes_back_as_an_answer_not_a_transport_error(served,
+                                                                          monkeypatch):
+    """The guard, through the real tool layer rather than around it.
+
+    Registering middleware is the kind of wiring that can silently fail to
+    apply, and a guard that is not installed looks exactly like a guard that is
+    never needed. So this raises from inside a real handler and asserts the
+    opponent receives a refusal: an escaping exception would reach them as a
+    transport error they cannot tell from a crash, and rule 6 charges both teams
+    for the stall.
+    """
+    client, _ = served
+
+    def _explode(self, payload):
+        raise ZeroDivisionError("nobody anticipated this")
+
+    monkeypatch.setattr(PeerHandlers, "sample_scent", _explode)
+
+    answer = _call(client, contracts.TOOL_SCENT,
+                   contracts.scent_query(GAME_ID, 1, 1, [[0, 0]]))
+    assert answer["ok"] is False
+    assert answer["fault"] is True
+    assert "ZeroDivisionError" in answer["reason"]
+
+
+def test_the_step0_payload_is_accepted_by_the_published_tool(served):
+    """The role declaration has to survive the transport too (ADR-028)."""
+    client, session = served
+    # The served session is the cop, so a caller declaring cop is a clash; the
+    # complementary declaration is the one that must survive the transport.
+    session.sub_game = 4  # the half in which test1234 holds the cop
+    payload = contracts.step0_payload(GAME_ID, 4, "rival999", constants.ROLE_THIEF,
+                                      {"type": "system_spec", "signature": "x"})
+    answer = _call(client, contracts.TOOL_STEP0, payload)
+    assert answer["ok"] is True, answer.get("reason")
+    assert answer["responder_role"] == constants.ROLE_COP
+    assert answer["caller_role"] == constants.ROLE_THIEF

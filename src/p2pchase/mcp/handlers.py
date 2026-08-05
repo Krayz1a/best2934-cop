@@ -90,6 +90,13 @@ class PeerHandlers:
         A peer that declares no role at all is accepted, because we cannot check
         what nobody stated -- but the answer says so plainly rather than reading
         as a clean bill of health.
+
+        The answer names ``responder_role`` and ``caller_role`` rather than
+        "ours" and "theirs". Those two words swap meaning depending on which end
+        of the wire is reading them, and the first draft of this handler proved
+        it: our own log read the answer's "their role" as *their* role, when it
+        is the role they read from *us*. A field whose meaning depends on who is
+        holding it is a field that will be misread eventually.
         """
         session = self._require_session()
         if session is None:
@@ -101,10 +108,10 @@ class PeerHandlers:
                                  session.sub_game, self.config.num_sub_games)
         if clash:
             LOGGER.error("refusing step 0: %s", clash)
-            return contracts.error(f"role clash: {clash}", our_role=session.role,
-                                   their_role=theirs, sub_game=session.sub_game)
+            return contracts.error(f"role clash: {clash}", responder_role=session.role,
+                                   caller_role=theirs, sub_game=session.sub_game)
         session.opponent_records.append(dict(payload))
-        return contracts.ok(step=0, our_role=session.role, their_role=theirs,
+        return contracts.ok(step=0, responder_role=session.role, caller_role=theirs,
                             role_checked=bool(theirs))
 
     def commit_step(self, payload: dict[str, Any]) -> dict[str, Any]:

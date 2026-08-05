@@ -30,7 +30,7 @@ class _Recorder:
     """A client that records what was sent and answers however it is told."""
 
     def __init__(self, answer: dict | None = None, fail: bool = False) -> None:
-        self.answer = answer if answer is not None else {"ok": True, "their_role": "thief"}
+        self.answer = answer if answer is not None else {"ok": True, "responder_role": "thief"}
         self.fail = fail
         self.sent: list[tuple[str, dict]] = []
 
@@ -57,8 +57,13 @@ def test_our_role_is_declared_where_the_opponent_can_read_it(runner):
     client = _Recorder()
     assert asyncio.run(peer_host.declare_step0(runner(client))) == ""
 
-    tool, payload = client.sent[0]
+    tool, sent = client.sent[0]
     assert tool == contracts.TOOL_STEP0
+    # One object, under the argument name the tool actually publishes. Sending
+    # it flat is not a differently-shaped message, it is a refused one --
+    # `test_live_transport` holds that against the real tool layer.
+    assert set(sent) == {"payload"}
+    payload = sent["payload"]
     assert payload["role"] == constants.ROLE_COP
     assert payload["group_id"] == "test1234"
     assert payload["sub_game_number"] == 4

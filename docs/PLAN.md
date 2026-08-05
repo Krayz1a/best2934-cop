@@ -951,6 +951,42 @@ makes it findable *without* someone who happens to know what a 406 means here.
 
 ---
 
+### ADR-030 · No exception leaves a tool call
+
+**Status** Accepted. Requested by gal-roy1 while they believed we were crashing;
+we were not, and they were right to ask anyway.
+**Context** Every handler here already answers rather than raises. What none of
+them covers is the genuinely unexpected: a library fault, a rare branch, a
+payload shaped in a way we never imagined. Such a fault escapes to FastMCP,
+which returns a transport-level error the opponent cannot distinguish from a
+crash — and rule 6 makes a stalled sub-game a technical loss for **both** teams.
+Our bug becomes their loss, which is what makes it their business to insist we
+cannot have one.
+**Decision** A FastMCP middleware converts any escaping exception into
+`{ok: false, fault: true, reason, tool}`, with the traceback logged and not
+sent. Middleware rather than a decorator per tool, because a tool's signature
+*is* its published schema — wrapping thirteen functions would put thirteen
+chances to alter a signature between us and the opponent, to solve a problem
+that is not about signatures.
+**Rationale** Two details, both learned by getting them wrong first. The guard
+must return a `ToolResult`, not a bare dict: returning the dict raises inside
+FastMCP's own result handling, replacing one escaping exception with another in
+the single place that exists to stop exceptions escaping. And it reports the
+*chained cause*, because FastMCP re-raises a fault as `ToolError: Error calling
+tool 'x': ...`, and telling an opponent that something went wrong inside a tool
+tells them only what they already knew.
+**Trade-off** An undeclared argument now comes back as a structured refusal
+rather than a `TransportError`. That reads like weaker drift detection and is
+not: the refusal names the offending argument, which is louder than an
+exception *and* survivable. `test_live_transport` was updated to assert the
+drift is visible rather than which mechanism makes it visible.
+**Lesson.** A guard that is not installed looks exactly like a guard that is
+never needed. The test that matters raises from inside a real handler and checks
+what comes back over the real tool layer — registering middleware is precisely
+the kind of wiring that fails silently.
+
+---
+
 ## 4. Interface contracts
 
 ### 4.1 MCP tools (eleven, symmetric)

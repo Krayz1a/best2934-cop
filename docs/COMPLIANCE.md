@@ -27,7 +27,7 @@ Summary: **45 Met · 4 Met, awaiting play · 4 Operator · 2 External**.
 | 3 | The orchestrator is the single entry point to the subsystems | Met | `sdk/sdk.py` — every CLI command and every test goes through `P2PChaseSDK`. `tests/unit/test_cli/test_commands.py` stubs the SDK and the commands still behave |
 | 4 | Game state managed by a standard state machine | Met | `domain/protocol.py` |
 | 5 | Every illegal state transition is rejected | Met | `domain/protocol.py`; `tests/unit/test_mcp/test_handlers.py` |
-| 6 | A deadline mechanism prevents stalling while waiting for the opponent | Met | `TurnDeadline` in `runtime/watchdog.py`, 30 s per message from the agreed config |
+| 6 | A deadline mechanism prevents stalling while waiting for the opponent | Met | `TurnDeadline` in `runtime/watchdog.py`, 30 s per message from the agreed config. Also from the other direction: `mcp/tool_guard.py` turns any escaping exception into a structured refusal, so a fault of ours cannot reach the opponent as an opaque transport failure and charge them a technical loss too (ADR-030). `tests/integration/test_live_transport.py::test_an_unexpected_fault_comes_back_as_an_answer_not_a_transport_error` |
 | 7 | A watchdog monitors process failure and extracts data in a controlled way | Met | `Watchdog` in `runtime/watchdog.py` — fed only by `beat()` at the end of a completed step, so livelock trips it (ADR-011). `tests/unit/test_runtime/test_watchdog.py` |
 | 8 | The live UI shows local truth only | Met | `ui/live_view.py`, `ui/board_render.py` — the renderers accept an `OwnState`, and no objective board exists to pass them |
 | 9 | The full objective board is never displayed | Met | Same: satisfied by construction (P-3 in [PROMPTS.md](PROMPTS.md)) |

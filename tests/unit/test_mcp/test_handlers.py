@@ -236,3 +236,19 @@ def test_step0_records_an_undeclared_role_without_inventing_a_verdict(handlers):
     assert response["ok"]
     assert response["role_checked"] is False
     assert handlers.session.opponent_records
+
+
+def test_the_step0_answer_names_roles_by_position_not_by_side(handlers):
+    """"Ours" and "theirs" swap meaning across the wire, so neither is a field name.
+
+    The first draft used them and our own log immediately misread the answer's
+    "their role" as *their* role, when it is the role they read from *us*. A
+    field whose meaning depends on who is holding it will be misread eventually,
+    and the audit is not the place to discover which way round it was.
+    """
+    handlers.session.sub_game = 4
+    answer = handlers.declare_step0({"role": "THIEF", "group_id": "rival999"})
+
+    assert answer["responder_role"] == "police"   # the peer answering: us
+    assert answer["caller_role"] == "thief"       # the peer that called: them
+    assert "our_role" not in answer and "their_role" not in answer

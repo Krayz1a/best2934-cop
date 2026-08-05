@@ -99,8 +99,9 @@ async def declare_step0(runner: PeerRunner) -> str:
         return ""
     if answer.get("ok") is False:
         return str(answer.get("reason", "opponent refused our step-0 declaration"))
-    LOGGER.info("step 0 declared: we are the %s, they answer %s",
-                session.role, answer.get("their_role") or "no role")
+    LOGGER.info("step 0 declared: we are the %s, they hold the %s and read us as the %s",
+                session.role, answer.get("responder_role") or "unstated",
+                answer.get("caller_role") or "unstated")
     return ""
 
 

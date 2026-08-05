@@ -133,19 +133,27 @@ def step0_payload(game_id: str, sub_game: int, group: str, role: str,
                   declaration: dict[str, Any]) -> dict[str, Any]:
     """STEP 0: our signed hardware declaration, and which side we are playing.
 
-    ``role`` and ``group_id`` are lifted to the top level as well as being
-    sealed inside ``declaration``. The opponent needs them to check the pairing
-    is complementary before move one, and making them dig through a signed blob
-    for it -- a blob whose exact shape we have never agreed with anyone -- would
-    be a poor place to be clever.
+    ``role`` and ``group_id`` are lifted beside the signed blob as well as being
+    sealed inside it. The opponent needs them to check the pairing is
+    complementary before move one, and making them dig through a signed
+    structure whose exact shape we have never agreed with anyone would be a poor
+    place to be clever.
+
+    The whole thing is wrapped in ``payload`` rather than sent flat, because
+    ``declare_step0`` takes *one object* -- on both sides. A tool's signature is
+    its published schema, so a flat dict is not a differently-shaped message, it
+    is a refused one: FastMCP raises on every key the signature does not name,
+    and that refusal reaches the peer as a transport error under rule 6. Our own
+    tool accepts ``declaration`` or ``payload``; theirs takes ``payload``, so
+    ``payload`` is the spelling that both understand.
     """
-    return {
+    return {"payload": {
         **declaration,
         "game_id": game_id,
         "sub_game_number": sub_game,
         "group_id": group,
         "role": role,
-    }
+    }}
 
 
 def scent_query(game_id: str, sub_game: int, step: int, cells: list[list[int]]) -> dict[str, Any]:

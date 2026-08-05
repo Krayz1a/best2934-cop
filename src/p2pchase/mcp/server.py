@@ -53,7 +53,12 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
             "FastMCP is not installed. Run `uv sync` to install the peer transport."
         ) from exc
 
+    from .tool_guard import build_guard
+
     mcp = FastMCP(name)
+    # Nothing below may raise across the wire: an escaping exception reaches the
+    # opponent as an opaque transport failure and rule 6 charges *both* teams.
+    mcp.add_middleware(build_guard())
 
     adapter = InteropAdapter(handlers)
 
