@@ -22,6 +22,7 @@ from typing import Any
 from .. import constants
 from .belief import BeliefMap
 from .board import Board, Coord
+from .scent_broadcast import DEFAULT_TRANSMIT_LAG, LaggedTrail
 from .smell import ScentMap, build_scent_map
 from .trail_reading import displacement_heading
 
@@ -36,6 +37,8 @@ class OwnState:
     belief: BeliefMap
     my_scent: ScentMap
     opponent_scent: ScentMap
+    #: The delay line that decides what the opponent may sample of our trail.
+    broadcast: LaggedTrail = field(default_factory=LaggedTrail)
     step: int = 0
     #: How many of the opponent's steps we have actually seen revealed. The
     #: networked runner waits on this rather than on wall-clock time, so a peer
@@ -87,6 +90,9 @@ class OwnState:
 
     def apply_own_move(self, move: str, barrier: Coord | None = None) -> None:
         """Apply this peer's own decided action to its local truth."""
+        # Snapshot before emitting: what we transmit is the trail through where
+        # we *were*, never where this move puts us (I-6, see LaggedTrail).
+        self.broadcast.record(self.my_scent.grid)
         if barrier is not None:
             if not self.is_cop:
                 raise ValueError("only the cop may place barriers")
@@ -204,6 +210,8 @@ def build_own_state(config: dict, role: str, board: Board) -> OwnState:
 
     my_scent = build_scent_map(config, board.geometry)
     opponent_scent = build_scent_map(config, board.geometry)
+    lag = int(config.get("pheromones", {}).get(
+        "pheromone_transmit_lag", DEFAULT_TRANSMIT_LAG))
 
     state = OwnState(
         role=role,
@@ -212,8 +220,16 @@ def build_own_state(config: dict, role: str, board: Board) -> OwnState:
         belief=belief,
         my_scent=my_scent,
         opponent_scent=opponent_scent,
+        broadcast=LaggedTrail(lag=lag),
         max_moves=int(mb.get("max_moves", constants.MAX_MOVES)),
         survival_threshold=int(mb.get("survival_threshold", constants.SURVIVAL_THRESHOLD)),
     )
     state.my_scent.emit(state.position)
+    # Seed the delay line with the opening emission, so a sample taken before
+    # our first move answers "the field as of last turn" rather than silence.
+    # It discloses nothing: both start cells are named in the agreed config and
+    # the belief map is initialised from them. Leaving it empty would have made
+    # the reply depend on whether the opponent sampled before or after we moved,
+    # and a field that depends on call order is one the two logs disagree about.
+    state.broadcast.record(state.my_scent.grid)
     return state

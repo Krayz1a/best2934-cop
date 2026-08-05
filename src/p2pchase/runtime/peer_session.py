@@ -208,9 +208,16 @@ class PeerSession:
         return self.answer_capture_claim(capture_claim)
 
     def scent_at(self, cells: list[list[int]]) -> dict[str, float]:
-        """Our own pheromone intensity at the cells the opponent asked about."""
+        """Our pheromone intensity at the cells the opponent asked about.
+
+        Read from the lagged broadcast field, never from ``my_scent`` (I-6).
+        ``my_scent`` has already absorbed this turn's emission, so answering
+        from it would peak on the cell we are standing on and hand over our
+        position -- see :mod:`p2pchase.domain.scent_broadcast`.
+        """
+        transmitted = self.state.broadcast.transmitted(self.state.my_scent.grid)
         return {
-            f"{int(c[0])},{int(c[1])}": self.state.my_scent.intensity((int(c[0]), int(c[1])))
+            f"{int(c[0])},{int(c[1])}": transmitted.get((int(c[0]), int(c[1])), 0.0)
             for c in cells
         }
 

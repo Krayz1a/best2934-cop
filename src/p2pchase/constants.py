@@ -42,6 +42,11 @@ PHEROMONE_CENTER_INTENSITY: Final[float] = 0.9
 PHEROMONE_DECAY: Final[float] = 0.10
 PHEROMONE_GRID_SIZE: Final[int] = 5
 
+# Not an Appendix F term: an agreed reading of book ch4, negotiated per pairing
+# (interop item I-6). Full turns a field is held before the opponent may sample
+# it. 0 transmits live, which peaks on the emitter's own cell.
+PHEROMONE_TRANSMIT_LAG: Final[int] = 1
+
 # --- Appendix F, Table 17: scoring (ALL PERMANENT) -------------------------
 CAPTURE_COP: Final[int] = 20
 CAPTURE_THIEF: Final[int] = 5

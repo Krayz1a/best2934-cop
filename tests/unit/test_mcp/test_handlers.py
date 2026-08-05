@@ -133,7 +133,31 @@ def test_scent_is_reported_only_for_the_cells_asked_about(handlers):
     response = handlers.sample_scent({"game_id": GAME, "step": 1,
                                       "cells": [[0, 0], [6, 6]]})
     assert set(response["samples"]) == {"0,0", "6,6"}
-    assert response["samples"]["0,0"] > 0  # the cop starts here and emits
+    # The cop starts here and emits, and the start cell is named in the agreed
+    # config -- so the opening field is disclosable and the delay line is seeded
+    # with it rather than answering silence until the first move.
+    assert response["samples"]["0,0"] > 0
+
+
+def test_the_sampled_field_is_the_lagged_one_not_the_live_one(handlers):
+    """I-6, at the tool an opponent actually calls.
+
+    :meth:`PeerSession.scent_at` reading from the delay line is the fix; this is
+    the test that fails if it is ever pointed back at ``my_scent``, which is the
+    obvious "simplification" for someone who does not know why it is not one.
+    """
+    handlers.session.prepare_step(1)
+    handlers.session.apply_own_step()  # moves, and emits at the new cell
+    state = handlers.session.state
+    cells = [[r, c] for r in range(7) for c in range(7)]
+
+    samples = handlers.sample_scent({"game_id": GAME, "step": 1, "cells": cells})["samples"]
+    live = {f"{r},{c}": state.my_scent.intensity((r, c)) for r, c in
+            ((r, c) for r in range(7) for c in range(7))}
+    lagged = state.broadcast.transmitted(state.my_scent.grid)
+
+    assert samples != live, "we answered with the field we are emitting right now"
+    assert samples == {f"{r},{c}": lagged.get((r, c), 0.0) for r in range(7) for c in range(7)}
 
 
 def test_the_final_reveal_discloses_nonces(handlers):

@@ -85,6 +85,19 @@ def play_half_turn(side: Side, opponent: Side, step: int, sub_game: int,
     return hint
 
 
+def transmitted_field(side: Side) -> dict[str, float]:
+    """The lagged view of one side's trail, keyed as the wire keys it.
+
+    Goes through the same delay line the networked peer serves from (I-6). This
+    harness is what every sweep, sensitivity run and figure in the notebook is
+    measured on, so a local path that sampled the live field would tune the
+    whole strategy against an opponent position we can read directly and never
+    get in a real match.
+    """
+    grid = side.state.broadcast.transmitted(side.state.my_scent.grid)
+    return {f"{r},{c}": round(v, 6) for (r, c), v in sorted(grid.items())}
+
+
 def exchange_scent(cop: Side, thief: Side) -> None:
     """Each side samples only its OPPONENT's field, then folds it into belief.
 
@@ -92,8 +105,8 @@ def exchange_scent(cop: Side, thief: Side) -> None:
     only thing a claim can be checked against, and this is the moment it
     becomes measurable.
     """
-    cop.state.sample_opponent_scent(thief.state.my_scent.as_dict())
-    thief.state.sample_opponent_scent(cop.state.my_scent.as_dict())
+    cop.state.sample_opponent_scent(transmitted_field(thief))
+    thief.state.sample_opponent_scent(transmitted_field(cop))
     for side in (cop, thief):
         side.state.belief.update_from_scent(side.state.opponent_scent)
         judge_claim(side.state)

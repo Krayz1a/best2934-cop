@@ -29,11 +29,12 @@
     "technical_loss": 0
   },
   "pheromones": {
-    "_remark": "pheromone_kernel selects which 5x5 emission table both peers use. 'book_table' is the literal Figure 4 table, so two teams reading the figure hash identically. 'gaussian' recomputes it from sigma^2 = 4/3, which reproduces Figure 4 to within 0.01 everywhere except the diagonal (0.43 vs 0.42).",
+    "_remark": "pheromone_kernel selects which 5x5 emission table both peers use. 'book_table' is the literal Figure 4 table, so two teams reading the figure hash identically. 'gaussian' recomputes it from sigma^2 = 4/3, which reproduces Figure 4 to within 0.01 everywhere except the diagonal (0.43 vs 0.42). pheromone_transmit_lag is how many FULL turns a field is held before the opponent may sample it: 1 transmits the trail through where we were, 0 transmits live and peaks on the cell we are standing on, which hands over the position and makes the belief map, the hints and the deception layer pointless. Both peers must run the same value or each is reading a field the other believes it is not sending.",
     "pheromone_center_intensity": 0.9,
     "pheromone_decay": 0.1,
     "pheromone_grid_size": 5,
-    "pheromone_kernel": "book_table"
+    "pheromone_kernel": "book_table",
+    "pheromone_transmit_lag": 1
   },
   "network_and_league": {
     "response_timeout_sec": 30,

@@ -655,6 +655,55 @@ wire contract (ADR-016, ADR-019).
 
 ---
 
+### ADR-022 · The transmitted scent field is lagged one full turn
+
+**Status** Accepted. Agreed with gal-roy1 as interop item I-6; it is their
+default and our reading of book ch4.
+**Context** `sample_scent` answered from `my_scent`, the live field, which has
+already absorbed the current turn's emission. A sampled field therefore carried
+a full-strength kernel centred on the emitter, so the opponent's exact cell was
+readable directly. Every layer above it became decoration: the belief map had
+nothing to infer, the hints nothing to corroborate, the deception layer nothing
+to hide. A cop could simply climb the gradient.
+**Decision** A `LaggedTrail` delay line snapshots the field *before* each turn's
+emission and serves that. `pheromone_transmit_lag` (default 1) carries the depth
+in the agreed config, inside an `AGREED_SECTION`, so it is frozen by
+`config_sha256` — two peers running different lags would each be reading a field
+the other believes it is not sending. It is deliberately **not** an Appendix F
+term: it is a negotiated reading, not a permanent constant.
+**Rationale** Lagged, the trail is evidence; live, it is the answer.
+**Trade-off** Large and measured, not assumed. Over 150 seeds on the shipped
+defaults:
+
+| lag | capture rate | mean steps |
+|---|---|---|
+| 0 (live) | 0.147 ± 0.029 | 34.7 |
+| **1 (agreed)** | **0.033 ± 0.015** | 34.8 |
+| 2 | 0.067 ± 0.020 | 34.3 |
+
+The cop loses roughly four fifths of its captures. That is the correct game
+rather than a regression — the previous number was measured against an opponent
+whose position we could read — but two consequences follow and neither is
+cosmetic.
+
+**Consequence 1 — the notebook figures describe a game we no longer play.**
+Every sweep, sensitivity run and figure was measured on the local harness, which
+sampled the live field. `local_match.transmitted_field` now routes the harness
+through the same delay line, so the numbers must be regenerated before they are
+submitted as evidence of anything.
+
+**Consequence 2 — at a 3% capture rate every series ends level.** Six sub-games
+split 3 and 3, all ending in survival, pays each team 3x5 as cop plus 3x10 as
+thief = **45 each**: a dead-level series, so chapter 9 fires and both sides take
+`tie_score` = 2. And 45 is one of the four reachable tied totals ({45, 55, 65,
+75}) found by brute force when checking gal-roy1's vectors. So under the agreed
+lag, cop strength is the *entire* game: a league where nobody can capture is a
+league of 2-point draws. Re-tuning the cop against the lagged field is now the
+highest-value strategy work outstanding — ADR-012's max-min choice was made
+against the live field and cannot be assumed to survive.
+
+---
+
 ## 4. Interface contracts
 
 ### 4.1 MCP tools (eleven, symmetric)

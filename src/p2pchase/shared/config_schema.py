@@ -58,6 +58,11 @@ DEFAULT_SHARED: dict[str, Any] = {
         "pheromone_decay": constants.PHEROMONE_DECAY,
         "pheromone_grid_size": constants.PHEROMONE_GRID_SIZE,
         "pheromone_kernel": "book_table",
+        # Negotiable, so deliberately absent from PERMANENT and MINIMUM -- it is
+        # an agreed reading of book ch4, not an Appendix F term. It still has to
+        # match on both sides, which is what putting it in an AGREED_SECTION
+        # (and so under config_sha256) is for.
+        "pheromone_transmit_lag": constants.PHEROMONE_TRANSMIT_LAG,
     },
     "network_and_league": {
         "response_timeout_sec": constants.RESPONSE_TIMEOUT_SEC,
