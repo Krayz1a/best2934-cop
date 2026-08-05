@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from p2pchase.domain.board import BoardGeometry
+from p2pchase.domain.crypto import digest_payload
 from p2pchase.domain.smell import (
     BOOK_FIGURE_KERNEL,
     ScentMap,
@@ -12,6 +13,7 @@ from p2pchase.domain.smell import (
     build_scent_map,
     gaussian_kernel,
     kernel_fingerprint,
+    scent_model,
 )
 
 
@@ -59,6 +61,38 @@ def test_the_fingerprint_separates_the_two_kernels():
     assert a != b
     assert a != c
     assert a == kernel_fingerprint(BOOK_FIGURE_KERNEL, 0.10)
+
+
+#: The Appendix F model, locked with gal-roy1 (book ch4/p47). Both teams
+#: reproduced this independently before either adopted the other's object.
+AGREED_SCENT_FINGERPRINT = "e6a37eba68fc217534d08d0aba710515801fa218c24cd491d4e41fd96b3e8b2d"
+
+
+def test_the_agreed_fingerprint_is_the_one_the_opponent_holds():
+    """A literal, because this is a cross-team lock and not an internal detail.
+
+    Every other test here asserts that *different* models hash *differently*,
+    which stays true under any shape change and so cannot notice one. Our
+    earlier object described identical physics and hashed to 57020f63 -- same
+    formula, same kernel, same decay, two fields fewer -- and a lock nobody else
+    computes the same number for locks nothing.
+    """
+    assert kernel_fingerprint(BOOK_FIGURE_KERNEL, 0.10) == AGREED_SCENT_FINGERPRINT
+
+
+def test_the_published_model_is_exactly_what_gets_hashed():
+    """Not a description of the digest, the object itself -- see ADR-020."""
+    model = scent_model(BOOK_FIGURE_KERNEL, 0.10)
+    assert digest_payload(model) == AGREED_SCENT_FINGERPRINT
+    assert model["field_size"] == 5
+    assert model["centre_intensity"] == 0.9
+    assert model["worked_example"]["after_one_decay_turn"] == 0.81
+
+
+def test_the_transmit_lag_is_not_folded_into_the_model():
+    """It is a disclosure policy, not emission physics, and moving this digest
+    would break a number both teams have already verified (ADR-022)."""
+    assert not any("lag" in key for key in scent_model(BOOK_FIGURE_KERNEL, 0.10))
 
 
 @pytest.fixture

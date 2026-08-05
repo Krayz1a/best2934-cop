@@ -99,3 +99,51 @@ def test_commentary_keys_are_not_treated_as_terms(adapter, peer_config):
     answer = adapter.propose_config({"config": theirs})
     assert answer["differing_terms"] == []
     assert answer["accepted"] is True
+
+
+#: gal-roy1's config, as they describe it: no ``pheromone_kernel`` key, so our
+#: ``build_kernel`` falls back to the book table for the 5x5 / 0.9 case.
+THEIR_PHEROMONES = {"pheromone_center_intensity": 0.9, "pheromone_decay": 0.1,
+                    "pheromone_grid_size": 5}
+AGREED_SCENT_FINGERPRINT = "e6a37eba68fc217534d08d0aba710515801fa218c24cd491d4e41fd96b3e8b2d"
+
+
+def test_the_model_lock_is_derived_from_the_proposed_config(adapter, peer_config):
+    """Page 47, moved to where the question is first well-posed.
+
+    The fingerprint must come from the object this call agrees, not from either
+    side's file: we do not play under their file or ours. Asserted against the
+    literal gal-roy1 published, from the config shape they actually send.
+    """
+    theirs = copy.deepcopy(peer_config.shared)
+    theirs["pheromones"] = dict(THEIR_PHEROMONES)
+
+    answer = adapter.propose_config({"config": theirs})
+    assert answer["agreed_scent_fingerprint"] == AGREED_SCENT_FINGERPRINT
+
+
+def test_the_model_travels_with_its_own_digest(adapter, peer_config):
+    """So a mismatch is diffed rather than guessed -- and so that the object
+    published IS the object hashed. Two teams comparing a digest against a
+    *description* of what it covers is how this cost a week."""
+    theirs = copy.deepcopy(peer_config.shared)
+    theirs["pheromones"] = dict(THEIR_PHEROMONES)
+
+    answer = adapter.propose_config({"config": theirs})
+    model = answer["agreed_scent_model"]
+    assert sha256_hex(canonical_json(model)) == answer["agreed_scent_fingerprint"]
+
+
+def test_a_kernel_disagreement_moves_the_lock(adapter, peer_config):
+    """The failure it exists to catch: same parameters, different table.
+
+    ``gaussian`` reproduces the book figure to within 0.01 everywhere except the
+    diagonal. Every pheromone *field* matches, so ``differing_terms`` is quiet
+    about the physics and only the fingerprint separates them.
+    """
+    theirs = copy.deepcopy(peer_config.shared)
+    theirs["pheromones"] = {**THEIR_PHEROMONES, "pheromone_kernel": "gaussian"}
+
+    answer = adapter.propose_config({"config": theirs})
+    assert answer["agreed_scent_fingerprint"] != AGREED_SCENT_FINGERPRINT
+    assert answer["accepted"] is True, "a different kernel is legal, just not silent"

@@ -84,25 +84,44 @@ def build_kernel(config: dict) -> tuple[tuple[float, ...], ...]:
     raise ValueError(f"unknown pheromone_kernel {mode!r}")
 
 
-def kernel_fingerprint(kernel, decay: float) -> str:
-    """SHA-256 over the emission model + a concrete worked example.
+def scent_model(kernel, decay: float) -> dict:
+    """The emission-and-decay model, in the shape both teams publish it.
 
-    Book ch4 requires the two teams to exchange the emission-and-decay model
-    together with a numeric example, verify they read the identical formula,
-    and only then lock the agreement cryptographically. This fingerprint is the
-    lock: any later drift in either side's implementation shows up instantly.
+    Book ch4/p47 requires the two teams to exchange the model together with a
+    numeric example, verify they read the identical formula, and only then lock
+    the agreement cryptographically.
+
+    ``field_size`` and ``centre_intensity`` are redundant -- both are readable
+    off ``kernel`` -- and are carried anyway, because this is gal-roy1's shape
+    and we adopted it wholesale. Our leaner object described the same physics
+    and hashed differently, which is the one-sided-vector lesson again: agreeing
+    on the model is not the same as agreeing on the object that represents it,
+    and only the object gets hashed. Both teams had already reproduced this
+    one's digest independently before either published it, so adopting it
+    introduced no risk that adopting ours would not also have introduced.
+
+    Deliberately excludes ``pheromone_transmit_lag``. The lag is agreed and
+    load-bearing, but it is a disclosure policy rather than part of the emission
+    physics, it is already frozen by ``config_sha256``, and folding it in here
+    would move a digest both teams have verified.
     """
     centre = kernel[len(kernel) // 2][len(kernel) // 2]
-    model = {
+    return {
         "formula": "tau(t+1) = max(0, (1 - rho) * tau(t) + delta_tau)",
         "decay_rho": round(float(decay), 10),
+        "field_size": len(kernel),
+        "centre_intensity": round(float(centre), 10),
         "kernel": [[round(float(v), 4) for v in row] for row in kernel],
         "worked_example": {
             "given": f"tau = {centre} at the emission centre",
             "after_one_decay_turn": round(centre * (1 - decay), 10),
         },
     }
-    blob = json.dumps(model, sort_keys=True, separators=(",", ":"))
+
+
+def kernel_fingerprint(kernel, decay: float) -> str:
+    """SHA-256 over :func:`scent_model` -- the lock any later drift trips."""
+    blob = json.dumps(scent_model(kernel, decay), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 

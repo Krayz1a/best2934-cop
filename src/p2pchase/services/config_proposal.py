@@ -30,7 +30,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from .. import constants
 from ..domain.crypto import canonical_json, sha256_hex
+from ..domain.smell import build_kernel, kernel_fingerprint
+from ..domain.smell import scent_model as build_scent_model
 from ..shared.config_schema import validate_shared
 from ..shared.peer_config import PeerConfig
 
@@ -40,6 +43,34 @@ LOGGER = logging.getLogger(__name__)
 def config_digest(config: dict[str, Any]) -> str:
     """The digest of a proposed config, under our canonical encoding."""
     return sha256_hex(canonical_json(config))
+
+
+def scent_fingerprint(config: dict[str, Any]) -> str:
+    """The emission-and-decay model implied by a proposed config (book ch4/p47).
+
+    The book requires both teams to exchange the model *and* a worked numeric
+    example and lock it cryptographically before the series. Two configs can
+    agree on every pheromone parameter and still imply different kernels --
+    ``pheromone_kernel`` selects between the literal Figure 4 table and the
+    closed form, and those disagree by 0.01 on the diagonal. The config digest
+    would match; the fields would match; the trails would not.
+    """
+    return kernel_fingerprint(build_kernel(config), _decay_of(config))
+
+
+def _decay_of(config: dict[str, Any]) -> float:
+    pheromones = config.get("pheromones", {})
+    return float(pheromones.get("pheromone_decay", constants.PHEROMONE_DECAY))
+
+
+def scent_model(config: dict[str, Any]) -> dict[str, Any]:
+    """The model itself, so a fingerprint mismatch can be diffed not guessed.
+
+    Exactly the object :func:`scent_fingerprint` hashes, never a near-copy of
+    it. Publishing a digest beside a *description* of what it covers is how both
+    teams spent a week comparing numbers taken over different objects.
+    """
+    return build_scent_model(build_kernel(config), _decay_of(config))
 
 
 def differing_terms(theirs: dict[str, Any], ours: dict[str, Any],
@@ -103,6 +134,15 @@ class ConfigProposalService:
             # and conclude our configs disagree when only our scopes do.
             "our_agreed_terms_sha256": self.config.config_sha256(),
             "digest_covers": "the whole proposed config object, canonical JSON",
+            # The page-47 model lock, derived from THE PROPOSED CONFIG rather
+            # than from either side's file. gal-roy1 moved it here after three
+            # failed preflights and the reasoning is right: we do not play under
+            # their file or ours, we play under the object this call agrees, so
+            # a fingerprint over a file neither side plays under proves nothing
+            # about the model that will govern the match. The model itself
+            # travels beside it so a mismatch can be diffed rather than guessed.
+            "agreed_scent_fingerprint": scent_fingerprint(proposed),
+            "agreed_scent_model": scent_model(proposed),
             "illegal_terms": illegal,
             "differing_terms": differences,
             "mismatches": illegal,
