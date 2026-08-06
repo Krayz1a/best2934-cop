@@ -120,7 +120,8 @@ class MatchService:
             # ``count``, not the configured length: the roles swap at the halfway
             # point of the series actually being played, so a two-sub-game
             # rehearsal swaps after one rather than pretending it is six.
-            assignment = roles.roles_for_sub_game(number, mine, theirs, count)
+            assignment = roles.roles_for_sub_game(number, mine, theirs, count,
+                                                  self.config.role_convention(theirs))
             result.outcomes.append(self._play_one(names, game_id, game_uid, number,
                                                   theirs, tally, seed + number, result,
                                                   assignment))

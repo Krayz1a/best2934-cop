@@ -47,6 +47,15 @@ PHEROMONE_GRID_SIZE: Final[int] = 5
 # it. 0 transmits live, which peaks on the emitter's own cell.
 PHEROMONE_TRANSMIT_LAG: Final[int] = 1
 
+# The two registered scent-model *forms*. Appendix F fixes the three numbers
+# above as PERMANENT; what a registration selects is the shape of the update,
+# never the values. The book's ch4 prose gives multiplicative decay over its
+# printed figure-4 kernel; the course's reference implementation gives
+# subtractive decay over a linear Chebyshev falloff. Both are legal, they are
+# visibly different physics, and a pairing locks one of them explicitly.
+SCENT_MULTIPLICATIVE: Final[str] = "multiplicative_book_v1"
+SCENT_SUBTRACTIVE: Final[str] = "subtractive_chebyshev_v1"
+
 # --- Appendix F, Table 17: scoring (ALL PERMANENT) -------------------------
 CAPTURE_COP: Final[int] = 20
 CAPTURE_THIEF: Final[int] = 5

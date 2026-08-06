@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import constants
+from ..domain import roles, scent_models
 from ..domain.crypto import canonical_json, digest_payload
 from .config_schema import AGREED_SECTIONS
 
@@ -92,6 +93,34 @@ class PeerConfig:
     def num_sub_games(self) -> int:
         return int(self.shared.get("network_and_league", {}).get(
             "num_sub_games", constants.NUM_SUB_GAMES))
+
+    # -------------------------------------------------------------- pairing
+    def pairing(self, opponent: str) -> dict[str, Any]:
+        """The terms agreed with ONE opponent, from the private setup file.
+
+        Some terms the book leaves to inter-team agreement are genuinely
+        per-pair rather than league-wide: which role convention orders the six
+        sub-games, and which scent model the two peers run. We hold
+        ``first_half`` with gal-roy1 and ``odd_even`` with imreeyal, and that is
+        not a contradiction -- it is two pairings, each internally agreed.
+
+        They live in ``setup.json`` rather than ``game.json`` on purpose. The
+        agreed game terms are hashed into ``config_sha256`` and signed, so an
+        extra key there changes a digest both peers have already verified;
+        these are private, unsigned, and never cross the wire. What crosses is
+        the *consequence* -- a role in ``declare_step0``, a model hash in the
+        negotiate extras.
+        """
+        book = self.setup.get("opponents", {})
+        return dict(book.get(str(opponent), {})) if isinstance(book, dict) else {}
+
+    def role_convention(self, opponent: str) -> str:
+        """Which sub-game ordering we agreed with this opponent."""
+        return str(self.pairing(opponent).get("role_convention", roles.DEFAULT_CONVENTION))
+
+    def scent_model(self, opponent: str) -> str:
+        """Which registered scent model we agreed with this opponent."""
+        return str(self.pairing(opponent).get("scent_model", scent_models.DEFAULT_MODEL))
 
     # ------------------------------------------------------------- strategy
     @property

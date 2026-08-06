@@ -102,10 +102,11 @@ class PeerHandlers:
         if session is None:
             return contracts.error("no sub-game is in progress")
         theirs = roles.normalise_role(str(payload.get("role", "")))
-        clash = roles.role_clash(session.role, theirs, session.group_id,
-                                 str(payload.get("group_id", "")
-                                     or payload.get("group_name", "")),
-                                 session.sub_game, self.config.num_sub_games)
+        opponent = str(payload.get("group_id", "") or payload.get("group_name", "")
+                       or session.opponent)
+        clash = roles.role_clash(session.role, theirs, session.group_id, opponent,
+                                 session.sub_game, self.config.num_sub_games,
+                                 self.config.role_convention(opponent))
         if clash:
             LOGGER.error("refusing step 0: %s", clash)
             return contracts.error(f"role clash: {clash}", responder_role=session.role,

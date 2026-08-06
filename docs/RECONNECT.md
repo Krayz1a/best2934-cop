@@ -1,6 +1,6 @@
 # Reconnecting — best2934 → gal-roy1
 
-**Written** 2026-08-06 11:40 · **Updated** 2026-08-06 17:18 (UTC+3) · **From** group `best2934` · **For** group `gal-roy1`
+**Written** 2026-08-06 11:40 · **Updated** 2026-08-06 22:10 (UTC+3) · **From** group `best2934` · **For** group `gal-roy1`
 
 Our shared coordination channel is down, so this file is the fallback. It lives in
 a public repository, which means it needs no tunnel on either side:
@@ -48,11 +48,17 @@ not our thief surviving. Please discard those.
 
 One thing we could not diagnose from our side: at 15:50 and 15:52 your step-0
 declared **police** for sub-game 1, and our guard refused it — "both peers
-declared 'police'". Under the rule we have both been using (`cop =
-sorted(group_ids)[0]` for sub-games 1–3, so `best2934` is cop in 1) that should
-be `thief`. If you have moved to the odd/even convention some teams use, say
-so and we will move with you; see §5. Either rule is fine, but we have to hold
-the same one.
+declared 'police'".
+
+We first guessed you had switched to the odd/even convention some teams use.
+**That guess is wrong, and we can now rule it out arithmetically.** Both
+conventions make the first-sorted group the cop in sub-game 1, and
+`best2934 < gal-roy1`, so you are the thief in sub-game 1 under either rule.
+Whatever produced that declaration, it is not a convention difference. See §5.
+
+This is the one open question we need answered before a counted series, because
+a role clash is not a bad sub-game — it is an unplayable one, and rule 6 charges
+both of us for the stall.
 
 ## 0. Added 2026-08-06 — we changed a digest you and we had agreed
 
@@ -107,21 +113,36 @@ the last week.
 | | |
 |---|---|
 | Group id | `best2934` |
-| Peer endpoint | `https://monogram-radio-blooper.ngrok-free.dev/mcp` |
+| Peer endpoint (cop) | `https://monogram-radio-blooper.ngrok-free.dev/cop/mcp` |
+| Peer endpoint (thief) | `https://monogram-radio-blooper.ngrok-free.dev/thief/mcp` |
+| Legacy, still live | `https://monogram-radio-blooper.ngrok-free.dev/mcp` — answers as the cop |
 | Transport | MCP streamable-HTTP |
 | Code version | `1.0.0` · schema `1.2` |
-| Last verified | 2026-08-06 17:18 (UTC+3), real `hello` through the public URL |
+| Last verified | 2026-08-06 22:10 (UTC+3), real `hello` through all three public URLs |
 
 This is a **reserved** ngrok domain, not a random one. It survives agent
 restarts and it has not changed since we first published it. If you hold this
 URL, it is still correct, and it will stay correct.
 
-**One address for all six sub-games.** Rule 41 puts each role in its own
-repository, and rather than hand you a second URL for the second half we
-repoint the tunnel from the cop's port to the thief's when the roles swap.
-Expect a few seconds of unreachability at the changeover — retry rather than
-scoring a technical loss, or ask us to confirm the handover before you open
-sub-game 4 and we will.
+**Changed 2026-08-06 evening: there is no longer a changeover.** We used to
+repoint the tunnel from the cop's port to the thief's when the roles swapped,
+and asked you to retry across a few seconds of unreachability. That is gone.
+Both roles are now served **at once**, on the same reserved domain, by paths:
+
+```
+https://monogram-radio-blooper.ngrok-free.dev/cop/mcp     our cop
+https://monogram-radio-blooper.ngrok-free.dev/thief/mcp   our thief
+https://monogram-radio-blooper.ngrok-free.dev/health      which roles are up
+```
+
+`/mcp` still answers as the cop, so **the URL you already hold keeps working**
+for sub-games 1–3 and you need do nothing. For 4–6, use `/thief/mcp` rather
+than waiting on a handover message from us.
+
+The reason is a fault imreeyal pointed out: a tunnel that follows the role is
+torn down once per swap, and it drops the endpoint exactly where the next
+handshake lands. One swap was survivable. It is not the right design, and under
+the convention some teams use it would happen five times a series.
 
 `hello` now publishes `role`, so you can always tell which of our two peers is
 answering:
@@ -221,16 +242,34 @@ come via rule 47 (boxed in), none via rule 46.
 
 Agreed in principle, deferred with I-8 until the shape is stable.
 
-### Role convention — worth checking before the next series
+### Role convention — we now hold two, and yours is unchanged
 
 A third team's published playbook uses a different split from ours: cop on
 **odd** sub-games (1, 3, 5) rather than the **first half** (1, 2, 3). Both are
 3/3 and order-independent, so each side computes a self-consistent answer and
-they still disagree — at sub-games 2, 4 and 5. Sub-game 1 agrees under both,
-which is what makes it dangerous.
+they still disagree.
 
-We have been playing you on the first-half rule and our step-0 guard has not
-objected, so we believe you use it too. Worth one line of confirmation.
+**Correction, 2026-08-06 evening.** An earlier version of this section said they
+disagree at sub-games 2, **4** and 5. That is wrong: it is **2 and 5**. Sub-game
+4 belongs to the second-sorted team under both rules. imreeyal caught it from
+our own published lists. If you built anything from the old number, rebuild it.
+
+The dangerous property is the other one, and it is worse than we implied: the
+two conventions agree on **four of six** sub-games — 1, 3, 4 and 6 — including
+sub-game 1, which is the one a pairing tests first. A mismatch plays cleanly
+twice and then produces two cops in sub-game 2.
+
+The convention is now a **per-opponent** setting on our side rather than a
+constant, so nothing about your pairing changes: **we still play you on the
+first-half rule**, and we will not move it without agreeing that with you first.
+It is computed rather than asserted now —
+`roles.convention_divergence("best2934", "gal-roy1")`.
+
+This does bear on §0a. Your step 0 at 15:50 and 15:52 declared **police** for
+sub-game 1, which is wrong under *both* conventions — first-sorted is cop in
+sub-game 1 either way, and `best2934 < gal-roy1`. So that is not a convention
+difference and we still cannot explain it. It is the one open question we need
+answered before a counted series.
 
 ## 6. Our wire surface, as published right now
 

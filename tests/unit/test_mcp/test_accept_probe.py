@@ -82,3 +82,35 @@ def test_non_post_traffic_is_left_alone(caplog):
 
 def test_the_middleware_list_is_usable_by_the_server():
     assert len(probe_middleware()) == 1
+
+
+def test_outbound_calls_carry_the_ngrok_interstitial_opt_out():
+    """A readiness check that cannot fail is not a readiness check.
+
+    ngrok's free tier answers a bare request with an HTML interstitial and
+    status **200**. That is worse than an error in both directions: a dead peer
+    reads as "200, alive", and a live peer can never show the 406 that proves an
+    MCP server is really there. imreeyal lost a match window to it and told us.
+
+    The interstitial is served on User-Agent, so our client -- not a browser --
+    was already getting through. That is a property of a dependency's default
+    header rather than a decision we made, which is exactly the kind of thing
+    that changes under you on an upgrade.
+    """
+    from p2pchase.mcp.client import TUNNEL_HEADERS, PeerClient
+
+    transport = PeerClient("https://example.ngrok-free.dev/mcp")._transport()
+    assert TUNNEL_HEADERS["ngrok-skip-browser-warning"] == "1"
+    assert transport.headers["ngrok-skip-browser-warning"] == "1"
+
+
+def test_an_in_process_server_is_not_wrapped_in_an_http_transport():
+    """The rehearsal and most of this suite hand ``PeerClient`` a live FastMCP
+    object rather than a URL. Wrapping that in an HTTP transport raises before
+    a single tool is called, which would trade a real gate for a header."""
+    from fastmcp import FastMCP
+
+    from p2pchase.mcp.client import PeerClient
+
+    server = FastMCP("probe")
+    assert PeerClient(server)._transport() is server

@@ -13,10 +13,14 @@ so an opponent knocking at a dead endpoint is not only our loss.
 
     uv run python tools/endpoint.py status   # exit 0 only if all three pass
     uv run python tools/endpoint.py up       # start what is missing, then check
-    uv run python tools/endpoint.py take     # move the public URL to THIS role
 
-``take`` is the half-time handover: run it in best2934-thief before sub-game 4
-and in best2934-cop before sub-game 1. The opponent's address never changes.
+There is no half-time handover any more. Both roles are served at once behind
+``tools/frontdoor.py`` -- ``/cop/mcp`` and ``/thief/mcp`` on one reserved domain
+-- so the endpoint is already answering for whichever role the next sub-game
+assigns. ``take``, which used to move the tunnel between the two, now refuses:
+under the odd/even convention the role flips every sub-game, and a tunnel that
+follows it is torn down five times per series, each time exactly where the next
+handshake lands.
 
 ``status`` is the one worth trusting: it proves reachability the same way the
 opponent will discover it, by completing a handshake rather than by looking at a
@@ -26,6 +30,7 @@ process table. A listening socket is not an endpoint.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -35,7 +40,13 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 NGROK_API = "http://127.0.0.1:4040/api/tunnels"
-OPPONENT = "gal-roy1"
+#: Where the tunnel terminates: the shared front door, never a role's own port.
+FRONT_PORT = 8800
+#: Whose pairing terms the derivations below use. Overridable because the role
+#: convention is per-opponent now: the thief's first sub-game is 4 against
+#: gal-roy1 and 2 against imreeyal, and a hard-coded opponent would start the
+#: peer on a number the other one's step 0 disagrees with.
+OPPONENT = os.environ.get("P2PCHASE_OPPONENT", "gal-roy1")
 GAME_ID = f"best2934-vs-{OPPONENT}"
 
 
@@ -58,14 +69,20 @@ def _sub_game() -> int:
 
     Serving under a role the agreed rule does not assign for the sub-game is
     refused by the CLI, and rightly -- so the number is derived from the rule
-    rather than fixed at 1. In best2934-cop that is sub-game 1; in
-    best2934-thief, where we hold the thief, it is the first of the second half.
+    rather than fixed at 1. Which rule depends on the opponent: under the
+    first-half convention the thief's first sub-game is 4, under odd/even it is
+    2. Hard-coding either would start the peer on a number the opponent's next
+    step 0 disagrees with.
     """
     sys.path.insert(0, str(REPO / "src"))
     from p2pchase.domain import roles
 
-    mine = _setup()["game"]["group_id"]
-    return next((n for n in range(1, 7) if roles.role_for(mine, OPPONENT, n) == _role()), 1)
+    setup = _setup()
+    mine = setup["game"]["group_id"]
+    convention = str(setup.get("opponents", {}).get(OPPONENT, {}).get(
+        "role_convention", roles.DEFAULT_CONVENTION))
+    return next((n for n in range(1, 7)
+                 if roles.role_for(mine, OPPONENT, n, convention=convention) == _role()), 1)
 
 
 def _setup() -> dict:
@@ -107,9 +124,19 @@ def _handshake(url: str) -> str:
     """
     import anyio
     from fastmcp import Client
+    from fastmcp.client.transports import StreamableHttpTransport
+
+    sys.path.insert(0, str(REPO / "src"))
+    from p2pchase.mcp.client import TUNNEL_HEADERS
+
+    # The URL already ends in the role's own path now (/cop/mcp, /thief/mcp),
+    # so appending /mcp would ask the front door for a route that is not there
+    # and report a healthy endpoint as a 404.
+    endpoint = url if url.rstrip("/").endswith("/mcp") else url.rstrip("/") + "/mcp"
 
     async def ask() -> str:
-        async with Client(url.rstrip("/") + "/mcp") as client:
+        async with Client(StreamableHttpTransport(
+                endpoint, headers=dict(TUNNEL_HEADERS))) as client:
             answer = await client.call_tool("hello", {"payload": {}})
             served = str(answer.data.get("role", ""))
             if served and served != _role():
@@ -180,7 +207,9 @@ def status() -> int:
               f"the opponent has the old one and must be told")
         return 1
 
-    group = _handshake(tunnel)
+    # Through the *published* URL, not the tunnel root: the tunnel now fronts
+    # both roles, and its root proves nothing about the one this repo serves.
+    group = _handshake(expected)
     reachable = not group.startswith("!")
     print(f"public handshake      {group if reachable else group}")
     return 0 if reachable else 1
@@ -194,9 +223,17 @@ def up() -> int:
                    "--role", _role(), "--opponent", OPPONENT, "--port", str(port),
                    "--game-id", GAME_ID, "--sub-game", str(_sub_game())],
                   REPO / "logs" / "serve.log")
+    if not _listening(FRONT_PORT):
+        print("starting the front door...")
+        _detached([str(REPO / ".venv" / "bin" / "python"), str(REPO / "tools" / "frontdoor.py")],
+                  REPO / "logs" / "frontdoor.log")
+        time.sleep(3)
     if not _tunnel_url():
+        # The tunnel terminates on the FRONT DOOR, never on a role's own port.
+        # Pointed at a role, it would serve that role alone and the other half
+        # of the series would be unreachable at the address we published.
         print("starting the tunnel...")
-        _detached(["ngrok", "http", str(port), "--log", "stdout", "--log-format", "logfmt"],
+        _detached(["ngrok", "http", str(FRONT_PORT), "--log", "stdout", "--log-format", "logfmt"],
                   REPO / "logs" / "ngrok.log")
     for _ in range(20):
         time.sleep(1)
@@ -206,27 +243,33 @@ def up() -> int:
 
 
 def take() -> int:
-    """Point the public URL at *this* repository's role, and prove it landed.
+    """Refuses. The handover it performed no longer exists -- and would now break.
 
-    The series changes roles halfway (rule 12) and rule 41 puts the two roles in
-    two repositories, but there is one reserved domain and a free tunnel agent
-    serves one port. So the handover is: move the tunnel, not the URL. The
-    opponent keeps the address it already has, which matters because a URL that
-    changes between halves is the failure that cost this project a day.
+    ``take`` moved the single tunnel from one role's port to the other's at half
+    time. That was right while the role changed once per series. It is wrong
+    twice over now.
 
-    ``up`` deliberately will not do this. It leaves a running agent alone, and
-    that is right when the agent is already ours -- but between halves the
-    running agent is the *other* role's, pointed at a port this repo does not
-    serve. Left alone, every check passes while the wrong peer answers.
+    It is *unnecessary* because both roles are served at once, behind
+    ``tools/frontdoor.py``, at ``/cop/mcp`` and ``/thief/mcp`` on one reserved
+    domain. Nothing needs moving; the endpoint is already answering for whichever
+    role the next sub-game assigns.
+
+    It is *harmful* because the tunnel it would kill is now shared. Under the
+    odd/even convention the role flips at every sub-game, so a repointing
+    handover runs five times per series and drops the endpoint each time --
+    precisely where the next handshake lands. imreeyal lost a window to that and
+    told us so. Killing the agent here would take BOTH roles down, not one.
+
+    Left in place rather than deleted because the command is written down in
+    docs and in an opponent's notes, and a command that vanishes silently is
+    worse than one that explains itself.
     """
-    if _tunnel_url():
-        print("stopping the tunnel that serves the other role...")
-        subprocess.run(["pkill", "-f", "ngrok http"], check=False)
-        for _ in range(10):
-            time.sleep(1)
-            if not _tunnel_url():
-                break
-    return up()
+    print("take: refused -- both roles are served at once and nothing needs moving.\n"
+          "  cop    https://monogram-radio-blooper.ngrok-free.dev/cop/mcp\n"
+          "  thief  https://monogram-radio-blooper.ngrok-free.dev/thief/mcp\n"
+          "Run 'uv run python tools/frontdoor.py --check' to see both upstreams,\n"
+          "or 'status' to prove this role reachable with a real handshake.")
+    return 1
 
 
 if __name__ == "__main__":

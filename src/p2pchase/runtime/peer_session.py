@@ -25,6 +25,7 @@ from ..domain.brains import BrainBase, Decision, load_brain
 from ..domain.crypto import CommitRecord, commit
 from ..domain.own_state import build_own_state
 from ..domain.protocol import StateMachine, StepIntent
+from ..reports.naming import opponent_in_game_id
 from ..shared.peer_config import PeerConfig
 from ..strategy.landmarks import heading_word, pick_landmark
 from ..strategy.talk_engine import build_talk_engine
@@ -50,6 +51,10 @@ class PeerSession:
     sub_game: int = 1
     seed: int = 0
     step: int = 0
+    #: Who we are playing, which selects the per-pair terms (scent model, role
+    #: convention). Left empty it is read off ``game_id``, whose form is
+    #: ``sorted(a, b)`` joined by ``-vs-`` and therefore already carries it.
+    opponent: str = ""
     machine: StateMachine = field(default_factory=StateMachine)
     records: list[dict[str, Any]] = field(default_factory=list)
     opponent_commitments: dict[int, str] = field(default_factory=dict)
@@ -67,7 +72,9 @@ class PeerSession:
         import random
 
         shared = self.config.shared
-        self.state = build_own_state(shared, self.role, build_board(shared))
+        self.opponent = self.opponent or opponent_in_game_id(self.game_id, self.config.group_id)
+        self.state = build_own_state(shared, self.role, build_board(shared),
+                                     self.config.scent_model(self.opponent))
         self.brain: BrainBase = load_brain(self.role, self.config.strategy, shared)
         self.talk = build_talk_engine(self.config.trash_talk, self.config.llm)
         self._rng = random.Random(self.seed)

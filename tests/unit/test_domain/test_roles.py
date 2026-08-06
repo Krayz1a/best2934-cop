@@ -133,3 +133,84 @@ def test_our_own_two_peers_rehearsing_are_not_held_to_the_rule():
     gate that has to pass before every counted game."""
     assert roles.role_clash(constants.ROLE_COP, constants.ROLE_THIEF,
                             mine="best2934", opponent="best2934", sub_game=4) == ""
+
+
+# --------------------------------------------------------------------------
+# The second convention. Both give each team three sub-games of each role, both
+# are order-independent, and they are not the same rule.
+# --------------------------------------------------------------------------
+
+def test_the_odd_even_convention_gives_the_lower_group_id_the_odd_sub_games():
+    """The kit's published form, which imreeyal, anrbj666 and uoh-sqak play."""
+    for sub_game in (1, 3, 5):
+        assert roles.cop_group("best2934", "imreeyal", sub_game, convention=roles.ODD_EVEN) \
+            == "best2934"
+    for sub_game in (2, 4, 6):
+        assert roles.cop_group("best2934", "imreeyal", sub_game, convention=roles.ODD_EVEN) \
+            == "imreeyal"
+
+
+def test_odd_even_is_order_independent_too():
+    """The property that makes a convention usable at all: two peers holding the
+    pairing in opposite order must not need a message to agree."""
+    for sub_game in range(1, 7):
+        assert (roles.cop_group("best2934", "imreeyal", sub_game, convention=roles.ODD_EVEN)
+                == roles.cop_group("imreeyal", "best2934", sub_game, convention=roles.ODD_EVEN))
+
+
+def test_the_two_conventions_diverge_at_sub_games_two_and_five():
+    """The count we got wrong by hand, which is why it is computed here.
+
+    We told imreeyal the conventions disagreed at sub-games 2, 4 and 5. They
+    disagree at 2 and 5 -- sub-game 4 belongs to the second-sorted team under
+    both rules -- and imreeyal corrected us from our own published lists.
+    """
+    assert roles.convention_divergence("best2934", "imreeyal") == [2, 5]
+
+
+def test_the_conventions_agree_on_sub_game_one_which_is_what_makes_it_dangerous():
+    """Four of six sub-games agree, including the first.
+
+    A pairing that tests the handshake on sub-game 1 and calls the convention
+    settled has learned nothing. The mismatch waits until sub-game 2 and then
+    produces two cops -- and by then the series is under way.
+    """
+    agree = [n for n in range(1, 7) if n not in roles.convention_divergence("best2934", "imreeyal")]
+    assert agree == [1, 3, 4, 6]
+
+
+def test_each_convention_still_splits_the_series_evenly():
+    """Neither team may keep the easier half (rule 12b). Capture pays the cop 20
+    and survival pays the thief 10, so 3/3 is the fairness property, and it has
+    to hold under *both* rules rather than only the one we shipped first."""
+    for convention in roles.ROLE_CONVENTIONS:
+        cops = [roles.cop_group("best2934", "imreeyal", n, convention=convention)
+                for n in range(1, 7)]
+        assert cops.count("best2934") == cops.count("imreeyal") == 3
+
+
+def test_an_unknown_convention_raises_rather_than_picking_one():
+    """A silent fallback is how two peers end up internally consistent and
+    mutually unplayable -- the exact failure this module was rewritten to stop."""
+    with pytest.raises(ValueError, match="unknown role convention"):
+        roles.cop_group("best2934", "imreeyal", 1, convention="alternating")
+
+
+def test_a_clash_report_names_the_convention_it_judged_against():
+    """Two teams can each be right under their own rule. A message that says
+    only "you should be the thief" starts an argument; one that says which
+    convention produced that answer ends it."""
+    # Complementary on purpose: one cop, one thief, so this is the *playable*
+    # clash that gets past the first check and is caught only by the rule --
+    # two peers that have swapped the series and would score it wrong.
+    complaint = roles.role_clash(
+        constants.ROLE_COP, constants.ROLE_THIEF, "best2934", "imreeyal",
+        sub_game=2, convention=roles.ODD_EVEN)
+    assert complaint, "sub-game 2 makes imreeyal the cop under odd_even"
+    assert "odd_even" in complaint and "imreeyal" in complaint
+
+    # And the same pairing is fine under the convention we hold with gal-roy1,
+    # which is the whole reason the convention travels with the opponent.
+    assert not roles.role_clash(constants.ROLE_COP, constants.ROLE_THIEF,
+                                "best2934", "imreeyal", sub_game=2,
+                                convention=roles.FIRST_HALF)

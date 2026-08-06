@@ -35,6 +35,19 @@ class TransportError(RuntimeError):
     """The opponent could not be reached, or answered unintelligibly."""
 
 
+#: Sent on every outbound call. ngrok's free tier puts an HTML interstitial in
+#: front of a tunnel and answers **200** for it, which is worse than an error:
+#: a dead peer and a live one both read as "200, fine", and a check that wants
+#: the transport's own 406 can never see one. The header opts out.
+#:
+#: It is served on User-Agent, so our own client -- which is not a browser --
+#: was already getting through. Sent anyway, because "our probe happens not to
+#: look like a browser" is a property of a dependency's default header, not a
+#: decision we made, and imreeyal lost a match window to this exact ambiguity.
+#: Harmless against a peer not behind ngrok, which ignores an unknown header.
+TUNNEL_HEADERS = {"ngrok-skip-browser-warning": "1"}
+
+
 class PeerClient:
     """Calls tools on the opponent's MCP server.
 
@@ -60,8 +73,22 @@ class PeerClient:
                 raise TransportError(
                     "FastMCP is not installed. Run `uv sync` to install the transport."
                 ) from exc
-            self._client = Client(self.url, timeout=self.timeout)
+            self._client = Client(self._transport(), timeout=self.timeout)
         return self._client
+
+    def _transport(self):
+        """The URL, or an HTTP transport carrying our tunnel headers.
+
+        Headers belong to the transport rather than the client, so the transport
+        has to be built by hand -- but only for a real endpoint. ``url`` is also
+        an in-process ``FastMCP`` server in the tests and the rehearsal, which
+        needs no HTTP at all and which ``StreamableHttpTransport`` rejects.
+        """
+        if not isinstance(self.url, str) or not self.url.startswith("http"):
+            return self.url
+        from fastmcp.client.transports import StreamableHttpTransport
+
+        return StreamableHttpTransport(self.url, headers=dict(TUNNEL_HEADERS))
 
     async def open(self) -> None:
         """Hold one session open for the whole sub-game.

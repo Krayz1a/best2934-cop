@@ -29,6 +29,8 @@ import json
 import math
 from dataclasses import dataclass, field
 
+from .. import constants
+from . import scent_models
 from .board import BoardGeometry, Coord
 
 # The literal 5x5 table printed in the book (Figure 4). This is the default so
@@ -138,6 +140,13 @@ class ScentMap:
     kernel: tuple[tuple[float, ...], ...] = BOOK_FIGURE_KERNEL
     decay: float = 0.10
     grid: dict[Coord, float] = field(default_factory=dict)
+    #: Which registered model's arithmetic this map runs -- a per-pair lock,
+    #: not a league constant. See :mod:`p2pchase.domain.scent_models`.
+    model: str = constants.SCENT_MULTIPLICATIVE
+
+    @property
+    def subtractive(self) -> bool:
+        return self.model == constants.SCENT_SUBTRACTIVE
 
     @property
     def size(self) -> int:
@@ -146,8 +155,12 @@ class ScentMap:
     def emit(self, centre: Coord) -> None:
         """Deposit a fresh field around ``centre``.
 
-        Emission is additive but capped at the centre intensity: standing still
-        keeps a cell saturated rather than letting it grow without bound.
+        The two models merge a deposit differently, and the difference is
+        visible rather than cosmetic. The book's is **additive**, capped at the
+        centre intensity, so standing still keeps a cell saturated rather than
+        letting it grow without bound. The reference's merges by **max**, so a
+        deposit can never raise a cell above the kernel value at that offset and
+        a stationary agent's trail stops climbing at once.
         """
         mid = self.size // 2
         peak = self.kernel[mid][mid]
@@ -159,10 +172,25 @@ class ScentMap:
                 delta = self.kernel[r][c]
                 if delta <= 0.0:
                     continue
-                self.grid[cell] = min(peak, self.grid.get(cell, 0.0) + delta)
+                held = self.grid.get(cell, 0.0)
+                self.grid[cell] = max(held, delta) if self.subtractive \
+                    else min(peak, held + delta)
 
     def decay_all(self) -> None:
-        """Apply one full-turn decay step to every cell."""
+        """Apply one full-turn decay step to every cell.
+
+        The book's model scales by ``1 - rho`` and approaches zero without ever
+        arriving, so cells that have gone quiet are pruned to keep the map from
+        growing without bound. The reference's subtracts a constant, reaches
+        exactly zero, and **keeps the zero**: the field is transmitted, and a
+        cell that has just gone cold is information the opponent's map should
+        record rather than infer from an absence. Only positive values cross
+        the wire -- see :meth:`as_dict`.
+        """
+        if self.subtractive:
+            self.grid = {cell: scent_models.subtractive_decay(value, self.decay)
+                         for cell, value in self.grid.items()}
+            return
         factor = 1.0 - self.decay
         drained = []
         for cell, value in self.grid.items():
@@ -209,7 +237,16 @@ class ScentMap:
         return (int(round(centre[0])), int(round(centre[1])))
 
     def as_dict(self) -> dict[str, float]:
-        """Serialisable view, keyed ``"row,col"`` so it survives JSON."""
+        """Serialisable view, keyed ``"row,col"`` so it survives JSON.
+
+        Under the reference model only a positive value crosses the wire, and
+        the values are already rounded to three places by the decay rule, so
+        rounding again to six is a no-op that would not be worth naming were it
+        not for the one thing it must not do: reintroduce a sixth decimal into a
+        field the opponent compares cell by cell.
+        """
+        if self.subtractive:
+            return {f"{r},{c}": v for (r, c), v in sorted(self.grid.items()) if v > 0.0}
         return {f"{r},{c}": round(v, 6) for (r, c), v in sorted(self.grid.items())}
 
     def load(self, payload: dict[str, float], merge: bool = False) -> None:
@@ -228,10 +265,23 @@ class ScentMap:
             self.grid[(int(r), int(c))] = float(value)
 
 
-def build_scent_map(config: dict, geometry: BoardGeometry) -> ScentMap:
+def build_scent_map(config: dict, geometry: BoardGeometry,
+                    model: str = constants.SCENT_MULTIPLICATIVE) -> ScentMap:
+    """A field running ``model``'s physics over the agreed parameters.
+
+    The kernel is chosen by the model rather than by config when the model
+    defines one as a formula: ``subtractive_chebyshev_v1`` *is* its falloff
+    rule, so honouring a ``pheromone_kernel`` of ``book_table`` underneath it
+    would produce a field that is neither model and matches no opponent.
+    """
     ph = config.get("pheromones", {})
+    size = int(ph.get("pheromone_grid_size", constants.PHEROMONE_GRID_SIZE))
+    centre = float(ph.get("pheromone_center_intensity", constants.PHEROMONE_CENTER_INTENSITY))
+    kernel = (scent_models.chebyshev_kernel(size, centre)
+              if model == constants.SCENT_SUBTRACTIVE else build_kernel(config))
     return ScentMap(
         geometry=geometry,
-        kernel=build_kernel(config),
+        kernel=kernel,
         decay=float(ph.get("pheromone_decay", 0.10)),
+        model=model,
     )

@@ -32,6 +32,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..domain import scent_models
 from ..domain.smell import build_kernel, kernel_fingerprint
 from ..shared.config_schema import validate_shared
 from ..shared.peer_config import PeerConfig
@@ -52,6 +53,11 @@ class Handshake:
     scent_fingerprint: str
     mcp_url: str
     repos: dict[str, str] = field(default_factory=dict)
+    #: The league's locked-model declaration for the ``scent_model`` family --
+    #: a hash of the registered document, never the document itself. Defaults
+    #: to empty because an opponent who declares nothing must still be
+    #: playable; see :func:`p2pchase.domain.scent_models.lock_refuses`.
+    scent_model_sha256: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -61,6 +67,7 @@ class Handshake:
             "schema_version": self.schema_version,
             "config_sha256": self.config_sha256,
             "scent_fingerprint": self.scent_fingerprint,
+            "scent_model_sha256": self.scent_model_sha256,
             "mcp_url": self.mcp_url,
             "repos": dict(self.repos),
         }
@@ -74,6 +81,7 @@ class Handshake:
             schema_version=str(payload.get("schema_version", "")),
             config_sha256=str(payload.get("config_sha256", "")),
             scent_fingerprint=str(payload.get("scent_fingerprint", "")),
+            scent_model_sha256=str(payload.get("scent_model_sha256", "")),
             mcp_url=str(payload.get("mcp_url", "")),
             repos=dict(payload.get("repos", {})),
         )
@@ -110,22 +118,42 @@ class NegotiationService:
     def __init__(self, config: PeerConfig) -> None:
         self.config = config
 
-    def scent_fingerprint(self) -> str:
-        """Hash of the emission kernel and decay rate both peers must share."""
-        shared = self.config.shared
-        return kernel_fingerprint(
-            build_kernel(shared), float(shared["pheromones"]["pheromone_decay"])
-        )
+    def scent_fingerprint(self, opponent: str = "") -> str:
+        """Hash of the emission kernel and decay rate both peers must share.
 
-    def handshake(self, mcp_url: str = "") -> Handshake:
-        """Our own published fingerprints."""
+        Keyed on the opponent for the same reason the model lock is: under
+        ``subtractive_chebyshev_v1`` the kernel is a falloff formula rather than
+        the book's printed table, so publishing the book's fingerprint while
+        emitting Chebyshev rings would be a declaration that does not describe
+        what we run. Wrong in the direction that matters -- it would pass.
+        """
+        shared = self.config.shared
+        model = self.config.scent_model(opponent)
+        pheromones = shared["pheromones"]
+        kernel = (scent_models.chebyshev_kernel(
+                      int(pheromones.get("pheromone_grid_size", 5)),
+                      float(pheromones.get("pheromone_center_intensity", 0.9)))
+                  if model == scent_models.SUBTRACTIVE else build_kernel(shared))
+        return kernel_fingerprint(kernel, float(pheromones["pheromone_decay"]))
+
+    def handshake(self, mcp_url: str = "", opponent: str = "") -> Handshake:
+        """Our own published fingerprints.
+
+        ``opponent`` selects the scent model, because that lock is agreed per
+        pairing rather than per league -- we run the book's model with gal-roy1
+        and the reference's with imreeyal. Absent an opponent we declare our
+        default, which is what the very first outbound greeting carries; the
+        moment we read their group id we re-derive and declare the model we
+        actually agreed with *them*.
+        """
         return Handshake(
             group_id=self.config.group_id,
             group_name=self.config.group_name,
             code_version=CODE_VERSION,
             schema_version=str(self.config.shared.get("schema_version", "")),
             config_sha256=self.config.config_sha256(),
-            scent_fingerprint=self.scent_fingerprint(),
+            scent_fingerprint=self.scent_fingerprint(opponent),
+            scent_model_sha256=scent_models.locked_sha256(self.config.scent_model(opponent)),
             mcp_url=mcp_url or self.config.public_url or
             f"http://127.0.0.1:{self.config.my_port}/mcp",
             repos=self.config.repos,
@@ -135,14 +163,29 @@ class NegotiationService:
         """Compare fingerprints and report every difference at once."""
         if isinstance(theirs, dict):
             theirs = Handshake.from_dict(theirs)
-        ours = self.handshake()
+        ours = self.handshake(opponent=theirs.group_id)
 
         mismatches: list[str] = []
+        if ours.config_sha256 != theirs.config_sha256:
+            mismatches.append(
+                f"config_sha256: ours={ours.config_sha256} theirs={theirs.config_sha256}")
+
+        # The two scent locks are compared under the league's omission rule:
+        # refuse only when BOTH peers declare and the values differ. Silence is
+        # never refusal, in either direction.
+        #
+        # This is not politeness, it is the difference between having opponents
+        # and not having them. `scent_fingerprint` is *our* construction, agreed
+        # bilaterally with gal-roy1 and unknown to everyone else; comparing it
+        # strictly meant any team that had simply never heard of it arrived with
+        # an empty string and was refused at the handshake. We would have been
+        # turning away the opponents rule 31 requires us to find, using a field
+        # we invented, and reading it as their fault.
         for label, mine, yours in (
-            ("config_sha256", ours.config_sha256, theirs.config_sha256),
             ("scent_fingerprint", ours.scent_fingerprint, theirs.scent_fingerprint),
+            ("scent_model_sha256", ours.scent_model_sha256, theirs.scent_model_sha256),
         ):
-            if mine != yours:
+            if scent_models.lock_refuses(mine, yours):
                 mismatches.append(f"{label}: ours={mine} theirs={yours}")
 
         # Major-only, not exact. An exact comparison aborted the handshake on a

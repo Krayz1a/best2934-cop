@@ -41,6 +41,31 @@ def make_game_id(group_a: str, group_b: str) -> str:
     return f"{first}-vs-{second}"
 
 
+def opponent_in_game_id(game_id: str, mine: str) -> str:
+    """The other half of a ``<a>-vs-<b>`` id, or ``""`` if it is not one.
+
+    The inverse of :func:`make_game_id`, and it lives beside it so the two
+    cannot drift. Worth having because the pairing terms a peer runs -- which
+    scent model, which role convention -- are keyed by opponent, and a served
+    peer learns the game id long before anyone hands it an opponent name.
+
+    Empty rather than a guess when the id has any other shape, **and when
+    neither half is us**. Falling back means running the book's model under the
+    first-half convention, which is what we did before pairings existed;
+    guessing means running terms one opponent agreed against a different
+    opponent who never did.
+
+    That second condition is not defensive padding. An id we are not named in
+    is one we do not understand -- a rehearsal id, a renamed group, a peer that
+    built the name from something other than group ids -- and answering it with
+    "the half that is not ours" requires knowing which half that is.
+    """
+    halves = str(game_id).split("-vs-")
+    if len(halves) != 2 or str(mine) not in halves:
+        return ""
+    return halves[1] if halves[0] == str(mine) else halves[0]
+
+
 def links_block(game_id: str) -> dict[str, Any]:
     """Cross-references between the four artifacts of one match."""
     return {

@@ -211,8 +211,15 @@ class OwnState:
         }
 
 
-def build_own_state(config: dict, role: str, board: Board) -> OwnState:
-    """Assemble a peer's starting local truth from the agreed config."""
+def build_own_state(config: dict, role: str, board: Board,
+                    scent_model: str = constants.SCENT_MULTIPLICATIVE) -> OwnState:
+    """Assemble a peer's starting local truth from the agreed config.
+
+    ``scent_model`` is the per-pair lock declared at the handshake. It has to
+    reach the maps themselves: declaring ``subtractive_chebyshev_v1`` and then
+    emitting the book's kernel would be a false declaration that *passes* the
+    check, because a hash of a document says nothing about the code under it.
+    """
     ba = config.get("board_and_agents", {})
     mb = config.get("movement_and_barriers", {})
     start = tuple(ba.get("cop_start" if role == constants.ROLE_COP else "thief_start", (0, 0)))
@@ -222,8 +229,8 @@ def build_own_state(config: dict, role: str, board: Board) -> OwnState:
     # Start positions are agreed in the shared config, so step 0 is certain.
     belief.reset(known_start=(int(opponent_start[0]), int(opponent_start[1])))
 
-    my_scent = build_scent_map(config, board.geometry)
-    opponent_scent = build_scent_map(config, board.geometry)
+    my_scent = build_scent_map(config, board.geometry, scent_model)
+    opponent_scent = build_scent_map(config, board.geometry, scent_model)
     lag = int(config.get("pheromones", {}).get(
         "pheromone_transmit_lag", DEFAULT_TRANSMIT_LAG))
 

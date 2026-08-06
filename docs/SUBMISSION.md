@@ -52,7 +52,7 @@ into the `.docx`.
 | Maximum number of points accumulated | **0** |
 | Games won / lost / drawn | 0 / 0 / 0 |
 | Bonus eligibility | Not yet — the bonus needs counted games |
-| Opponents with a working protocol | **1** (`gal-roy1`) |
+| Opponents with a working protocol | **2** (`gal-roy1`; `imreeyal` agreed and conformance-verified, not yet played) |
 | Counted games played | **0** — read from the ledger, not from the artifacts (rule 52) |
 
 Two complete sub-games have been played against `gal-roy1` over the public
@@ -88,9 +88,10 @@ What *is* unambiguous in the rules, and what it costs us:
 Those two together mean one opponent can never satisfy the requirement — a
 second counted game against the same team does not count twice. With the
 minimum at 2, we need **exactly one more team** than we have. We currently have
-one, `gal-roy1`, with whom the protocol works end to end; two further teams
-(`imreeyal` and `anrbj666`) have been approached and would clear the bar with
-one to spare.
+one, `gal-roy1`, with whom the protocol works end to end. `imreeyal` have now
+agreed terms with us — roles, scent model, consensus signature and endpoints —
+and a friendly window is being scheduled; `anrbj666` and `uoh-sqak` play the
+same published forms, so the conformance work done for imreeyal carries to them.
 
 The "List of teams you played against" table wants, per game: date, start time,
 end time, opponent team name, your score, their score, their declared number of
@@ -105,8 +106,8 @@ What the repository can honestly claim:
 
 | Guidelines V3 gate | Required | Measured (2026-08-06) |
 |---|---|---|
-| Code lines per file | ≤ 150 | 0 of 136 files over; largest `test_handlers.py` at 150 |
-| Test coverage | ≥ 85% | **93.3%**, 542 tests (thief repo: 93.1%, 540 plus 2 Gmail-extra skips) |
+| Code lines per file | ≤ 150 | 0 of 140 files over; largest `test_handlers.py` at 150 |
+| Test coverage | ≥ 85% | **93.5%**, 580 tests (thief repo: 93.2%, 578 plus 2 Gmail-extra skips) |
 | Ruff violations | 0 | **0** |
 | Dress rehearsal over sockets | — | Passes on both repos: four processes, both peers settled `capture`, each passed the other's audit |
 | Dependency management | `uv` only | `uv.lock` committed, no `requirements.txt` |
@@ -165,7 +166,7 @@ empty game table will read as one that was not checked.
       2026-08-06: it is **2**, fixed and non-negotiable
 - [ ] Play counted games against **2 different teams** (rule 52 caps counted
       games at one per opponent, so 2 teams is structural, not optional).
-      `gal-roy1` secured; `imreeyal` and `anrbj666` approached
+      `gal-roy1` secured; `imreeyal` terms agreed and window being scheduled
 - [ ] Annotated tag on both: `git tag -a v1.0-submission -m "…" && git push
       origin v1.0-submission` (rule 41) — after the last counted game
 - [ ] Copy the six personal-data values from `best2934-ex01.pdf` into the

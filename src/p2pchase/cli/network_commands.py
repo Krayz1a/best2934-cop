@@ -58,7 +58,8 @@ def _sdk_for_sub_game(args: Any) -> P2PChaseSDK:
     if not opponent or opponent == sdk.config.group_id:
         return sdk
     derived = roles.role_for(sdk.config.group_id, opponent,
-                             int(getattr(args, "sub_game", 1)), sdk.config.num_sub_games)
+                             int(getattr(args, "sub_game", 1)), sdk.config.num_sub_games,
+                             sdk.config.role_convention(opponent))
     if derived == args.role:
         return sdk
     if getattr(args, "role_explicit", False):
