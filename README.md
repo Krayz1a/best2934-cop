@@ -219,6 +219,21 @@ in `network.public_url`. `p2pchase serve` runs only the server half, which is
 useful for letting an opponent check reachability early — but a match is played
 with `play`.
 
+**Keeping it up, and knowing that it is:**
+
+```bash
+uv run python tools/endpoint.py up       # start whatever is missing, detached
+uv run python tools/endpoint.py status   # exit 0 only if a real handshake lands
+```
+
+"Our peer is up" is a claim about three things — the server is listening, the
+tunnel agent is running, and a real MCP client can complete a handshake through
+the public URL — and two of them fail silently. `status` proves the third the
+same way an opponent discovers it, by shaking hands, because a listening socket
+is not an endpoint. Both halves are started in their own session so that closing
+the terminal does not take the match down with it; we lost nine hours to exactly
+that, and rule 6 charges *both* teams for a sub-game that never starts.
+
 ### Report the result
 
 ```bash
