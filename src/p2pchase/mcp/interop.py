@@ -65,11 +65,21 @@ class InteropAdapter:
         Our native ``hello`` nests those under ``handshake``; theirs expects
         them at the top level. Both are sent, because a field they ignore costs
         nothing and a field they need and cannot find costs the match.
+
+        ``role`` rides along because rule 41 puts each role in its own
+        repository while both serve the same public URL in turn, and nothing
+        else on this endpoint can tell you which one is answering. A listening
+        socket behind the agreed URL is not proof it is the right peer: serve
+        the cop when the sub-game assigns the thief and every message after the
+        handshake is wrong. It is not a disclosure -- both teams derive it from
+        the agreed rule and the two group ids before anyone connects.
         """
         answer = self.handlers.hello(payload)
         shake = dict(answer.get("handshake", {}))
+        session = self.handlers.session
         return {**answer, "group_id": shake.get("group_id", ""),
                 "schema_version": shake.get("schema_version", ""),
+                "role": session.role if session is not None else "",
                 "counted_games_played": self.counted_games_played()}
 
     def propose_config(self, payload: dict[str, Any]) -> dict[str, Any]:

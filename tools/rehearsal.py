@@ -41,7 +41,13 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 
-OUR_PORT, THEIR_PORT = 8801, 8802
+#: Defaulted to the real ports so the rehearsal exercises the same binding a
+#: match does, but overridable because the gate is worth running *while* the
+#: league endpoint is serving. Taking the public endpoint down to run a check
+#: is how an opponent finds a dead peer, and rule 6 charges the stall to both
+#: teams -- we have already paid for that lesson once.
+OUR_PORT = int(os.environ.get("P2PCHASE_REHEARSAL_PORT", "8801"))
+THEIR_PORT = int(os.environ.get("P2PCHASE_REHEARSAL_PEER_PORT", str(OUR_PORT + 1)))
 GAME_ID = "rehearsal-not-a-counted-game"
 SPARRING_GROUP = "spar0001"
 

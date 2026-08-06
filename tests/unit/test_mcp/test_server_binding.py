@@ -92,8 +92,11 @@ def test_hello_adds_only_the_opponents_aliases_and_removes_nothing(server, handl
     through_server = asyncio.run(server.call_tool("hello", {})).structured_content
     direct = handlers.hello({})
     assert direct.items() <= through_server.items(), "the binding dropped or altered a field"
+    # ``role`` joined the set deliberately: both roles serve the same public URL
+    # in turn (rule 41 splits them across repositories), and nothing else on this
+    # endpoint says which one is answering.
     assert set(through_server) - set(direct) == {"group_id", "schema_version",
-                                                 "counted_games_played"}
+                                                 "role", "counted_games_played"}
 
 
 @pytest.mark.parametrize("arguments", [

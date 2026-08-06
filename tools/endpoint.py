@@ -13,6 +13,10 @@ so an opponent knocking at a dead endpoint is not only our loss.
 
     uv run python tools/endpoint.py status   # exit 0 only if all three pass
     uv run python tools/endpoint.py up       # start what is missing, then check
+    uv run python tools/endpoint.py take     # move the public URL to THIS role
+
+``take`` is the half-time handover: run it in best2934-thief before sub-game 4
+and in best2934-cop before sub-game 1. The opponent's address never changes.
 
 ``status`` is the one worth trusting: it proves reachability the same way the
 opponent will discover it, by completing a handshake rather than by looking at a
@@ -107,12 +111,44 @@ def _handshake(url: str) -> str:
     async def ask() -> str:
         async with Client(url.rstrip("/") + "/mcp") as client:
             answer = await client.call_tool("hello", {"payload": {}})
+            served = str(answer.data.get("role", ""))
+            if served and served != _role():
+                return f"!WrongRole: the URL serves {served!r}, this repo is {_role()!r}"
             return str(answer.data.get("group_id", ""))
 
     try:
         return anyio.run(ask)
     except Exception as error:  # noqa: BLE001 -- any failure is "not reachable"
         return f"!{type(error).__name__}: {error}"
+
+
+def _environment() -> dict[str, str]:
+    """The parent environment, plus anything ``.env`` defines that it lacks.
+
+    A detached process inherits the shell that launched it, and this one is
+    usually launched from a shell that never sourced ``.env``. Nothing reads
+    that file on our behalf -- the code goes straight to ``os.environ`` -- so a
+    peer started here would sign its step-0 declaration with an empty secret and
+    say nothing about it (rule 24, and ``declaration.py`` falls back to an
+    unkeyed digest rather than failing). Reading it here is the difference
+    between a signed declaration and a quietly unsigned one.
+
+    The real environment wins, so an operator who exports a value by hand is
+    never overridden by a stale file.
+    """
+    import os
+
+    environment = dict(os.environ)
+    source = REPO / ".env"
+    if not source.exists():
+        return environment
+    for line in source.read_text(encoding="utf-8").splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith("#") or "=" not in entry:
+            continue
+        name, _, value = entry.partition("=")
+        environment.setdefault(name.strip(), value.strip())
+    return environment
 
 
 def _detached(args: list[str], log: Path) -> None:
@@ -125,7 +161,8 @@ def _detached(args: list[str], log: Path) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("a", encoding="utf-8") as handle:
         subprocess.Popen(args, cwd=REPO, stdout=handle, stderr=subprocess.STDOUT,
-                         stdin=subprocess.DEVNULL, start_new_session=True)
+                         stdin=subprocess.DEVNULL, start_new_session=True,
+                         env=_environment())
 
 
 def status() -> int:
@@ -168,9 +205,33 @@ def up() -> int:
     return status()
 
 
+def take() -> int:
+    """Point the public URL at *this* repository's role, and prove it landed.
+
+    The series changes roles halfway (rule 12) and rule 41 puts the two roles in
+    two repositories, but there is one reserved domain and a free tunnel agent
+    serves one port. So the handover is: move the tunnel, not the URL. The
+    opponent keeps the address it already has, which matters because a URL that
+    changes between halves is the failure that cost this project a day.
+
+    ``up`` deliberately will not do this. It leaves a running agent alone, and
+    that is right when the agent is already ours -- but between halves the
+    running agent is the *other* role's, pointed at a port this repo does not
+    serve. Left alone, every check passes while the wrong peer answers.
+    """
+    if _tunnel_url():
+        print("stopping the tunnel that serves the other role...")
+        subprocess.run(["pkill", "-f", "ngrok http"], check=False)
+        for _ in range(10):
+            time.sleep(1)
+            if not _tunnel_url():
+                break
+    return up()
+
+
 if __name__ == "__main__":
     command = sys.argv[1] if len(sys.argv) > 1 else "status"
-    if command not in {"status", "up"}:
+    if command not in {"status", "up", "take"}:
         print(__doc__)
         sys.exit(2)
-    sys.exit(status() if command == "status" else up())
+    sys.exit({"status": status, "up": up, "take": take}[command]())

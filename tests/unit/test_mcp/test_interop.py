@@ -106,6 +106,26 @@ def test_a_cop_records_the_capture_it_cannot_see(peer_config):
     assert adapter.our_outcome() == "capture", "and it must survive to agree_result"
 
 
+def test_taking_a_turn_is_what_records_the_claim(peer_config):
+    """The wiring the other tests assume, proved rather than assumed.
+
+    Those set ``claimed`` by hand, which pins the settlement logic and says
+    nothing about whether anything ever populates it. If ``take_turn`` did not,
+    every concession would be refused as uncorroborated and the cop's outcome
+    would stay blank -- the original bug, reintroduced one layer down and still
+    passing its own tests.
+    """
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    loop = InteropAdapter(PeerHandlers(peer_config, session)).turns(session)
+    assert loop.claimed is None
+
+    turn = loop.take_turn(1)
+    assert turn["capture_claim"] is not None, "a cop claims a cell every turn"
+    assert loop.claimed == tuple(turn["capture_claim"]), "and we keep what we claimed"
+
+
 def test_a_conceded_capture_we_never_claimed_is_refused(peer_config):
     """Conceding a capture says *we* won, which is the one direction a lie pays.
 
