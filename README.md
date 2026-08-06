@@ -301,6 +301,45 @@ match without either side noticing, so the kernel and decay rate are hashed into
 a `scent_fingerprint` and compared during the handshake. A mismatch stops the
 match before move one.
 
+### The tied-series scoring choice
+
+The book and the reference implementation contradict each other on what a level
+series scores, and the course grants academic freedom to implement either
+**provided the choice is documented and justified**. This is that justification.
+
+| | A level 25–25 series scores |
+|---|---|
+| Book ch9, as we first read it | **2 / 2** — the tie score *replaces* the sums |
+| Reference implementation | **27 / 27** — the tie score is *added* to them |
+
+**We add.** `SeriesTally.finalise` and `reports/agreed.series_totals` both apply
+`tie_score` on top of the accumulated points, and `raw_score` / `scores` keep the
+untouched sums beside the adjusted total so the adjustment is always visible
+rather than baked in.
+
+We changed to this from the replacing reading, and not because the book argument
+is weak. Three reasons, in the order that decided it:
+
+1. **Rule 35 charges both teams.** Contradictory reports void the match and
+   score *both* sides zero. A reading we hold alone is not a private act of
+   principle — it costs the opponent their points too. Being solo-correct is
+   worse for the league than being conventionally wrong.
+2. **Every other implementation we can check sums.** The reference does; so does
+   the `copthief-league-protocol` kit, whose published fixtures we verified
+   against our own encoder before adopting.
+3. **Replacing inverts the ordering.** Under it a hard-fought 25–25 series pays
+   2, while a single sub-game win pays 20 — so a team would rank *higher* for
+   one narrow victory than for six drawn ones. That is difficult to defend as
+   the intent of a rule whose stated purpose is that no encounter goes unscored.
+
+The cost is recorded rather than hidden: our settlement digest for a tied series
+no longer matches the value gal-roy1 and we originally agreed
+(`f57c1b85…` → `bc737517…`). Every non-tied vector still reproduces exactly, so
+the divergence is confined to a level series — but a bilateral agreement changed
+unilaterally is worth nothing, and it is theirs to recompute or object to before
+any counted series. Both digests are pinned in
+`tests/unit/test_reports/test_agreed.py` so neither can quietly disappear.
+
 ---
 
 ## 5. The model: a Dec-POMDP

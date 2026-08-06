@@ -45,15 +45,42 @@ VECTOR_C = [
     _sub_game(5, "police", "capture", 20, 5, US),
     _sub_game(6, "police", "survival", 5, 10, THEM),
 ]
-VECTOR_C_SHA = "f57c1b859e47c92169f0b7adf07b2bbdf5580e85747dc46b27f56b79ff2aa23d"
+#: Our digest for vector C, which **no longer equals gal-roy1's published
+#: number** (``f57c1b85…``). Nothing drifted: we changed the tied-series rule
+#: from replacing the sums to adding to them, deliberately and for the reasons
+#: in the README, and this vector is the only one of theirs that ties. Every
+#: other vector we share with them still reproduces exactly -- the divergence is
+#: confined to a level series and does not touch ordinary play.
+#:
+#: Recorded rather than quietly re-pinned because it is a live obligation: a
+#: bilateral agreement changed unilaterally is worth nothing, and gal-roy1 has
+#: to recompute or object before any counted series with them.
+VECTOR_C_SHA = "bc7375173cc9a7981420732cca2f05c2d9032a8e5cadb18b59803ef8668e91cb"
+VECTOR_C_SHA_UNDER_THE_REPLACING_RULE = (
+    "f57c1b859e47c92169f0b7adf07b2bbdf5580e85747dc46b27f56b79ff2aa23d")
 WARM_UP_SHA = "4c2cebd17b0ba81027127ea726d5e7fef1d578e26782e7b38b6fb7429d0c2c24"
 
 
-def test_our_object_reproduces_their_series_digest():
-    """The whole point. Our names, our casing, our aggregation -- their hex."""
+def test_the_series_digest_diverges_from_gal_roy1_only_on_a_tie():
+    """The one vector our tied-series change moved, pinned in both directions.
+
+    This used to reproduce gal-roy1's hex exactly and no longer does, because we
+    changed what a level series scores. That is a real obligation, not a stale
+    fixture: the digest is a *bilateral* agreement and we altered our half of
+    it, so they have to recompute or object before any counted series.
+
+    Asserted against both values so neither can be lost -- the number we now
+    compute, and the number the agreement was originally struck on.
+    """
     summary = agreed_summary("best2934--gal-roy1--series-tie-C", GROUPS, VECTOR_C,
                              with_totals=True)
-    assert sha256_hex(canonical_json(summary)) == VECTOR_C_SHA
+    ours = sha256_hex(canonical_json(summary))
+    assert ours == VECTOR_C_SHA
+    assert ours != VECTOR_C_SHA_UNDER_THE_REPLACING_RULE
+    assert summary["totals"]["total_score"] == {US: 67, THEM: 67}
+    # The sums are untouched, so the tie score applied is visible as the
+    # difference rather than baked in.
+    assert summary["totals"]["scores"] == {US: 65, THEM: 65}
 
 
 def test_our_object_reproduces_their_per_sub_game_digest():
@@ -69,12 +96,17 @@ def test_the_per_sub_game_object_never_grows_a_totals_key():
     assert "totals" not in summary
 
 
-def test_chapter_nine_replaces_the_sums_on_a_level_series():
-    """The rule the two teams could have implemented differently while both
-    looked right. Vector C is the first vector where the two fields differ."""
+def test_a_level_series_adds_the_tie_score_to_the_sums():
+    """The rule two teams can implement differently while both look right.
+
+    Vector C is the first vector where ``scores`` and ``total_score`` differ.
+    We ADD the tie score; the alternative reading replaces the sums with it.
+    The book and the reference disagree, the course allows either with a
+    written justification, and ours is in the README.
+    """
     totals = agreed_summary("g", GROUPS, VECTOR_C, with_totals=True)["totals"]
     assert totals["scores"] == {US: 65, THEM: 65}
-    assert totals["total_score"] == {US: 2, THEM: 2}
+    assert totals["total_score"] == {US: 67, THEM: 67}
     assert totals["series_tie"] is True
     assert totals["winner"] is None
 

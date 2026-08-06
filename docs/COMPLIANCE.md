@@ -73,7 +73,7 @@ Summary: **45 Met · 4 Met, awaiting play · 4 Operator · 2 External**.
 
 | # | Rule | Status | Where |
 |---|---|---|---|
-| 31 | Play the minimum number of games against different teams | External | Needs opponents. [TODO.md](TODO.md) Phase 10 |
+| 31 | Play the minimum number of games against different teams | External | **Minimum is 2**, confirmed by course staff 2026-08-06; a fixed parameter, already correct as `min_games_to_pass` in `config/<role>/game.json` and `constants.MIN_GAMES_TO_PASS`. The booklet prose leaves the number as an unfilled placeholder, so it was asked rather than derived. Rule 52 caps counted games at one per opponent, so 2 teams is structural. One secured (`gal-roy1`), two approached. [TODO.md](TODO.md) Phase 10 |
 | 32 | Report results automatically by Gmail | Met, awaiting play | `services/reporting_service.py`; dry run is the default until credentials exist |
 | 33 | The report is standard JSON | Met | `reports/result.py`; `tests/unit/test_reports/test_artifacts.py` |
 | 34 | No free-text final report — JSON attachment only | Met | The body carries a summary and names the attachment as binding; the artifact is the JSON file |

@@ -1,7 +1,7 @@
 # TODO — Tasks, phases and definitions of done
 
 **Project** `best2934-cop` · **Document version** 1.00
-**Last updated** 2026-08-04 · **Deadline** 2026-08-12 23:59 (no extensions)
+**Last updated** 2026-08-06 · **Deadline** 2026-08-12 23:59 (no extensions)
 
 Status values: **Done** · **In progress** · **Not started** · **Blocked**
 
@@ -105,13 +105,14 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | 9.4 | Fill the Word template → PDF | P0 | Team | In progress | [SUBMISSION.md](SUBMISSION.md) answers everything derivable. Outstanding: the six personal-data fields (on `best2934-ex01.pdf`, deliberately not in this public repo), the sending Gmail address, and §3, which needs counted games |
 | 9.5 | Self-assessed grade | P0 | Team | Not started | Agreed by all three members. [SUBMISSION.md](SUBMISSION.md) §4 proposes a number per scenario to argue from rather than starting blank |
 | 9.6 | Individual Moodle submission | P0 | Team | Not started | Three submissions, one per member |
-| 9.7 | Ask the staff for the counted-game minimum | **P0** | Team | **Not started** | The booklet leaves it as an unfilled placeholder in both places it appears — `לפחות [ מינימום משחקים למעבר ] מול קבוצות שונות`. It decides whether the project passes and we cannot derive it |
+| 9.7 | Ask the staff for the counted-game minimum | P0 | Team | Done | Answered 2026-08-06: **2**, fixed and non-negotiable. Already correct as `min_games_to_pass` in our config; the booklet prose left it as a placeholder, so it had to be asked rather than derived |
+| 9.8 | Document the tied-series scoring choice | P0 | Team | Done | The book and the reference contradict each other; the course grants academic freedom with a written justification. We ADD `tie_score` to the sums rather than replacing them — see README §4, "The tied-series scoring choice". Cost recorded: our tie digest with `gal-roy1` moved and they must recompute or object |
 
 ## Phase 10 — League play · **In progress, one opponent short**
 
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
-| 10.1 | Recruit opponents on the course forum | **P0** | Ext | **In progress — the long pole** | `gal-roy1` agreed and the protocol works end to end. **At least one more team is required**: rule 52 allows exactly one counted game per opponent, so a second counted game against `gal-roy1` does not count twice, whatever the minimum turns out to be (9.7) |
+| 10.1 | Recruit opponents on the course forum | **P0** | Ext | **In progress — the long pole** | Minimum is **2 different groups** (9.7), and rule 52 allows exactly one counted game per opponent, so a second counted game against `gal-roy1` does not count twice. `gal-roy1` secured and working end to end; `imreeyal` and `anrbj666` approached via issue #45 on their protocol kit. Three in play against a requirement of two |
 | 10.2 | Expose the MCP endpoint via tunnel | P0 | TL | Done | `https://monogram-radio-blooper.ngrok-free.dev/mcp`, a **reserved** domain so it survives restarts. Verified by a real `hello` from the public internet. Both roles serve it in turn via `tools/endpoint.py take`; `hello` publishes `role` so the wrong one cannot answer unnoticed |
 | 10.3 | Play the counted games | P0 | Team | Blocked on 10.1 and sign-off | Two complete sub-games already played against `gal-roy1` — both won by our cop on a rule-46 barrier capture, mutual audit clean both ways — but **uncounted by design**. No game counts without both operators saying so in the shared log (rule 52) |
 | 10.4 | Mutual audit + both-sides e-mail | P0 | Team | Audit proven, e-mail blocked | The mutual audit has passed in both directions against a genuinely independent implementation. The e-mail half needs the Gmail OAuth client (`GMAIL_SETUP.md`) |
@@ -122,7 +123,7 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 
 | Item | Blocked on | Note |
 |---|---|---|
-| 9.7 | Course staff | The pass threshold is an unfilled placeholder in our copy of the booklet. Everything in Phase 10 is sized against a number we do not have. |
+
 | 10.1 | Other teams | Nothing in the codebase can unblock this, and it is now the only thing between a working agent and a passing project. One opponent is not enough at any threshold. |
 | 10.3 | Both operators | Deliberate, not an obstacle: no game counts until both humans say so in the shared log. Warm-ups need no permission and are unlimited. |
 | 5.3 (live) | Google Cloud OAuth client | A human must create the client and run the consent flow — see [GMAIL_SETUP.md](GMAIL_SETUP.md). Dry-run mode works today. |
@@ -133,7 +134,7 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Only one opponent found before the deadline | **Fails a threshold requirement outright** | One opponent is secured and working. Rule 52 caps counted games at one per opponent, so the second team is structural and cannot be substituted by playing `gal-roy1` again. Task 10.1, and the highest risk on this list |
-| The pass threshold is higher than two | Recruiting stops too early | Ask the staff (9.7) before deciding how many teams to approach — the number is a placeholder in our copy and every plan below it is a guess |
+| A second counted game does not materialise | Fails the threshold at 1 of 2 | Three opponents in play against a requirement of 2: `gal-roy1` working end to end, `imreeyal` and `anrbj666` approached via issue #45. Margin of one |
 | Public repository exposes strategy | Opponents can read the weights | Flagged twice; kept public by the team's explicit decision. Weights live in `setup.json` and can be changed between matches without touching code |
 | Opponent implements Appendix F differently | Handshake refuses, no match | `check-config` and `handshake` let both sides compare fingerprints before agreeing to play |
 | Trust estimator's 30.7% false-contradiction rate | Under-trusts an honest opponent (0.724, not the 0.90 ceiling) | Measured over 30 seeds and documented (ADR-006); the separation from a liar (0.020) remains decisive |

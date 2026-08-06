@@ -30,7 +30,8 @@ Two differences from ours are cosmetic and one is not:
   that it is what the lecturer's tooling computes, which is reason enough.
 * **Field names**: ``sub_game_number``/``winner_group``/``score``/``aggregate``
   where ours says ``sub_game``/``winner``/``scores``/``totals``.
-* **A tied series scores differently, and this one changes numbers.** See
+* A tied series once scored differently here than in our own totals. It no
+  longer does -- the course ruled and we moved both. See
   :func:`interop_aggregate`.
 """
 
@@ -84,19 +85,16 @@ def interop_aggregate(group_ids: list[str], sub_games: list[dict[str, Any]],
                       tie_score: int = constants.TIE_SCORE) -> dict[str, Any]:
     """Series totals, derived only -- so a mismatch here is a real disagreement.
 
-    **The tie rule differs from ours and the difference is numeric.** We read
-    chapter 9 as paying a level series ``tie_score`` *instead of* the summed
-    scores. The two-team convention, reported as the reference's own observed
-    aggregate behaviour, *adds* ``tie_score`` to each side's sum. On a tied
-    series those produce different numbers for the same match, which is exactly
-    the rule-35 contradiction both conventions are trying to prevent.
+    A level series ADDS ``tie_score`` to each side's sum rather than replacing
+    it -- and since the course ruled on the question, that is now what
+    :func:`~p2pchase.reports.agreed.series_totals` does too, so the two agree.
 
-    We follow the league convention *here*, in the cross-team object, because a
-    digest whose whole purpose is to match must follow the spelling everyone
-    else computes. Our own reading is unchanged in
-    :func:`~p2pchase.reports.agreed.series_totals`, which is what our artifacts
-    and gal-roy1 use. The conflict is real, it is not ours to settle alone, and
-    it is raised where it can be settled rather than quietly resolved here.
+    They did not always. We read chapter 9 as replacing; the reference sums.
+    The course confirmed the contradiction is real, granted academic freedom to
+    pick either with a written justification, and ours is in the README under
+    "The tied-series scoring choice". The deciding argument was not which
+    reading is better but that rule 35 charges *both* teams for contradictory
+    reports, so a solo-correct reading costs an opponent points as well.
     """
     scores = {group: sum(int(game["score"].get(group, 0)) for game in sub_games)
               for group in group_ids}

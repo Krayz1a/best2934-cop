@@ -60,12 +60,20 @@ def test_a_decisive_series_names_its_winner():
 
 
 def test_a_dead_level_series_pays_both_sides_the_tie_score():
-    """Book ch9 tie rule: no encounter is left without a scoring verdict."""
+    """No encounter is left without a scoring verdict, and the tie score is
+    ADDED to the sums rather than replacing them.
+
+    The book and the reference contradict each other; the course allows either
+    with a documented justification, and ours is in the README and in
+    :meth:`SeriesTally.finalise`. Pinned as a decision so that changing it back
+    has to be deliberate: the two readings score a level series 27 or 2, and an
+    opponent computing the other one voids the match for us both (rule 35).
+    """
     tally = SeriesTally("us", "them")
     tally.record({"us": "police", "them": "thief"}, constants.OUTCOME_CAPTURE, ScoreTable())
     tally.record({"us": "thief", "them": "police"}, constants.OUTCOME_CAPTURE, ScoreTable())
     final = tally.finalise()
     assert final["series_tie"] is True
     assert final["winner_group"] is None
-    assert final["total_score"] == {"us": 2, "them": 2}
+    assert final["total_score"] == {"us": 27, "them": 27}
     assert final["raw_score"] == {"us": 25, "them": 25}

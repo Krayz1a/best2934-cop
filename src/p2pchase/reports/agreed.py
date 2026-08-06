@@ -104,9 +104,12 @@ def series_totals(group_ids: list[str], sub_games: list[dict[str, Any]],
         "ties": ties,
         "winner": winner,
         "series_tie": series_tie,
-        # Chapter 9: a level series pays both sides tie_score INSTEAD of the
-        # sums, "so that no encounter remains without a scoring decision".
-        "total_score": ({group: int(tie_score) for group in group_ids}
+        # A level series ADDS tie_score to each side's sum rather than replacing
+        # it. The book and the reference disagree and the course allows either
+        # with a documented justification; see README, "The tied-series scoring
+        # choice", and SeriesTally.finalise for the reasoning. ``scores`` above
+        # keeps the untouched sums, so the adjustment stays visible.
+        "total_score": ({group: scores[group] + int(tie_score) for group in group_ids}
                         if series_tie else dict(scores)),
     }
 

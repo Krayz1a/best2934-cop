@@ -89,16 +89,38 @@ class SeriesTally:
         return per_group
 
     def finalise(self) -> dict:
-        """Aggregate result. A dead-level series pays both sides ``tie_score``.
+        """Aggregate result. A dead-level series ADDS ``tie_score`` to each side.
 
-        Book ch9 "Tie Rule": if the accumulated points across all sub-games are
-        equal, each team receives the tie score, so no encounter is left without
-        a scoring verdict.
+        The book and the reference implementation contradict each other here,
+        and the course grants academic freedom to pick either provided the
+        choice is documented and justified (see README, "The tied-series
+        scoring choice"). We add; we used to replace.
+
+        Book ch9 reads as replacing: "each team receives the tie score", which
+        we took to mean the tie score *becomes* the league points for a level
+        encounter. The reference sums instead, awarding the tie score per drawn
+        sub-game and adding sub-game scores into the total.
+
+        Three reasons we moved to the reference's behaviour:
+
+        * **Rule 35 charges both teams.** A defensible-but-unshared reading
+          does not cost only us -- contradictory reports void the match for the
+          opponent too, and no reading is worth that.
+        * **Every other implementation in this league sums.** Verified against
+          copthief-league-protocol SPEC section 6 and its published fixtures.
+        * **Replacing inverts the ordering.** Under it a hard-fought 25-25
+          series scores 2, less than a single sub-game win pays (20), so a team
+          would rank higher for one narrow win than for six drawn ones. That is
+          hard to defend as the intent of a rule whose stated purpose is that no
+          encounter goes unscored.
+
+        ``raw_score`` still carries the untouched sums, so the tie score applied
+        is always visible as the difference rather than baked in irreversibly.
         """
         a, b = self.totals[self.group_a], self.totals[self.group_b]
         series_tie = a == b
         if series_tie:
-            totals = {self.group_a: self.tie_score, self.group_b: self.tie_score}
+            totals = {group: value + self.tie_score for group, value in self.totals.items()}
             winner = None
         else:
             totals = dict(self.totals)

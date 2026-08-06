@@ -66,29 +66,31 @@ rule 38, which disqualifies the group that makes it.
 **This is the one section no amount of engineering can fill.** It needs
 opponents, and nothing in the codebase can produce one.
 
-**Correction to an earlier draft of this file.** It stated the requirement as
-"at least two counted games against two different teams". The *two* was our
-inference, not the rule. The booklet leaves the number as an unfilled
-placeholder, in both places it appears (ch9, and the closing checklist):
+**The minimum is 2, confirmed by the course staff on 2026-08-06.** The booklet
+prose leaves it as an unfilled placeholder — `לפחות [ מינימום משחקים למעבר ] מול
+קבוצות שונות`, in both places it appears — so we asked rather than guessed. It is
+a **fixed** parameter (`קבוע 2`), not negotiable, and it was already correct in
+our own config all along:
 
-> הפעלה תקינה של לפחות **[ מינימום משחקים למעבר ]** מול קבוצות שונות
+```json
+"min_games_to_pass": 2      // config/<role>/game.json, and constants.MIN_GAMES_TO_PASS
+```
 
-— "proper operation of at least **[ minimum games to pass ]** against different
-groups". The upper bound is blank the same way: "**[ מספר המשחקים המרבי לכל
-קבוצה ]**". So the target is genuinely unknown to us and **must be asked of the
-course staff**; writing a number here that we guessed would be the same class of
-error as a self-score that was never checked.
+An earlier draft of this file asserted "two" as our inference and then, when we
+checked the source, retracted it as unknown. Both were right to write down: the
+number is 2, and it was never something we could derive.
 
 What *is* unambiguous in the rules, and what it costs us:
 
 - The games must be against **different groups** (`קבוצות שונות`, plural).
 - Rule 52 allows **exactly one counted game per opponent**, warm-ups unlimited.
 
-Those two together mean one opponent can never satisfy the requirement, whatever
-the missing number turns out to be — a second counted game against the same team
-does not count twice. We currently have **one** opponent, `gal-roy1`, with whom
-the protocol is working end to end. At least one more team is required, and
-recruiting one is the single longest pole in the project.
+Those two together mean one opponent can never satisfy the requirement — a
+second counted game against the same team does not count twice. With the
+minimum at 2, we need **exactly one more team** than we have. We currently have
+one, `gal-roy1`, with whom the protocol works end to end; two further teams
+(`imreeyal` and `anrbj666`) have been approached and would clear the bar with
+one to spare.
 
 The "List of teams you played against" table wants, per game: date, start time,
 end time, opponent team name, your score, their score, their declared number of
@@ -159,11 +161,11 @@ empty game table will read as one that was not checked.
       digest (rule 24)
 - [ ] Confirm both repository URLs load while signed out; a private repo the
       grader cannot open scores as an absent one
-- [ ] Ask the course staff for the **counted-game minimum** — see §3; the
-      booklet leaves it as a placeholder and it decides whether the project
-      passes
-- [ ] Recruit at least one opponent besides `gal-roy1` (rule 52 caps counted
-      games at one per opponent, so a second team is structural, not optional)
+- [x] Ask the course staff for the **counted-game minimum** — answered
+      2026-08-06: it is **2**, fixed and non-negotiable
+- [ ] Play counted games against **2 different teams** (rule 52 caps counted
+      games at one per opponent, so 2 teams is structural, not optional).
+      `gal-roy1` secured; `imreeyal` and `anrbj666` approached
 - [ ] Annotated tag on both: `git tag -a v1.0-submission -m "…" && git push
       origin v1.0-submission` (rule 41) — after the last counted game
 - [ ] Copy the six personal-data values from `best2934-ex01.pdf` into the
