@@ -111,8 +111,51 @@ class InteropAdapter:
                 "config_sha256": ours.get("config_sha256", "")}
 
     def declare_step0(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Accept their signed hardware and commit-hash declaration (rules 24, 53)."""
+        """Accept their signed hardware and commit-hash declaration (rules 24, 53).
+
+        Also the start of a sub-game, which is the part this used to miss. A
+        served peer built exactly one :class:`PeerSession` at boot and never
+        replaced it, so every sub-game after the first inherited the previous
+        one's board *and its round counter*. gal-roy1 drove sub-game 1 four
+        times against us and our own log records the result: "declining to act
+        at step 0: we are already a move ahead (round 206, opponent has acted
+        205 times)". The counter had been climbing across attempts for hours.
+        We were not losing those sub-games, we were refusing to play them, and
+        the refusal was correct behaviour reading state that should not have
+        survived.
+
+        A step-0 declaration means a sub-game is beginning, by definition. So
+        if ours has already moved or already ended, this is a new attempt and
+        gets a new session -- the same role and game, a clean board.
+        """
+        self._restart_if_a_new_sub_game(payload)
         return self.handlers.declare_step0(payload)
+
+    def _restart_if_a_new_sub_game(self, payload: dict[str, Any]) -> None:
+        """Swap in a fresh session when step 0 opens a sub-game we already played.
+
+        Keyed on our own progress rather than on their sub-game number, because
+        a peer retrying sub-game 1 sends the same number and still needs a clean
+        board. The number is honoured when it is present and different, so a
+        series that advances normally is not treated as a retry.
+        """
+        from ..runtime.peer_session import PeerSession
+
+        session = self.handlers.session
+        if session is None:
+            return
+        loop = self._turns
+        played = loop is not None and (loop.round > 0 or loop.finished)
+        number = int(payload.get("sub_game_number", 0) or 0)
+        if not played and (not number or number == session.sub_game):
+            return
+
+        LOGGER.info("step 0 opens sub-game %s; starting a clean session (was sub-game %s)",
+                    number or session.sub_game, session.sub_game)
+        self.handlers.session = PeerSession(
+            session.config, session.role, session.game_id,
+            sub_game=number or session.sub_game, seed=session.seed)
+        self._turns = None
 
     # ------------------------------------------------------------------ play
     def submit_turn(self, payload: dict[str, Any]) -> dict[str, Any]:

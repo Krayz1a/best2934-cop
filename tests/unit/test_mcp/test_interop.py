@@ -85,6 +85,58 @@ def won(peer_config) -> InteropAdapter:
     return ready
 
 
+def test_a_second_sub_game_does_not_inherit_the_first_ones_round_counter(peer_config):
+    """The fault that made us refuse to play, reproduced from the live log.
+
+    A served peer built one session at boot and never replaced it, so the turn
+    loop -- and its round counter -- outlived the sub-game. gal-roy1 drove
+    sub-game 1 four times and by the last attempt our own log read "declining
+    to act at step 0: we are already a move ahead (round 206, opponent has
+    acted 205 times)". We were not losing those sub-games; we were refusing to
+    start them, on state that should not have survived the previous one.
+    """
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    adapter = InteropAdapter(PeerHandlers(peer_config, session))
+    adapter.turns(session).round = 35          # a finished sub-game
+    adapter.turns(session).claimed = (2, 2)
+
+    adapter.declare_step0({"sub_game_number": 1, "role": "thief"})
+
+    assert adapter.handlers.session is not session, "a played sub-game must not be reused"
+    assert adapter.turns(adapter.handlers.session).round == 0, "the round counter must restart"
+    assert adapter.turns(adapter.handlers.session).claimed is None, "and so must the claim"
+
+
+def test_a_fresh_sub_game_is_not_restarted_underneath_itself(peer_config):
+    """Step 0 on a session that has not moved is the opening, not a retry.
+
+    Restarting here would discard a declaration we had just accepted, so the
+    reset is keyed on our own progress rather than on step 0 arriving at all.
+    """
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    adapter = InteropAdapter(PeerHandlers(peer_config, session))
+
+    adapter.declare_step0({"sub_game_number": 1, "role": "thief"})
+    assert adapter.handlers.session is session
+
+
+def test_advancing_to_the_next_sub_game_gets_a_clean_board(peer_config):
+    """A series that progresses normally also needs the reset, and carries the
+    new number rather than keeping the old one."""
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    adapter = InteropAdapter(PeerHandlers(peer_config, session))
+
+    adapter.declare_step0({"sub_game_number": 2, "role": "thief"})
+    assert adapter.handlers.session.sub_game == 2
+    assert adapter.handlers.session.role == "police", "our role is ours, not theirs to move"
+
+
 def test_a_cop_records_the_capture_it_cannot_see(peer_config):
     """The gap under the ``agree_result`` bug (rules 21, 22, 35).
 
