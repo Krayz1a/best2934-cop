@@ -82,7 +82,7 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | 7.6 | `docs/GMAIL_SETUP.md` | P1 | AI | Done | A human can complete OAuth setup from it without guessing |
 | 7.8 | Compliance matrix, Appendix E | P0 | Team | Done | [COMPLIANCE.md](COMPLIANCE.md) — all 55 rules mapped to code and test, with the four that are genuinely not done listed plainly |
 | 7.9 | Submission answer sheet | P0 | EK | Done | [SUBMISSION.md](SUBMISSION.md) — every field the repository can answer, the rest marked for the operator |
-| 7.7 | README screenshots | P1 | TL | In progress | Terminal live view, replay verified, replay tampered — all captured from real program output. The Tkinter window shot needs `python3-tk` on the operator's machine and a manual capture; it is deliberately not faked |
+| 7.7 | README screenshots | P1 | TL | Done | All four captured from real program output, none mocked up. The Tkinter belief map is exported through Tk's own PostScript writer from the same `LiveView.draw()` the animated window uses — the compositor here refuses X11 screen grabs, and a hand-drawn picture of a belief map would be a claim about the program rather than evidence of it. Each repository shows its own role's view |
 
 ## Phase 8 — Experiments · **Done**
 
@@ -95,25 +95,26 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | 8.5 | Robustness check of the sweep winner | P1 | EK | Done | Winner re-measured against five structurally different thieves, 60 seeds each; selected by worst case (ADR-012) |
 | 8.6 | Act on the finding | P0 | TL | Done | `barrier_engage_range` 4 → 1 in `config/police/setup.json`; capture rate 0.133 → 0.850 against the sweep thief |
 
-## Phase 9 — Submission · **Not started**
+## Phase 9 — Submission · **In progress**
 
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
-| 9.1 | Push `best2934-cop` | P0 | Team | **Blocked** | Needs the operator's GitHub credentials — the agent cannot and must not hold them. Run `git push origin master` in each repository |
-| 9.2 | Create and push `best2934-thief` | P0 | Team | **Blocked** | Repository built, gates green (379 passed, 92.5%), committed locally at `../best2934-thief` with `origin` set. Differs by one constant (`DEFAULT_ROLE`) plus its README; cross-linked from both. Needs the operator to create the GitHub repo and push |
+| 9.1 | Push `best2934-cop` | P0 | Team | Done | Pushed via `gh auth git-credential` per invocation, so no token is ever held or written to git config. Working tree clean, nothing unpushed |
+| 9.2 | Create and push `best2934-thief` | P0 | Team | Done | Live at `https://github.com/Krayz1a/best2934-thief`, gates green (540 passed, 93.1%). Differs by one constant (`DEFAULT_ROLE`) plus config and README; cross-linked from both |
 | 9.3 | Tag `v1.0-submission` on both | P0 | Team | Not started | Annotated tag (rule 41). Deliberately left until after the counted games, so the tag marks what was actually submitted |
-| 9.4 | Fill the Word template → PDF | P0 | Team | In progress | [SUBMISSION.md](SUBMISSION.md) holds every answer derivable today; the rest needs ID numbers and real game results |
-| 9.5 | Self-assessed grade | P0 | Team | Not started | Agreed by all three members |
+| 9.4 | Fill the Word template → PDF | P0 | Team | In progress | [SUBMISSION.md](SUBMISSION.md) answers everything derivable. Outstanding: the six personal-data fields (on `best2934-ex01.pdf`, deliberately not in this public repo), the sending Gmail address, and §3, which needs counted games |
+| 9.5 | Self-assessed grade | P0 | Team | Not started | Agreed by all three members. [SUBMISSION.md](SUBMISSION.md) §4 proposes a number per scenario to argue from rather than starting blank |
 | 9.6 | Individual Moodle submission | P0 | Team | Not started | Three submissions, one per member |
+| 9.7 | Ask the staff for the counted-game minimum | **P0** | Team | **Not started** | The booklet leaves it as an unfilled placeholder in both places it appears — `לפחות [ מינימום משחקים למעבר ] מול קבוצות שונות`. It decides whether the project passes and we cannot derive it |
 
-## Phase 10 — League play · **Blocked (external)**
+## Phase 10 — League play · **In progress, one opponent short**
 
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
-| 10.1 | Recruit opponents on the course forum | P0 | Ext | Not started | At least two teams agree to play |
-| 10.2 | Expose the MCP endpoint via tunnel | P0 | TL | Not started | Opponent reaches `hello` over the public internet |
-| 10.3 | Play ≥2 counted games | P0 | Team | Blocked | Rule: minimum two games against *different* teams |
-| 10.4 | Mutual audit + both-sides e-mail | P0 | Team | Blocked | Both teams report; the two result digests match (rule 35) |
+| 10.1 | Recruit opponents on the course forum | **P0** | Ext | **In progress — the long pole** | `gal-roy1` agreed and the protocol works end to end. **At least one more team is required**: rule 52 allows exactly one counted game per opponent, so a second counted game against `gal-roy1` does not count twice, whatever the minimum turns out to be (9.7) |
+| 10.2 | Expose the MCP endpoint via tunnel | P0 | TL | Done | `https://monogram-radio-blooper.ngrok-free.dev/mcp`, a **reserved** domain so it survives restarts. Verified by a real `hello` from the public internet. Both roles serve it in turn via `tools/endpoint.py take`; `hello` publishes `role` so the wrong one cannot answer unnoticed |
+| 10.3 | Play the counted games | P0 | Team | Blocked on 10.1 and sign-off | Two complete sub-games already played against `gal-roy1` — both won by our cop on a rule-46 barrier capture, mutual audit clean both ways — but **uncounted by design**. No game counts without both operators saying so in the shared log (rule 52) |
+| 10.4 | Mutual audit + both-sides e-mail | P0 | Team | Audit proven, e-mail blocked | The mutual audit has passed in both directions against a genuinely independent implementation. The e-mail half needs the Gmail OAuth client (`GMAIL_SETUP.md`) |
 
 ---
 
@@ -121,15 +122,18 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 
 | Item | Blocked on | Note |
 |---|---|---|
-| 9.1 | Operator's GitHub credentials | The agent does not accept or enter tokens. Run `git push` yourself. |
+| 9.7 | Course staff | The pass threshold is an unfilled placeholder in our copy of the booklet. Everything in Phase 10 is sized against a number we do not have. |
+| 10.1 | Other teams | Nothing in the codebase can unblock this, and it is now the only thing between a working agent and a passing project. One opponent is not enough at any threshold. |
+| 10.3 | Both operators | Deliberate, not an obstacle: no game counts until both humans say so in the shared log. Warm-ups need no permission and are unlimited. |
 | 5.3 (live) | Google Cloud OAuth client | A human must create the client and run the consent flow — see [GMAIL_SETUP.md](GMAIL_SETUP.md). Dry-run mode works today. |
-| 10.x | Other teams | Nothing in the codebase can unblock this. |
+| 9.4 (personal data) | Operator | The six name/ID fields stay out of a public repository on purpose. They are already filled in on `best2934-ex01.pdf`; copy them into the `.docx`. |
 
 ## Known risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| No opponent found before the deadline | Fails the two-game minimum | Start recruiting on the forum now; task 10.1 is the long pole |
+| Only one opponent found before the deadline | **Fails a threshold requirement outright** | One opponent is secured and working. Rule 52 caps counted games at one per opponent, so the second team is structural and cannot be substituted by playing `gal-roy1` again. Task 10.1, and the highest risk on this list |
+| The pass threshold is higher than two | Recruiting stops too early | Ask the staff (9.7) before deciding how many teams to approach — the number is a placeholder in our copy and every plan below it is a guess |
 | Public repository exposes strategy | Opponents can read the weights | Flagged twice; kept public by the team's explicit decision. Weights live in `setup.json` and can be changed between matches without touching code |
 | Opponent implements Appendix F differently | Handshake refuses, no match | `check-config` and `handshake` let both sides compare fingerprints before agreeing to play |
 | Trust estimator's 30.7% false-contradiction rate | Under-trusts an honest opponent (0.724, not the 0.90 ceiling) | Measured over 30 seeds and documented (ADR-006); the separation from a liar (0.020) remains decisive |
