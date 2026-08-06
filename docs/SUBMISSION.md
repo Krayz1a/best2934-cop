@@ -160,8 +160,8 @@ empty game table will read as one that was not checked.
 - [x] `.env` holds `P2PCHASE_SIGNING_SECRET` and is git-ignored in both repos,
       so the step-0 declaration is signed rather than falling back to an unkeyed
       digest (rule 24)
-- [ ] Confirm both repository URLs load while signed out; a private repo the
-      grader cannot open scores as an absent one
+- [x] Confirm both repository URLs load while signed out — done 2026-08-06,
+      both HTTP 200 unauthenticated
 - [x] Ask the course staff for the **counted-game minimum** — answered
       2026-08-06: it is **2**, fixed and non-negotiable
 - [ ] Play counted games against **2 different teams** (rule 52 caps counted
