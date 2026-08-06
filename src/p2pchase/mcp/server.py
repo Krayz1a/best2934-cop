@@ -74,9 +74,25 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
         return adapter.hello(payload or {})
 
     @mcp.tool
-    def negotiate(handshake: dict[str, Any]) -> dict[str, Any]:
-        """Compare the caller's fingerprints with ours; refuse on mismatch."""
-        return handlers.negotiate({"handshake": handshake})
+    def negotiate(handshake: dict[str, Any] | None = None,
+                  payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Compare the caller's fingerprints with ours; refuse on mismatch.
+
+        Both spellings, for the same reason as ``declare_step0`` -- and this one
+        we learned the expensive way. gal-roy1 called this with ``payload`` on
+        the first contact after a nine-hour outage; FastMCP refused it for a
+        missing ``handshake`` before any handler ran, and the sub-game died at
+        the handshake. A required positional argument is a bet that the opponent
+        spells it our way.
+
+        They nested the fields *and* a ``handshake`` key inside ``payload``,
+        evidently trying to satisfy either convention. That cannot work from the
+        caller's side: FastMCP matches top-level argument names only, so nesting
+        is invisible to it. It has to be fixed here. We unwrap the inner key when
+        it is present and otherwise read the wrapper itself as the handshake.
+        """
+        inner = payload.get("handshake") if isinstance(payload, dict) else None
+        return handlers.negotiate({"handshake": handshake or inner or payload or {}})
 
     @mcp.tool
     def declare_step0(declaration: dict[str, Any] | None = None,

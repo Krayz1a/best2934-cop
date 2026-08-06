@@ -74,6 +74,101 @@ def test_submit_turn_without_a_sub_game_refuses_instead_of_raising(adapter):
     assert "no sub-game" in answer["error"]
 
 
+@pytest.fixture
+def won(peer_config) -> InteropAdapter:
+    """An adapter whose sub-game our cop has just won by capture."""
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    ready = InteropAdapter(PeerHandlers(peer_config, session))
+    ready.turns(session).finished = "capture"
+    return ready
+
+
+def test_a_cop_records_the_capture_it_cannot_see(peer_config):
+    """The gap under the ``agree_result`` bug (rules 21, 22, 35).
+
+    ``finished`` was set when we were caught, when we survived, and when they
+    claimed survival -- never when *we* captured. The cop is the half that
+    cannot see its own win: it claims a cell and the thief answers. Nothing
+    wrote that answer down, so a cop that had just won read its own outcome as
+    ``""`` and could not agree a result it had earned.
+    """
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    adapter = InteropAdapter(PeerHandlers(peer_config, session))
+    loop = adapter.turns(session)
+    loop.claimed = (2, 2)
+
+    answer = adapter.confirm_result({"outcome": "CAPTURE", "caught": True, "cell": [2, 2]})
+    assert answer["our_outcome"] == "capture"
+    assert adapter.our_outcome() == "capture", "and it must survive to agree_result"
+
+
+def test_a_conceded_capture_we_never_claimed_is_refused(peer_config):
+    """Conceding a capture says *we* won, which is the one direction a lie pays.
+
+    Believed only as far as our own board corroborates it: no claim, no
+    settlement. Otherwise any peer could hand us a win by asserting one.
+    """
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    adapter = InteropAdapter(PeerHandlers(peer_config, session))
+    adapter.turns(session).claimed = None
+
+    adapter.confirm_result({"outcome": "CAPTURE", "caught": True, "cell": [4, 4]})
+    assert adapter.our_outcome() == "", "a win we never claimed is not ours to record"
+
+
+def test_a_capture_conceded_at_a_cell_we_did_not_claim_is_refused(peer_config):
+    """Corroboration is against the *cell*, not merely against having claimed."""
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    adapter = InteropAdapter(PeerHandlers(peer_config, session))
+    adapter.turns(session).claimed = (2, 2)
+
+    adapter.confirm_result({"outcome": "CAPTURE", "caught": True, "cell": [5, 1]})
+    assert adapter.our_outcome() == ""
+
+
+def test_agree_result_names_our_own_outcome_not_just_theirs(won):
+    """The bug gal-roy1 reported three times, through two sub-games we won.
+
+    It read only ``sha256``/``expected``, they send ``{"outcome": ...}``, so it
+    answered ``ours: "", theirs: ""`` -- our cop had captured their thief twice
+    and our own agreement tool could not say so. Rule 35 turns on the two
+    reports matching, and a blank matches nothing.
+    """
+    answer = won.agree_result({"outcome": "CAPTURE"})
+    assert answer["our_outcome"] == "capture", "we must compute our own view"
+    assert answer["their_outcome"] == "CAPTURE", "and read theirs"
+    assert answer["ours"] and answer["theirs"], "both spellings carry the values"
+    # "CAPTURE" from them, "capture" from us: the same settlement, and it must
+    # not void the match for both teams over a shift key.
+    assert answer["agreed"] is True
+
+
+def test_agree_result_never_agrees_to_an_unnamed_outcome(won):
+    """An agreement that names no outcome is not an agreement (rule 35).
+
+    The old code could answer ``agreed`` from fields nobody had populated.
+    Filing that is how an honest team files a void.
+    """
+    assert won.agree_result({"outcome": ""})["agreed"] is False
+    assert won.agree_result({})["agreed"] is False
+
+
+def test_agree_result_refuses_when_we_settled_the_sub_game_differently(won):
+    """Two peers reading one sub-game differently is the fault rule 35 exists
+    for, and it must surface here rather than in two filed reports."""
+    answer = won.agree_result({"outcome": "SURVIVAL"})
+    assert answer["agreed"] is False
+    assert answer["our_outcome"] == "capture" and answer["their_outcome"] == "SURVIVAL"
+
+
 def test_agree_result_says_what_its_digest_covers(adapter):
     """Rule 35 voids the match for both teams on contradictory reports, and
     two digests over different objects contradict every time. Cheaper to

@@ -44,6 +44,11 @@ class TurnLoop:
         #: Rounds in which we have actually acted. A nil turn does not count.
         self.round = 0
         self.finished = ""
+        #: The cell our last capture claim named, kept so that a concession can
+        #: be *corroborated* rather than merely believed. A cop cannot see the
+        #: thief, so "we won" is the one direction where a lie would pay, and
+        #: the claim is the only thing our own board can check it against.
+        self.claimed: tuple[int, int] | None = None
 
     # ----------------------------------------------------------------- inbound
     def receive(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -70,6 +75,34 @@ class TurnLoop:
             return {"ack": True, "step": turn.step, "claim_response": response,
                     "reply_outcome": constants.OUTCOME_CAPTURE}
         return self._answer(step=self._reply_step(turn.step), response=response)
+
+    def concede(self, outcome: str, cell: list[int] | None = None) -> str:
+        """Settle the sub-game from the loser's concession (rules 21, 22, 35).
+
+        The cop is the half of this protocol that cannot see its own win. It
+        claims a cell, the thief answers truthfully, and until now nothing wrote
+        that answer down: ``finished`` was set when *we* were caught, when we
+        survived, or when they claimed survival -- never when we captured. So a
+        cop that had just won read its own outcome as ``""``, which is what
+        gal-roy1 saw from us across two sub-games our cop won.
+
+        A concession is believed only as far as our own board can corroborate
+        it. Conceding a capture says *we* won, and that is precisely the
+        direction in which a false message would pay, so it is accepted only
+        where we actually claimed the cell being conceded. A concession we
+        cannot tie to a claim is recorded by the caller and refused here.
+        """
+        if outcome and outcome.strip().lower() != constants.OUTCOME_CAPTURE:
+            self.finished = self.finished or constants.OUTCOME_SURVIVAL
+            return self.finished
+        if self.claimed is None:
+            LOGGER.warning("a capture was conceded that we never claimed: %s", cell)
+            return self.finished
+        if cell is not None and tuple(int(part) for part in cell) != self.claimed:
+            LOGGER.warning("a capture was conceded at %s; we claimed %s", cell, self.claimed)
+            return self.finished
+        self.finished = constants.OUTCOME_CAPTURE
+        return self.finished
 
     def _may_act(self) -> bool:
         """May we take a turn, or would that be a second move in one round?
@@ -159,6 +192,9 @@ class TurnLoop:
         """
         commitment = self.session.prepare_step(step)
         hint, barrier = self.session.pending_declaration()
+        claim = self.session.capture_claim()
+        if claim is not None:
+            self.claimed = (int(claim[0]), int(claim[1]))
 
         turn = TurnMessage(
             step=step,
@@ -167,7 +203,7 @@ class TurnLoop:
             hint=hint,
             scent_grid=self._trail(),
             barrier_placed=barrier,
-            capture_claim=self.session.capture_claim(),
+            capture_claim=claim,
             win_claim=self._survival_claim(),
         )
         self.session.apply_own_step()

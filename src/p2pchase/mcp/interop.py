@@ -159,27 +159,71 @@ class InteropAdapter:
             return {"ack": False, "error": "no sub-game is in progress"}
         outcome = str(payload.get("outcome", "") or "")
         session.on_opponent_finished(outcome)
+        cell = payload.get("cell")
         if payload.get("caught"):
-            LOGGER.info("opponent concedes capture at %s", payload.get("cell"))
-        return {"ack": True, "recorded": True,
-                "our_outcome": self.turns(session).finished or outcome}
+            LOGGER.info("opponent concedes capture at %s", cell)
+        settled = self.turns(session).concede(
+            outcome, list(cell) if isinstance(cell, (list, tuple)) else None)
+        return {"ack": True, "recorded": True, "our_outcome": settled or outcome}
 
     # -------------------------------------------------------------- endgame
     def final_audit(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Their name for our ``final_reveal``: every nonce, both ways (rule 18)."""
         return self.handlers.final_reveal(payload)
 
-    def agree_result(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Rule 35. A digest computed over different objects can never agree.
+    def our_outcome(self) -> str:
+        """How *this* peer read the sub-game it just played.
 
-        Ours covers only what both peers derive from the same messages, so we
-        echo the field list back with the verdict: if their digest disagrees,
-        the first question is whether it is over the same object, and that is
-        cheaper to answer here than by comparing two filed reports afterwards.
+        Our own board's answer, never the opponent's. The turn loop holds it
+        because the turn loop is what ended the sub-game -- a capture it
+        settled, a survival it counted out to the horizon. A concession they
+        sent is recorded separately and deliberately not consulted here: two
+        peers that both answer with whatever the other one claimed agree
+        perfectly and prove nothing (rule 35).
+        """
+        session = self.handlers.session
+        if session is None:
+            return ""
+        return str(self.turns(session).finished or "")
+
+    def agree_result(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Rule 35, in both dialects: a digest pair, or a named outcome.
+
+        This answered every call with two empty strings for as long as gal-roy1
+        had been calling it, through two complete sub-games our cop won. It read
+        only ``sha256``/``expected``; they send ``{"outcome": ...}``. Neither
+        field was present, so it echoed blanks -- and because it echoed the
+        *caller's* fields rather than consulting our own board, it had no view
+        of its own to fall back on. Our cop captured their thief twice and our
+        own agreement tool could not say so.
+
+        So: their outcome is read from the message, ours is computed from the
+        turn loop, and the verdict is over the two. A digest pair, when sent,
+        is still compared as before. What can never happen again is ``agreed``
+        riding on fields nobody populated -- an agreement that names no outcome
+        is not an agreement, and filing one is how an honest team files a void.
+
+        Both spellings go out. They read ``ours``/``theirs`` and INTEROP §3
+        documents ``our_outcome``/``their_outcome``; publishing both costs two
+        keys, and a completed audited sub-game must not become disputed over
+        the name of one.
         """
         from ..reports.agreed import AGREED_SUB_GAME_FIELDS, AGREED_TOTALS_FIELDS
 
-        verdict = self.handlers.agree_result(payload)
+        theirs = str(payload.get("outcome", "") or payload.get("their_outcome", "") or "")
+        if not theirs and not payload.get("sha256"):
+            verdict = {"ok": True, "agreed": False}
+        else:
+            verdict = self.handlers.agree_result(payload)
+        if theirs or not payload.get("sha256"):
+            ours = self.our_outcome()
+            # They write "CAPTURE", our constants are "capture". Two peers that
+            # settled the same sub-game identically must not disagree over a
+            # shift key and void the match for both of us (rule 35).
+            agreed = bool(ours) and ours.strip().lower() == theirs.strip().lower()
+            verdict = {**verdict, "ours": ours, "theirs": theirs,
+                       "our_outcome": ours, "their_outcome": theirs,
+                       "agreed": agreed}
         return {**verdict, "digest_covers": {
             "sub_game": list(AGREED_SUB_GAME_FIELDS),
             "totals": list(AGREED_TOTALS_FIELDS)}}

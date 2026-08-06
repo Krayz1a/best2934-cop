@@ -26,6 +26,13 @@ from p2pchase.runtime.peer_session import PeerSession
 
 pytest.importorskip("fastmcp", reason="the peer transport is an optional extra")
 
+# The handshake gal-roy1 actually sent on 2026-08-06 at 11:50, trimmed to the
+# fields that identify the caller. Kept verbatim rather than invented: the bug
+# this pins was in the *shape* of the call, so a tidied-up stand-in would not
+# have caught it.
+_THEIRS = {"group_id": "gal-roy1", "group_name": "gal-roy1", "schema_version": "1.2",
+           "mcp_url": "https://091d-81-199-248-18.ngrok-free.app/mcp"}
+
 
 @pytest.fixture
 def handlers(peer_config) -> PeerHandlers:
@@ -87,6 +94,29 @@ def test_hello_adds_only_the_opponents_aliases_and_removes_nothing(server, handl
     assert direct.items() <= through_server.items(), "the binding dropped or altered a field"
     assert set(through_server) - set(direct) == {"group_id", "schema_version",
                                                  "counted_games_played"}
+
+
+@pytest.mark.parametrize("arguments", [
+    {"handshake": _THEIRS},
+    {"payload": _THEIRS},
+    {"payload": {**_THEIRS, "handshake": _THEIRS}},
+])
+def test_negotiate_accepts_either_spelling_of_its_one_argument(server, handlers,
+                                                               arguments):
+    """The three shapes gal-roy1 has actually put on the wire (rule 6).
+
+    The third is the one that cost us a sub-game: they nested the fields *and* a
+    ``handshake`` key inside ``payload``, trying to satisfy both conventions at
+    once. FastMCP matches top-level names only, so it saw a missing
+    ``handshake`` and an unexpected ``payload``, and refused before any handler
+    ran -- the handler itself had always unwrapped either form.
+
+    Asserted against the handler rather than against named fields, because what
+    matters is that the wrapper is invisible: all three spellings must mean the
+    same call, whatever ``negotiate`` happens to answer.
+    """
+    answer = asyncio.run(server.call_tool("negotiate", arguments)).structured_content
+    assert answer == handlers.negotiate({"handshake": _THEIRS})
 
 
 def test_serve_refuses_clearly_when_the_transport_is_absent(peer_config, handlers,
