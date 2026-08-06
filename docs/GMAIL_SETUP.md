@@ -14,6 +14,44 @@ run by default and composes the exact message without delivering it.
 
 ---
 
+## 0. Current state of this machine (2026-08-06)
+
+Steps 1-3 are **done**. An existing desktop OAuth client is being reused rather
+than a new one created, and both repositories are pointed at it by absolute
+path:
+
+```
+P2PCHASE_GMAIL_CREDENTIALS  /home/krayz1a/ex6/best2934-mcp-cop-thief/credentials.json
+P2PCHASE_GMAIL_TOKEN        /home/krayz1a/uni-project/gmail_token.json
+P2PCHASE_GMAIL_SENDER       eyalkol2@gmail.com
+```
+
+Both paths are **outside** both repositories, which is the point. `.env`,
+`credentials.json` and `token.json` are all git-ignored as well, but that is the
+second line of defence: a path that is never inside a working tree cannot be
+committed by an `git add -A` at two in the morning. Both repositories are
+public, and a leaked secret stays leaked because history cannot be un-pushed
+(rules 39-40).
+
+`email.enabled` is now `true` in both role configs. A send that fails because no
+token exists returns a delivery receipt carrying the reason -- it does not
+abort the match.
+
+**What is left is step 4, and only a person can do it.** Granting an OAuth
+scope is a decision a human makes in a browser, signed in to the account that
+will send. Run:
+
+```bash
+cd ~/uni-project/best2934-cop && uv run p2pchase authorize-gmail
+```
+
+Consent as **the account named in `P2PCHASE_GMAIL_SENDER`** -- if you grant with
+a different Google account, the report arrives from an address the submission
+form does not name, and the two no longer match. The token lands at the path
+above and is shared by both repositories, so it is done once, not twice.
+
+---
+
 ## 1. Create the OAuth client (Google Cloud Console)
 
 1. Go to <https://console.cloud.google.com/> and create a project — e.g.

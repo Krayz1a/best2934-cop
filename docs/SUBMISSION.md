@@ -15,10 +15,10 @@ submission per member**, not one for the group.
 | Template field | Answer |
 |---|---|
 | Group ID code (8 characters, English, no spaces) | `best2934` |
-| Recommendation for self-scoring for the group | **[OPERATOR]** — must be agreed by all three members. §4 sets out the evidence and a proposed number to argue from, rather than leaving it blank |
+| Recommendation for self-scoring for the group | **85** — see §4. Revise to **90** if two counted games are complete at export, or **75** if the games table is still `0`. Agree it between all three members before typing it |
 | Cop repository url | `https://github.com/Krayz1a/best2934-cop` |
 | Thief repository url | `https://github.com/Krayz1a/best2934-thief` |
-| AI Agent email address that sent the results to the lecturer | **[OPERATOR]** — the Gmail account authorised in [GMAIL_SETUP.md](GMAIL_SETUP.md). Results go **to** `rmisegal+uoh26finalgame@gmail.com`; this field is the address they arrive **from** |
+| AI Agent email address that sent the results to the lecturer | `eyalkol2@gmail.com` — configured and wired; **the browser consent step is still outstanding**, see [GMAIL_SETUP.md](GMAIL_SETUP.md) §0. Results go **to** `rmisegal+uoh26finalgame@gmail.com`; this field is the address they arrive **from**, and it must match the account consent is granted with |
 
 ## 2. Members
 
@@ -27,9 +27,14 @@ The template prints two student blocks. The team has three, so **add a "Student
 
 | # | First / Last (English) | Hebrew | ID card |
 |---|---|---|---|
-| 1 | Tomer Levy | **[OPERATOR]** | **[OPERATOR]** |
-| 2 | Eyal Koloshi | **[OPERATOR]** | **[OPERATOR]** |
-| 3 | Alon Issman | **[OPERATOR]** | **[OPERATOR]** |
+| 1 | Tomer Levy | *(in the fill-in sheet)* | *(in the fill-in sheet)* |
+| 2 | Eyal Koloshi | *(in the fill-in sheet)* | *(in the fill-in sheet)* |
+| 3 | Alon Issman | *(in the fill-in sheet)* | *(in the fill-in sheet)* |
+
+The six values have been transcribed out of `best2934-ex01.pdf` into
+`~/uni-project/SUBMISSION_FILL_IN.md`, which is **outside both repositories**
+and is to be deleted once the `.docx` is filled in. They are still not written
+here, for the reason below.
 
 ID numbers and Hebrew spellings are personal data and stay out of this file on
 purpose. **This repository is public**, so anything written here is published to
@@ -41,8 +46,14 @@ it in.
 They do not need to be retyped from memory. **Every value is already filled in
 on `best2934-ex01.pdf`** — same group, same three members, questions 4, 5 and
 "Student 3": English names, Hebrew names and ID cards. That file sits beside the
-repositories and is not tracked by either. Copy the six values straight from it
-into the `.docx`.
+repositories and is not tracked by either.
+
+**Three members is permitted, and the form should say why.** The same PDF
+records the reserve-duty exception (Guidelines §8): one member is in active
+military reserve service, which is what allows the group to have three members
+*and* to submit up to the final-project deadline. If the template has anywhere
+to note it, note it — a grader who does not know the exception may read the
+third student block, or the timing, as an irregularity rather than a permission.
 
 ## 3. Games played
 
@@ -107,7 +118,7 @@ What the repository can honestly claim:
 | Guidelines V3 gate | Required | Measured (2026-08-06) |
 |---|---|---|
 | Code lines per file | ≤ 150 | 0 of 140 files over; largest `test_handlers.py` at 150 |
-| Test coverage | ≥ 85% | **93.5%**, 580 tests (thief repo: 93.2%, 578 plus 2 Gmail-extra skips) |
+| Test coverage | ≥ 85% | **93.6%**, 585 tests (thief repo: 93.3%, 583 plus 2 Gmail-extra skips) |
 | Ruff violations | 0 | **0** |
 | Dress rehearsal over sockets | — | Passes on both repos: four processes, both peers settled `capture`, each passed the other's audit |
 | Dependency management | `uv` only | `uv.lock` committed, no `requirements.txt` |
@@ -133,16 +144,33 @@ Beyond the gates, and each backed by data in `results/`:
   tune the learning rate until that number disappeared from the trust curve. It
   is documented instead, in four places.
 
-### A number to argue from
+### The number: 85
 
-The grade is the team's to agree and this file cannot agree it for you. What it
-can do is stop the discussion starting from nothing:
-
-| If, at submission | Proposed recommendation | Why |
+| If, at export | Recommend | Why |
 |---|---|---|
-| The counted-game minimum is met | **90** | Every engineering gate is met with margin, the protocol is proven against an independent implementation, and §3 is answerable |
-| Counted games exist but fall short of the minimum | **80–85** | The build stands on its own; the league requirement does not, and the form asks about both |
-| §3 is still `0` | **70–75** | A threshold requirement is unmet. Claiming a high number over an empty game table invites the reader to check, and they will |
+| Two counted games, two different groups | **90** | Every gate met with margin, the protocol proven against an independent implementation, and §3 answerable |
+| **At least one counted game** | **85** ← *the default* | The build stands on its own and the league requirement is genuinely under way rather than untried |
+| §3 is still `0` | **75** | A threshold requirement is unmet. Claiming a high number over an empty games table invites the reader to check, and they will |
+
+**Why 85 and not 90.** The engineering case is strong enough for 90 on its own
+terms — every gate exceeded rather than met, an independent implementation's
+fixtures reproduced with our own encoder, and corrections we filed against a
+shared league kit accepted and merged into its spec. But §3 is a *threshold*
+requirement, not a scored dimension, and 90 asserts the whole exercise was
+completed. Claiming it while the games table is thin reads as a team that did
+not check its own form.
+
+**Why 85 and not 75.** 75 would describe a project that did not engage with the
+league, and that is not what happened. Terms are fully agreed with `imreeyal` —
+roles, scent model, tie rule, consensus signature, endpoints — and verified in
+both directions against their published fixtures; two complete sub-games have
+been played over the public internet against `gal-roy1` with clean mutual
+audits. What is missing is opponents' availability in the last week, not
+capability or effort.
+
+**Do not write 85 over a `0`.** If the games table is still empty at export,
+write 75. The three rows above are the argument the team can defend if asked,
+and defending 85 requires a non-empty table.
 
 Do not carry over the **90** from `best2934-ex01.pdf`. That was a different
 exercise with a different scope, and reusing it would be a number nobody

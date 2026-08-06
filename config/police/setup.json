@@ -60,7 +60,7 @@
   },
   "email": {
     "_remark": "recipient is overwritten at load time with the address fixed by Appendix F Table 20 -- a team cannot opt out of reporting by redirecting it.",
-    "enabled": false,
+    "enabled": true,
     "sender_env": "P2PCHASE_GMAIL_SENDER",
     "credentials_env": "P2PCHASE_GMAIL_CREDENTIALS",
     "token_env": "P2PCHASE_GMAIL_TOKEN"

@@ -56,7 +56,7 @@
     "ollama_model": "llama3.2:1b"
   },
   "email": {
-    "enabled": false,
+    "enabled": true,
     "sender_env": "P2PCHASE_GMAIL_SENDER",
     "credentials_env": "P2PCHASE_GMAIL_CREDENTIALS",
     "token_env": "P2PCHASE_GMAIL_TOKEN"
