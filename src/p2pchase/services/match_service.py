@@ -112,7 +112,8 @@ class MatchService:
         started = artifacts.now_iso()
 
         names = artifacts.ArtifactSet(game_id=game_id, directory=self.output_dir)
-        tally = SeriesTally(mine, theirs, tie_score=self.table.tie_score)
+        tally = SeriesTally(mine, theirs, tie_score=self.table.tie_score,
+                            tie_rule=self.config.tie_rule(theirs))
         result = SeriesResult(game_id=game_id, game_uid=game_uid)
         result.paths.append(self._write_declaration(names, game_id, game_uid, theirs, started))
 

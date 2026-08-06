@@ -16,6 +16,14 @@ from typing import Literal
 
 from .. import constants
 
+#: The three tie behaviours in the league, as agreed with imreeyal for the
+#: pairing constitution. See :meth:`SeriesTally.finalise` for what each does and
+#: why the third has to exist even though we do not run it.
+SERIES_ADD = "series_add"
+SERIES_REPLACE = "series_replace"
+PER_SUBGAME = "per_subgame"
+TIE_RULES = (SERIES_ADD, SERIES_REPLACE, PER_SUBGAME)
+
 Outcome = Literal["capture", "survival", "technical_loss"]
 
 
@@ -65,6 +73,11 @@ class SeriesTally:
     group_a: str
     group_b: str
     tie_score: int = constants.TIE_SCORE
+    #: Which of the three tie behaviours this pairing agreed. Declared rather
+    #: than assumed: two conformant teams can legitimately compute different
+    #: totals for the same level series and neither is wrong, so the only unsafe
+    #: option is leaving it unsaid until a series happens to tie.
+    tie_rule: str = SERIES_ADD
     totals: dict[str, int] | None = None
     wins: dict[str, int] | None = None
     ties: int = 0
@@ -76,9 +89,20 @@ class SeriesTally:
             self.wins = {self.group_a: 0, self.group_b: 0}
 
     def record(self, roles: dict[str, str], outcome: Outcome, table: ScoreTable) -> dict[str, int]:
-        """Score one sub-game. ``roles`` maps group_id -> role for this sub-game."""
+        """Score one sub-game. ``roles`` maps group_id -> role for this sub-game.
+
+        Under ``per_subgame`` a drawn *row* pays ``tie_score`` to each side here,
+        and nothing is applied at the end. Our own engine cannot currently
+        produce a drawn row -- capture pays 20/5 and survival 5/10, never equal
+        -- which is exactly why this branch is written from the reference's
+        published example rather than from anything we can generate. An
+        opponent running the reference can hand us one.
+        """
         award = table.award(outcome)
         per_group = {group: award[role] for group, role in roles.items()}
+        if self.tie_rule == PER_SUBGAME and len(set(per_group.values())) == 1:
+            per_group = {group: points + self.tie_score for group, points in per_group.items()}
+            self.ties += 1
         for group, points in per_group.items():
             self.totals[group] += points
         winner_role = table.winner_role(outcome)
@@ -89,12 +113,37 @@ class SeriesTally:
         return per_group
 
     def finalise(self) -> dict:
-        """Aggregate result. A dead-level series ADDS ``tie_score`` to each side.
+        """Aggregate result. By default a dead-level series ADDS ``tie_score``.
 
         The book and the reference implementation contradict each other here,
         and the course grants academic freedom to pick either provided the
         choice is documented and justified (see README, "The tied-series
         scoring choice"). We add; we used to replace.
+
+        **There are three live behaviours, not two.** We proposed the field as
+        ``add | replace``; imreeyal took it and added the one we had both
+        missed, having gone to the reference's own published example rather than
+        adjudicating between two readings of it:
+
+        ============== ============================== =================
+        ``tie_rule``   who runs it                    a 25-25 series pays
+        ============== ============================== =================
+        ``series_add``  this codebase, imreeyal,
+                        anrbj666, the league kit       27 / 27
+        ``series_replace`` the book's other reading    2 / 2
+        ``per_subgame``  the reference implementation  25 / 25, tied *rows* pay 2
+        ============== ============================== =================
+
+        ``per_subgame`` is the one worth carrying even though we do not run it.
+        The reference has **no series-level adjustment at all** -- it settles a
+        drawn sub-game as a tie worth 2 apiece and then plainly sums the rows.
+        That agrees with ``series_add`` whenever some sub-game tied, and
+        disagrees whenever a series ties without any sub-game tying, which is
+        precisely the case the reference's own sparring peer can never generate
+        (capture pays 20/5, survival 5/10, never equal). So an unmodified
+        reference opponent and this codebase would settle a level series
+        differently, having never once disagreed in rehearsal, and rule 35 would
+        void it for both of us.
 
         Book ch9 reads as replacing: "each team receives the tie score", which
         we took to mean the tie score *becomes* the league points for a level
@@ -119,17 +168,21 @@ class SeriesTally:
         """
         a, b = self.totals[self.group_a], self.totals[self.group_b]
         series_tie = a == b
-        if series_tie:
-            totals = {group: value + self.tie_score for group, value in self.totals.items()}
-            winner = None
-        else:
-            totals = dict(self.totals)
-            winner = self.group_a if a > b else self.group_b
+        totals = dict(self.totals)
+        if series_tie and self.tie_rule == SERIES_ADD:
+            totals = {group: value + self.tie_score for group, value in totals.items()}
+        elif series_tie and self.tie_rule == SERIES_REPLACE:
+            totals = dict.fromkeys(totals, self.tie_score)
+        # PER_SUBGAME does nothing here on purpose: its tie score was already
+        # paid into the running totals row by row, and the reference applies no
+        # series-level adjustment whatsoever.
         return {
             "total_score": totals,
             "raw_score": dict(self.totals),
             "sub_games_won": dict(self.wins),
             "ties": self.ties,
-            "winner_group": winner,
+            "winner_group": None if series_tie else (
+                self.group_a if a > b else self.group_b),
             "series_tie": series_tie,
+            "tie_rule": self.tie_rule,
         }

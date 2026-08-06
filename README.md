@@ -385,12 +385,31 @@ The book and the reference implementation contradict each other on what a level
 series scores, and the course grants academic freedom to implement either
 **provided the choice is documented and justified**. This is that justification.
 
-| | A level 25–25 series scores |
-|---|---|
-| Book ch9, as we first read it | **2 / 2** — the tie score *replaces* the sums |
-| Reference implementation | **27 / 27** — the tie score is *added* to them |
+**There are three behaviours, not two, and the third is the reference's.** We
+originally proposed this as a two-valued choice; imreeyal went to the
+reference's own published example and found that our description of it — and
+the league kit's — was wrong. The kit's correction is in its WARNINGS §6a.
 
-**We add.** `SeriesTally.finalise` and `reports/agreed.series_totals` both apply
+| `tie_rule` | Who runs it | A level 25–25 series scores |
+|---|---|---|
+| `series_add` | **us**, imreeyal, anrbj666, the league kit | **27 / 27** — tie score added to the sums |
+| `series_replace` | the book's other reading | **2 / 2** — tie score *replaces* the sums |
+| `per_subgame` | the unmodified reference implementation | **25 / 25** — no series-level step at all; a drawn *row* pays 2 apiece |
+
+`per_subgame` is the dangerous one, and we carry it without running it. It
+agrees with `series_add` whenever some sub-game drew, and differs only when a
+series ties with **no drawn row** — and the reference's own sparring peer cannot
+produce a drawn row at all, since capture pays 20/5 and survival 5/10, never
+equal. So an unmodified reference opponent and this codebase would settle a
+level series differently having never once disagreed in rehearsal, and rule 35
+would void it for both of us.
+
+That is why the rule is a **declared** pairing term (`tie_rule` in
+`setup.json`), not a conformance question. Two teams can each be correct and
+still disagree; the only unsafe option is leaving it unsaid until a series
+happens to tie.
+
+**We run `series_add`.** `SeriesTally.finalise` and `reports/agreed.series_totals` both apply
 `tie_score` on top of the accumulated points, and `raw_score` / `scores` keep the
 untouched sums beside the adjusted total so the adjustment is always visible
 rather than baked in.

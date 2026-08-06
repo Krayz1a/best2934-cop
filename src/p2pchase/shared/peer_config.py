@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import constants
-from ..domain import roles, scent_models
+from ..domain import roles, scent_models, scoring
 from ..domain.crypto import canonical_json, digest_payload
 from .config_schema import AGREED_SECTIONS
 
@@ -121,6 +121,17 @@ class PeerConfig:
     def scent_model(self, opponent: str) -> str:
         """Which registered scent model we agreed with this opponent."""
         return str(self.pairing(opponent).get("scent_model", scent_models.DEFAULT_MODEL))
+
+    def tie_rule(self, opponent: str) -> str:
+        """How a dead-level series is scored against this opponent.
+
+        Three teams could each be conformant and each compute a different total
+        for the same tied series, so this is a declared term rather than a
+        derivable one. Undeclared is the only unsafe answer: it stays invisible
+        until a series happens to tie, which never occurs in friendlies and
+        costs both teams the match when it does (rule 35).
+        """
+        return str(self.pairing(opponent).get("tie_rule", scoring.SERIES_ADD))
 
     # ------------------------------------------------------------- strategy
     @property

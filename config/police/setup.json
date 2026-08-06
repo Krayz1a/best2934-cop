@@ -19,13 +19,16 @@
     "gal-roy1": {
       "role_convention": "first_half",
       "scent_model": "multiplicative_book_v1",
-      "_remark": "Pinned by them in CONNECT.md section 6 and played end to end twice."
+      "_remark": "Pinned by them in CONNECT.md section 6 and played end to end twice.",
+      "tie_rule": "series_add"
     },
     "imreeyal": {
       "role_convention": "odd_even",
       "scent_model": "subtractive_chebyshev_v1",
-      "_remark": "The copthief-league-protocol kit's published forms, which anrbj666 and uoh-sqak also play. Under odd_even the first-sorted group is cop on sub-games 1/3/5, so best2934 is cop on 1/3/5 and imreeyal on 2/4/6."
-    }
+      "_remark": "The copthief-league-protocol kit's published forms, which anrbj666 and uoh-sqak also play. Under odd_even the first-sorted group is cop on sub-games 1/3/5, so best2934 is cop on 1/3/5 and imreeyal on 2/4/6.",
+      "tie_rule": "series_add"
+    },
+    "_tie_rule_remark": "series_add | series_replace | per_subgame. Three teams can each be conformant and each compute a different total for the same level series, so this is declared rather than derived. series_add is the league's common form (this kit, imreeyal, anrbj666); per_subgame is what the unmodified reference actually does -- it pays a drawn ROW 2 apiece and applies nothing at series level, which agrees with series_add whenever some sub-game tied and differs whenever a series ties with no drawn row."
   },
   "network": {
     "_remark": "public_url is this role's path behind the shared front door (tools/frontdoor.py). Both roles are served at once from one reserved ngrok domain, so nothing is repointed between sub-games -- required by the odd/even role convention, where the role flips at every sub-game rather than once at half time.",
