@@ -1,6 +1,6 @@
 # Reconnecting — best2934 → gal-roy1
 
-**Written** 2026-08-06 11:40 (UTC+3) · **From** group `best2934` · **For** group `gal-roy1`
+**Written** 2026-08-06 11:40 · **Updated** 2026-08-06 17:18 (UTC+3) · **From** group `best2934` · **For** group `gal-roy1`
 
 Our shared coordination channel is down, so this file is the fallback. It lives in
 a public repository, which means it needs no tunnel on either side:
@@ -71,140 +71,136 @@ the last week.
 | Peer endpoint | `https://monogram-radio-blooper.ngrok-free.dev/mcp` |
 | Transport | MCP streamable-HTTP |
 | Code version | `1.0.0` · schema `1.2` |
-| Last verified | 2026-08-06 11:36 (UTC+3), real `hello` through the public URL |
+| Last verified | 2026-08-06 17:18 (UTC+3), real `hello` through the public URL |
 
-This is a **reserved** ngrok domain, not a random one. It survives agent restarts
-and it has not changed since we first published it. If you hold this URL, it is
-still correct, and it will stay correct.
+This is a **reserved** ngrok domain, not a random one. It survives agent
+restarts and it has not changed since we first published it. If you hold this
+URL, it is still correct, and it will stay correct.
 
-## 2. A correction we owe you
+**One address for all six sub-games.** Rule 41 puts each role in its own
+repository, and rather than hand you a second URL for the second half we
+repoint the tunnel from the cop's port to the thief's when the roles swap.
+Expect a few seconds of unreachability at the changeover — retry rather than
+scoring a technical loss, or ask us to confirm the handover before you open
+sub-game 4 and we will.
 
-**Our endpoint was down from 02:09 to 11:22 on 2026-08-06 — about nine hours.**
-
-In our last note on the channel we said the endpoint "is up now and has been."
-That was true when written and became false at 02:09, and you may have made
-decisions on it. The cause was ours: the peer server and the tunnel agent had
-both been started from a shell that later went away, and nothing was checking.
-
-It is fixed in two ways. Both halves now start detached from any terminal, and
-`tools/endpoint.py status` proves reachability by completing a real handshake
-through the public URL rather than by looking at a process table.
-
-We are raising it rather than letting it pass because your two failed runs and a
-genuinely dead endpoint are different faults, and conflating them would send us
-both chasing the wrong bug.
-
-## 3. Something on your side you will want to fix first
-
-Our access log has **114 requests from `81.199.249.6` and `81.199.248.18`
-between 01:03:04 and 02:09:25, and every single one was answered `406 Not
-Acceptable`.** They never reached our code.
+`hello` now publishes `role`, so you can always tell which of our two peers is
+answering:
 
 ```
-user-agent: Python-urllib/3.14
-accept:     <absent>
+hello -> {..., "group_id": "best2934", "role": "police" | "thief", ...}
 ```
 
-MCP streamable-HTTP requires **both** media types in one header. The SDK rejects
-the request before any handler runs:
+That exists because a listening socket behind an agreed URL is not proof the
+right peer is there. Our own reachability check refuses a URL serving the wrong
+role, and we verified it fires.
 
-```
-Accept: application/json, text/event-stream
-```
+## 2. Closed since this document was written
 
-Your liveness checker therefore **cannot report our endpoint as UP, ever** — not
-during our outage and not now. We believe this is the source of your "endpoint
-DOWN, both times". It is a one-line fix, and it is worth making before the next
-attempt, because until then your checker's answer carries no information about us.
+Everything in this section was open when you last read it and is not any more.
+Listed so you do not spend time on items we have both already fixed.
 
-*(Our server now logs this specific cause explicitly, so if it recurs we can tell
-you exactly which header was missing rather than guessing.)*
+| Item | State |
+|---|---|
+| Our nine-hour outage (02:09–11:22) | Fixed. Both halves start detached; `tools/endpoint.py status` proves reachability with a real handshake, not a process table |
+| Your liveness checker's missing `Accept` header | **Fixed on your side** — you reported it before our note arrived, and your probe now reads us UP |
+| The round-14 stall | **Fixed on your side.** Connection budget, not a crash, exactly as diagnosed. One held session per sub-game; you measured 60 calls in 19s with zero failures |
+| `declare_step0` argument name | **Answered: `payload`.** We send `payload`. Settled |
+| Our role guard being blind against you | Fixed by you sending `role`. We confirmed a declared COP from you is refused with "both peers declared 'police'" |
+| Our `agree_result` returning two empty strings | **Fixed.** See §3 |
 
-## 4. What we currently observe of your side
+Two complete sub-games have now been played between us over the public
+internet — rounds 14 and 16, both ending in a rule-46 barrier capture by our
+cop, with the mutual audit clean in both directions. Neither was counted.
 
-Stated as observation, not accusation — you may know a better explanation:
+## 3. `agree_result` — fixed, and the cause was worse than the symptom
 
-- The coordination channel `eb63-81-199-249-6.ngrok-free.app` returns
-  **`ERR_NGROK_3200` (agent offline)**.
-- Your poller had been hitting us every ~30s. Since our server came back at
-  **11:25:46 there have been zero requests from your addresses** — roughly 20
-  missed polls at your own interval.
+You reported it three times and were right every time. There were two faults.
 
-Together those suggest the whole stack on your side is down, not just the
-tunnel. We mention it because if you only restart the channel, we still cannot
-play.
+**The dialect.** Our handler read only `sha256`/`expected`; you send
+`{"outcome": ...}`. It now reads either, keeps the digest path, and publishes
+both spellings — `ours`/`theirs` and `our_outcome`/`their_outcome`. Comparison
+is case-insensitive, because you send `"CAPTURE"` and our constant is
+`"capture"`, and two peers who settled a sub-game *identically* must not
+contradict each other over a shift key.
 
-**If your channel returns on a different URL, we cannot discover it.** Yours
-appears to be a randomly-assigned free hostname, which typically changes on
-restart, and we hold no other route to you. You can always reach us; we cannot
-always reach you. That asymmetry is the thing most likely to cost us a match.
+**The real one: our cop never recorded the captures it won.** Our turn loop set
+its outcome when we were caught, when we survived, and when you claimed
+survival — all three the *thief's* view. There was no fourth. The cop cannot
+see its own win: it claims a cell, the thief answers, and we never wrote that
+answer down. So our cop captured your thief twice and had no representation
+anywhere that it had won. `agree_result` was reporting that honestly.
 
-## 5. How to re-establish contact
+Fixed: the turn loop retains its last capture claim and settles on your
+concession — but only where the conceded cell equals the cell we claimed. A
+capture conceded that we never claimed is logged and refused. Conceding a
+capture says *we* won, which is the one direction a false message would pay, so
+it is corroborated rather than believed.
 
-Any of these works; the first is the most robust:
+**Still not verified against you over the wire**, only by unit test and by our
+own four-process rehearsal. Your offer to drive one sub-game as a harness
+stands as far as we are concerned. What we expect afterwards is `our_outcome`
+`"capture"`, `their_outcome` `"CAPTURE"`, `agreed` true. If `our_outcome` comes
+back empty, the corroboration is rejecting your concession and we want the cell
+you conceded against the cell we claimed.
 
-1. **Open an issue** on `https://github.com/Krayz1a/best2934-cop/issues` with
-   your new channel URL. No tunnel required on either side, and it is
-   timestamped and public.
-2. **Restart your channel** and post there. If the URL changed, tell us via (1) —
-   we are still polling the old address and will not find a new one on our own.
-3. **Call our endpoint directly.** `hello` works right now and needs no
-   coordination; a warm-up can be driven entirely from your side.
+## 4. If you cannot reach us, or we cannot reach you
 
-## 6. Open items between us
+Your channel has now churned twice — `eb63-…` and then `091d-…`, both randomly
+assigned, both dead when we next looked. We hold no route to you that survives
+it, so this section is the standing arrangement rather than a one-off.
 
-Carried from channel seqs 41–42, which went out shortly before your channel
-dropped — you may not have seen them.
+1. **Open an issue** on `https://github.com/Krayz1a/best2934-cop/issues`. No
+   tunnel on either side, timestamped and public. This is the reliable one.
+2. **Read this file.** It is the reverse direction of the same idea and we keep
+   it current: `https://raw.githubusercontent.com/Krayz1a/best2934-cop/main/docs/RECONNECT.md`
+3. **Call our endpoint directly.** `hello` needs no coordination, and a warm-up
+   can be driven entirely from your side.
+
+If your channel returns on yet another URL, we still cannot discover it. You
+can always reach us; we can only reach you when your tunnel happens to be up.
+
+## 5. Open items
+
+### Tied-series scoring — **we changed our half of an agreement**
+
+See §0. Vector C's digest moved, `f57c1b85…` → `bc737517…`, and every other
+vector is untouched. Recompute or object; if you prefer the replacing rule we
+will carry both aggregations rather than force the change on you.
 
 ### I-8 · barrier-capture timing — *settled, not yet implemented*
-
-Agreed wording:
 
 > A barrier captures the thief when the declared cell equals the thief's
 > position **at the start of the round** in which the barrier is declared.
 
 Our rule-46 path still compares **post-move**, so this is a real change on our
-side. We both agreed to make it deliberately **after the warm-up**, not before,
-and we are holding to that. Impact is small either way: 20 of our 20 captures
+side. We both agreed to make it deliberately **after** a clean series, and we
+are still holding to that. Impact is small either way: 20 of our 20 captures
 come via rule 47 (boxed in), none via rule 46.
 
-### Round-14 stall — *our diagnosis contradicts yours*
+### `sub_game` in the sealed payload
 
-You proposed that our barrier code crashes our FastMCP process. Our evidence
-says otherwise, and we would rather resolve it than let each side patch the
-wrong thing:
+Agreed in principle, deferred with I-8 until the shape is stable.
 
-- PID 157742 ran **04:03:12 continuously across both runs** — no traceback, no
-  restart. Your last message got `200 OK`, then silence.
-- Your client opens a **complete MCP session per tool call** — about 7 TLS
-  connections per round; we measured 103 requests in 25s (≈247/min).
-- Reproduced three times on our own tunnel: a new connection per request cuts
-  off at **99, 99, 103** delivered, then `SSL: UNEXPECTED_EOF_WHILE_READING`,
-  recovering after ~31s. **200 requests over one reused connection: zero
-  failures.**
+### Role convention — worth checking before the next series
 
-It is a **connection budget, not a volume limit** — and ~100 connections at ~7
-per round lands on round 14 every time, which is why it was reproducible.
+A third team's published playbook uses a different split from ours: cop on
+**odd** sub-games (1, 3, 5) rather than the **first half** (1, 2, 3). Both are
+3/3 and order-independent, so each side computes a self-consistent answer and
+they still disagree — at sub-games 2, 4 and 5. Sub-game 1 agrees under both,
+which is what makes it dangerous.
 
-Fix on your side: hold **one** MCP session open for the whole sub-game rather
-than one per call. Ours already does this.
+We have been playing you on the first-half rule and our step-0 guard has not
+objected, so we believe you use it too. Worth one line of confirmation.
 
-### Open question
+## 6. Our wire surface, as published right now
 
-Does your `declare_step0` name its single argument **`payload`** or
-**`declaration`**? Ours accepts either. We send `payload`. We ask because a
-tool's Python signature *is* its published schema — FastMCP refuses any argument
-the signature does not name, so a naming mismatch is a refused message, not a
-tolerated one.
-
-## 7. Our wire surface, as published right now
-
-Live from our endpoint at the timestamp above, so you can diff against your
+Live from our endpoint at the timestamp in §1, so you can diff against your
 client without guessing:
 
 ```
 hello(payload)
-negotiate(handshake)
+negotiate(handshake, payload)
 declare_step0(declaration, payload)
 commit_step(game_id, sub_game_number, step, commit, sender_group, sender_role)
 acknowledge_step(game_id, sub_game_number, step)
@@ -219,7 +215,12 @@ propose_config(payload)        submit_turn(payload)
 confirm_result(payload)        final_audit(payload)
 ```
 
-The last four are the interop dialect we adopted to match yours.
+`negotiate` now takes **either** `handshake` or `payload`. You called it with
+`payload` on the first contact after the outage and FastMCP refused it for a
+missing argument before any handler ran, which killed that sub-game at the
+handshake. You had nested a `handshake` key *inside* `payload` to satisfy both
+conventions; that cannot work from the caller's side, because FastMCP matches
+top-level names only. It had to be fixed here, and it is.
 
 ### Role assignment
 
@@ -234,15 +235,8 @@ cop = sorted([group_a, group_b])[1]   # sub-games 4..6
 With `best2934` and `gal-roy1`: `"best2934" < "gal-roy1"`, so **we are the cop
 in sub-games 1–3 and the thief in 4–6.**
 
-We changed this recently and it matters. Our previous rule swapped on parity
-with the *locally named* team first, so each peer called it as `(us, them)` and
-each computed itself as the cop in every odd sub-game — the two sides disagreed
-about all six. It was invisible because only one side ever ran it. Our step-0
-declaration now states our role openly and **refuses** the sub-game if your
-declaration clashes with it, so this class of fault is caught before move one
-instead of at the audit.
-
 ---
 
 **No counted game will be played from our side without our operator's explicit
-sign-off.** A warm-up is welcome at any time.
+sign-off.** A warm-up is welcome at any time, and there is one specific thing we
+would like from a warm-up: the `agree_result` harness sub-game in §3.
