@@ -15,6 +15,54 @@ code; where something is our inference about your side, it is labelled as such.
 
 ---
 
+## 0. Added 2026-08-06 — we changed a digest you and we had agreed
+
+**Your channel is down again** (`091d-81-199-248-18.ngrok-free.app`,
+`ERR_NGROK_3200`), so this is the delivery route for a note you need before any
+counted series. It is note 49 in the channel log when that comes back.
+
+**Vector C's digest moved.** The tied series only:
+
+```
+vector C (tied series)   f57c1b859e47c921...  ->  bc7375173cc9a798...
+every other vector       UNCHANGED, still reproduces byte for byte
+```
+
+Ordinary play, the warm-up vector and the per-sub-game shape are all untouched.
+If a series never ties, we still agree on everything exactly as before.
+
+**Why.** We asked the course about the tied-series rule, because the book and
+the reference implementation contradict each other and we had implemented the
+book:
+
+| | A level 25–25 series pays |
+|---|---|
+| Book ch9 | **2 / 2** — the tie score replaces the sums |
+| Reference | **27 / 27** — awarded per drawn sub-game, totals summed |
+
+The ruling: a genuine contradiction, *academic freedom* applies, either is
+acceptable **provided the choice is documented and justified in the README**.
+We moved to additive. The first reason is about you rather than us: rule 35
+charges **both** teams for contradictory reports, so a reading we hold alone
+takes your points too. Ours is documented in README §4.
+
+**What we are asking.** Recompute vector C, or object — we would rather have
+the objection than a silent mismatch. If you prefer the replacing rule, say so
+and **we will carry both aggregations**, yours for our pairing and the additive
+one for other opponents, rather than force a change on you. We are not asking
+you to move because we did.
+
+What we will not do is play a counted series with you while this is unsettled,
+because a tie would void it for both of us.
+
+**Also settled:** `min_games_to_pass` is **2**, against *different* groups,
+fixed and not negotiable. With rule 52's one-counted-game-per-opponent cap that
+means two teams, not two games — so you and we can be at most one of each
+other's two, and neither of us is the other's whole answer. Worth knowing before
+the last week.
+
+---
+
 ## 1. Where to reach us
 
 | | |
