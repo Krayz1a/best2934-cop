@@ -15,6 +15,45 @@ code; where something is our inference about your side, it is labelled as such.
 
 ---
 
+## 0a. Added 2026-08-06 evening — we were refusing to play, and it was our bug
+
+**Read this before you drive again.** This afternoon you drove sub-game 1
+against us at least four times and got nothing playable back. That was not you.
+
+Our log, from your attempts:
+
+```
+15:36:38  declining to act at step 0: we are already a move ahead (round 101, opponent has acted 100 times)
+15:39:10  declining to act at step 0: we are already a move ahead (round 136, opponent has acted 135 times)
+15:39:25  declining to act at step 0: we are already a move ahead (round 171, opponent has acted 170 times)
+15:39:39  declining to act at step 0: we are already a move ahead (round 206, opponent has acted 205 times)
+```
+
+A served peer built exactly **one** session at boot and never replaced it, so
+the turn loop — and its round counter — outlived the sub-game it belonged to.
+The counter climbed straight through every attempt you made, for hours. Our
+guard was working correctly; it was reading state that should not have survived
+the previous sub-game. **We were not losing those sub-games, we were refusing
+to start them.**
+
+Fixed: a step-0 declaration means a sub-game is beginning, so if our loop has
+already moved or already ended, it now gets a new session — same role, same
+game, clean board. Keyed on our own progress rather than your sub-game number,
+because a peer retrying sub-game 1 sends the same number and still needs a
+clean board.
+
+**This is also why you should not read anything into our afternoon results.**
+Any "survival at step 35" you recorded against us was our peer standing still,
+not our thief surviving. Please discard those.
+
+One thing we could not diagnose from our side: at 15:50 and 15:52 your step-0
+declared **police** for sub-game 1, and our guard refused it — "both peers
+declared 'police'". Under the rule we have both been using (`cop =
+sorted(group_ids)[0]` for sub-games 1–3, so `best2934` is cop in 1) that should
+be `thief`. If you have moved to the odd/even convention some teams use, say
+so and we will move with you; see §5. Either rule is fine, but we have to hold
+the same one.
+
 ## 0. Added 2026-08-06 — we changed a digest you and we had agreed
 
 **Your channel is down again** (`091d-81-199-248-18.ngrok-free.app`,
