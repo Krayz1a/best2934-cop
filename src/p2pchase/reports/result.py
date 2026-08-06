@@ -20,6 +20,7 @@ from typing import Any
 from .. import constants
 from ..domain.crypto import mutual_agreement_hash
 from .agreed import agreed_summary as build_agreed_summary
+from .consensus import interop_signature, interop_summary
 from .naming import TIMEZONE, links_block
 
 
@@ -119,5 +120,18 @@ def build_result_artifact(
         "mutual_agreement": {
             "sha256": mutual_agreement_hash(summary),
             "confirmed": confirmed,
+            # The same agreement in the league's cross-team spelling: trimmed
+            # scope, spaced serialization. Published beside ours rather than
+            # instead of it -- gal-roy1 adopted our definition and an opponent
+            # we already agree with must not be broken to reach one we have not
+            # played. Each digest names the scope it covers, because two hashes
+            # side by side with no scopes is how a matching pair gets compared
+            # against a mismatching one.
+            "scope": "agreed_summary: game_id, sorted group_ids, per sub-game "
+                     "roles/result/winner/tie/scores, and derived totals",
+            "interop_sha256": interop_signature(
+                interop_summary(game_id, sub_games, sorted(groups))),
+            "interop_scope": "league trimmed scope, spaced canonical form "
+                             "(copthief-league-protocol SPEC section 6)",
         },
     }
