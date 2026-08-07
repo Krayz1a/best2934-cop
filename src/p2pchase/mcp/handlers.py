@@ -166,7 +166,23 @@ class PeerHandlers:
         return contracts.ok(samples=self.session.scent_at(cells))
 
     def final_reveal(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Disclose every nonce so the whole chain becomes checkable (rule 18)."""
+        """Disclose every nonce so the whole chain becomes checkable (rule 18).
+
+        Also returns ``commits`` -- step number to the commitment we published
+        for that step -- because gal-roy1's auditor could not find one and
+        scored every sub-game NOT AUDITED, which under rule 35 makes a counted
+        game worthless. The values were always on the wire, one per turn inside
+        ``reply_turn.commit``; this only collects them where an auditor looks.
+
+        **An opponent must not trust this map over the one they recorded during
+        play.** They are the same numbers only if we are honest, and that is
+        precisely the thing an audit exists to test -- gal-roy1 made the point
+        themselves: a peer can rewrite a payload, re-seal it, and hand over a
+        record set that is perfectly self-consistent. Cross-checking a
+        disclosure against a copy from the same disclosure proves nothing. The
+        map is a convenience for correlating steps, not evidence; the evidence
+        is the commitment they hold from the turn we sent it in.
+        """
         session = self._require_session()
         if session is None:
             return contracts.error("no sub-game is in progress")
@@ -176,7 +192,9 @@ class PeerHandlers:
         # A peer still waiting for their next commitment has to learn it here or
         # it waits out the deadline for a sub-game that is already over.
         session.on_opponent_finished(str(payload.get("outcome", "")))
-        return contracts.ok(records=session.final_reveal(), group=session.group_id)
+        records = session.final_reveal()
+        return contracts.ok(records=records, group=session.group_id,
+                            commits=_commit_map(records))
 
     def audit_result(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Verify the opponent's disclosed chain and return the verdict."""
@@ -212,3 +230,21 @@ class PeerHandlers:
             contracts.TOOL_AGREE: self.agree_result,
             contracts.TOOL_ABORT: self.abort,
         }
+
+
+def _commit_map(records: list[dict[str, Any]]) -> dict[str, str]:
+    """Step number to the commitment we published for it.
+
+    Read back out of the disclosed records rather than kept as a second copy,
+    so the map cannot drift from the chain it describes. A record with no step
+    is skipped rather than keyed under ``"0"``: a wrong correlation is worse
+    than a missing one, because the auditor would compare two unrelated steps
+    and report a forgery that never happened.
+    """
+    commits: dict[str, str] = {}
+    for record in records:
+        step = (record.get("payload") or {}).get("step")
+        commit = record.get("commit")
+        if step is not None and commit:
+            commits[str(int(step))] = str(commit)
+    return commits

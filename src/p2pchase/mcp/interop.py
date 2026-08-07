@@ -131,8 +131,8 @@ class InteropAdapter:
         self._restart_if_a_new_sub_game(payload)
         return self.handlers.declare_step0(payload)
 
-    def _opener_is_a_retry(self) -> bool:
-        """Whether a step-0 turn opens a *new* attempt or repeats this one's.
+    def _opener_is_a_retry(self, step: int = 0, commit: str = "") -> bool:
+        """Whether an opening turn begins a *new* sub-game or repeats this one's.
 
         A declaration says "a sub-game is beginning" in as many words, so
         :meth:`declare_step0` can restart on our progress alone. A nil turn does
@@ -141,13 +141,44 @@ class InteropAdapter:
         them a second of our moves against one of theirs -- a cheat, and a worse
         outcome than the stall it would cure.
 
-        So the opener only counts as a retry once the opponent has actually
-        acted, or the loop has ended. Both mean a real sub-game happened on this
-        board; neither is true of a handover repeated at the opening.
+        **Step 1 counts as an opener too, and missing that cost us three of
+        gal-roy1's four blockers.** We are thief-first: the thief transmits the
+        nil handover at step 0 and the cop acts first. So a step-0 message
+        arrives only when *they* are the thief -- that is, only when we are the
+        cop. Hanging the session reset off it meant ``/cop/mcp`` reset perfectly
+        and ``/thief/mcp`` never reset at all, which is exactly what gal-roy1
+        measured: 179, 214, 249, 284, 319 records, +35 every sub-game, while our
+        cop was clean. By the time we looked it was at 389.
+
+        The two symptoms they filed separately are the same fault. A thief
+        carried to step 300+ of a 35-step horizon has nothing left to do, so it
+        plays ``MOVE:STAY`` (232 of 249 records), and a thief that has stood
+        still for hundreds of turns saturates its own trail into a flat plateau
+        with no gradient to read (six cells pinned at 0.81).
+
+        This is the second time we have hung a reset off a message the opponent
+        does not always send -- the first was ``declare_step0``, which they have
+        never called. The lesson is the same one twice: key the reset on
+        evidence a *new sub-game started*, not on one dialect's way of saying so.
+
+        A step-1 turn is held to a stricter test than a step-0 one, because
+        step 1 is also the ordinary first move of the sub-game already running
+        and a client retrying it must not wipe the board it is playing on.
+        Counting rounds is not good enough to tell those apart: the nil handover
+        makes our round run one ahead of theirs, so we are already past round 1
+        by their first real move.
+
+        The commitment settles it exactly. A retry resends the step it already
+        sealed, so the commitment is byte-identical; a new sub-game seals a new
+        step, so it cannot be. Holding a *different* commitment for the same
+        step is therefore proof of a new sub-game, and needs no counting at all.
         """
         loop = self._turns
         if loop is None:
             return False
+        if int(step) > 0:
+            held = loop.session.opponent_commitments.get(int(step))
+            return bool(loop.finished) or (bool(held) and held != commit)
         return bool(loop.finished) or loop.session.state.opponent_steps_seen > 0
 
     def _restart_if_a_new_sub_game(self, payload: dict[str, Any]) -> None:
@@ -174,8 +205,9 @@ class InteropAdapter:
         if not played and (not number or number == session.sub_game):
             return
 
-        LOGGER.info("step 0 opens sub-game %s; starting a clean session (was sub-game %s)",
-                    number or session.sub_game, session.sub_game)
+        LOGGER.info("an opening turn starts sub-game %s; clean session (was sub-game %s, "
+                    "%d records)", number or session.sub_game, session.sub_game,
+                    len(session.records))
         self.handlers.session = PeerSession(
             session.config, session.role, session.game_id,
             sub_game=number or session.sub_game, seed=session.seed)
@@ -201,7 +233,8 @@ class InteropAdapter:
         declined every one, and they recorded a survival at step 35 against a
         cop that never moved.
         """
-        if not int(payload.get("step", 0) or 0) and self._opener_is_a_retry():
+        step = int(payload.get("step", 0) or 0)
+        if step <= 1 and self._opener_is_a_retry(step, str(payload.get("commit") or "")):
             self._restart_if_a_new_sub_game(payload)
         session = self.handlers.session
         if session is None:
