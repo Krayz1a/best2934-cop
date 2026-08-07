@@ -14,11 +14,11 @@ run by default and composes the exact message without delivering it.
 
 ---
 
-## 0. Current state of this machine (2026-08-06)
+## 0. Current state of this machine (2026-08-07)
 
-Steps 1-3 are **done**. An existing desktop OAuth client is being reused rather
-than a new one created, and both repositories are pointed at it by absolute
-path:
+**All four steps are done. Nothing here is outstanding.** An existing desktop
+OAuth client is reused rather than a new one created, and both repositories are
+pointed at it by absolute path:
 
 ```
 P2PCHASE_GMAIL_CREDENTIALS  /home/krayz1a/ex6/best2934-mcp-cop-thief/credentials.json
@@ -47,18 +47,51 @@ debugging by hand is never overridden.
 token exists returns a delivery receipt carrying the reason -- it does not
 abort the match.
 
-**What is left is step 4, and only a person can do it.** Granting an OAuth
-scope is a decision a human makes in a browser, signed in to the account that
-will send. Run:
+**Step 4 was done by the operator in a browser on 2026-08-07.** Granting an
+OAuth scope is a decision a human makes, signed in to the account that will
+send, so the agent does not run this:
 
 ```bash
 cd ~/uni-project/best2934-cop && uv run p2pchase authorize-gmail
 ```
 
-Consent as **the account named in `P2PCHASE_GMAIL_SENDER`** -- if you grant with
-a different Google account, the report arrives from an address the submission
-form does not name, and the two no longer match. The token lands at the path
-above and is shared by both repositories, so it is done once, not twice.
+The token is at the path above, `chmod 600`, and shared by both repositories --
+done once, not twice. Verified without widening the scope:
+
+```
+scopes                   ('https://www.googleapis.com/auth/gmail.send',)   send-only, rule 30
+refresh_token            present, so no re-consent before the deadline
+client_id                matches the credentials file
+inside a git repository  no
+```
+
+### Proving *which* account authorised, on a send-only scope
+
+Worth writing down, because the obvious check is not available. The token file
+records no account -- Google fills that field only when an OpenID scope is also
+requested, and `users.getProfile` needs `gmail.readonly` or `gmail.metadata`.
+Both would mean widening past send-only, which rule 30 forbids. Meanwhile Gmail
+sets `From` to the authorising account and ignores the header we build, so
+*our* declared sender proves nothing at all: a token minted from the wrong
+Google account would compose a perfectly correct-looking message and deliver it
+from somewhere else.
+
+So the account was established by sending one message to `eyalkol2@gmail.com`
+through the same `build_message` / `send_raw` path a match report uses. The API
+returns the message as it exists **in the authorising account's own mailbox**,
+and it came back:
+
+```
+labelIds  ['UNREAD', 'SENT', 'INBOX']
+```
+
+`SENT` *and* `INBOX` on one message is something a single mailbox gets only when
+it addressed itself. The authorising account is therefore the address §1 of
+[SUBMISSION.md](SUBMISSION.md) declares.
+
+The test was **not** sent through `send-report --live`. That path's recipient is
+overwritten at load time with the address fixed by Appendix F, so a test run
+through it would have mailed the lecturer a report about a game nobody played.
 
 ---
 

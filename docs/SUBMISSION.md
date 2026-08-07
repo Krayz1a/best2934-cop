@@ -18,7 +18,7 @@ submission per member**, not one for the group.
 | Recommendation for self-scoring for the group | **85** — see §4. Revise to **90** if two counted games are complete at export, or **75** if the games table is still `0`. Agree it between all three members before typing it |
 | Cop repository url | `https://github.com/Krayz1a/best2934-cop` |
 | Thief repository url | `https://github.com/Krayz1a/best2934-thief` |
-| AI Agent email address that sent the results to the lecturer | `eyalkol2@gmail.com` — configured and wired; **the browser consent step is still outstanding**, see [GMAIL_SETUP.md](GMAIL_SETUP.md) §0. Results go **to** `rmisegal+uoh26finalgame@gmail.com`; this field is the address they arrive **from**, and it must match the account consent is granted with |
+| AI Agent email address that sent the results to the lecturer | `eyalkol2@gmail.com` — **authorised and verified by a live send** on 2026-08-07, see [GMAIL_SETUP.md](GMAIL_SETUP.md) §0. Results go **to** `rmisegal+uoh26finalgame@gmail.com`; this field is the address they arrive **from** |
 
 ## 2. Members
 
@@ -190,6 +190,10 @@ empty game table will read as one that was not checked.
       digest (rule 24)
 - [x] Confirm both repository URLs load while signed out — done 2026-08-06,
       both HTTP 200 unauthenticated
+- [x] Authorise the Gmail sender and **prove which account it sends from** —
+      done 2026-08-07. Send-only scope, and a live self-test came back labelled
+      `SENT` *and* `INBOX`, which one mailbox only gets when it addressed
+      itself. The sender is `eyalkol2@gmail.com`, the same address §1 declares
 - [x] Ask the course staff for the **counted-game minimum** — answered
       2026-08-06: it is **2**, fixed and non-negotiable
 - [ ] Play counted games against **2 different teams** (rule 52 caps counted
