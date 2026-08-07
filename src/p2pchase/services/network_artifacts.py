@@ -134,7 +134,8 @@ class NetworkArtifactService:
 
         mine = self.config.group_id
         outcomes, final_result, tokens = assemble_series(logs, mine, opponent, self.table,
-                                                         git_commit())
+                                                         git_commit(),
+                                                         self.config.tie_rule(opponent))
         report = artifacts.build_result_artifact(
             game_id, game_uid, [mine, opponent], outcomes, final_result, tokens,
             repositories=self.repositories(game_id, opponent))

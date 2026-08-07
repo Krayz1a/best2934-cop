@@ -66,6 +66,32 @@ def build_score_table(config: dict) -> ScoreTable:
     )
 
 
+def is_drawn_row(outcome: str, per_group: dict[str, int]) -> bool:
+    """Whether one finished sub-game drew. Paying both sides alike is not enough.
+
+    A ``technical_loss`` pays 0 to each side and is **not** a draw. Rule 6
+    zeroes both teams precisely so that neither can win on the clock by
+    stalling the protocol, and a drawn-row tie score would turn that penalty
+    into 2 points apiece -- making a stall *profitable* for both, which is the
+    one outcome the rule exists to prevent.
+
+    We had this wrong. ``record`` read a draw off equal payouts, so every
+    technical loss was a drawn row worth 2 to each side, while
+    :mod:`p2pchase.reports.agreed` had always said the opposite in as many
+    words: "a TECHNICAL_LOSS counts as neither a win nor a tie". Two modules in
+    one codebase reporting different ``ties`` counts for the same series is
+    exactly the settlement disagreement rule 35 voids a match over.
+
+    Under Appendix F's permanent values no row can draw at all: 20/5, 5/10, and
+    a technical loss that is excluded here. The comparison is still made
+    because the score table is data -- a pairing whose table pays both roles
+    alike can produce a real drawn row, and the tie rules must still differ.
+    """
+    if outcome == constants.OUTCOME_TECHNICAL_LOSS:
+        return False
+    return len(set(per_group.values())) == 1
+
+
 @dataclass
 class SeriesTally:
     """Running totals across the sub-games of one match against one opponent."""
@@ -91,18 +117,22 @@ class SeriesTally:
     def record(self, roles: dict[str, str], outcome: Outcome, table: ScoreTable) -> dict[str, int]:
         """Score one sub-game. ``roles`` maps group_id -> role for this sub-game.
 
-        Under ``per_subgame`` a drawn *row* pays ``tie_score`` to each side here,
-        and nothing is applied at the end. Our own engine cannot currently
-        produce a drawn row -- capture pays 20/5 and survival 5/10, never equal
-        -- which is exactly why this branch is written from the reference's
-        published example rather than from anything we can generate. An
-        opponent running the reference can hand us one.
+        Under ``per_subgame`` a drawn *row* pays ``tie_score`` to each side here
+        and nothing is applied at the end. Which rows count as drawn is
+        :func:`is_drawn_row`, and it is not "the two sides were paid the same".
+
+        ``ties`` is counted the same way under every rule. Only the *payment*
+        depends on the tie rule; the count is a fact about the series and it is
+        one of the fields both peers compare at settlement, so it must not mean
+        different things on the two sides of the wire.
         """
         award = table.award(outcome)
         per_group = {group: award[role] for group, role in roles.items()}
-        if self.tie_rule == PER_SUBGAME and len(set(per_group.values())) == 1:
-            per_group = {group: points + self.tie_score for group, points in per_group.items()}
+        if is_drawn_row(outcome, per_group):
             self.ties += 1
+            if self.tie_rule == PER_SUBGAME:
+                per_group = {group: points + self.tie_score
+                             for group, points in per_group.items()}
         for group, points in per_group.items():
             self.totals[group] += points
         winner_role = table.winner_role(outcome)
@@ -137,13 +167,21 @@ class SeriesTally:
         ``per_subgame`` is the one worth carrying even though we do not run it.
         The reference has **no series-level adjustment at all** -- it settles a
         drawn sub-game as a tie worth 2 apiece and then plainly sums the rows.
-        That agrees with ``series_add`` whenever some sub-game tied, and
-        disagrees whenever a series ties without any sub-game tying, which is
-        precisely the case the reference's own sparring peer can never generate
-        (capture pays 20/5, survival 5/10, never equal). So an unmodified
-        reference opponent and this codebase would settle a level series
-        differently, having never once disagreed in rehearsal, and rule 35 would
-        void it for both of us.
+
+        We described the divergence too narrowly when we proposed the field,
+        and the arithmetic is worth stating exactly. With *k* drawn rows in a
+        level series, ``per_subgame`` pays ``2k`` and ``series_add`` pays 2, so
+        the two agree only when **k is exactly 1** and differ by ``2(k-1)``
+        otherwise. We had said "whenever some sub-game tied", which is the k=1
+        case mistaken for the general one -- and our test pinned k=1, so
+        nothing caught it.
+
+        Under Appendix F's values k is always 0 (see :func:`is_drawn_row`), so
+        the two rules disagree on *every* level series and there is no agreeing
+        region at all. That makes the declared field more necessary rather than
+        less: an unmodified reference opponent and this codebase settle a level
+        series differently, having never once disagreed in rehearsal, and rule
+        35 voids it for both of us.
 
         Book ch9 reads as replacing: "each team receives the tie score", which
         we took to mean the tie score *becomes* the league points for a level
