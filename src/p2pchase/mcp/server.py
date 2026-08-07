@@ -195,17 +195,44 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
 
 
 def serve(config: PeerConfig, handlers: PeerHandlers | None = None,
-          host: str = "127.0.0.1", port: int | None = None) -> None:
+          host: str = "127.0.0.1", port: int | None = None,
+          transport: str = "http") -> None:
     """Run the peer server until interrupted. Blocking.
 
     Binds ``127.0.0.1`` by default: exposing the port to the internet is the
     tunnel's job (ngrok / Localtonet), not this process's, so nothing is
     published by accident during development.
+
+    ``transport="stdio"`` speaks the same JSON-RPC on stdin/stdout instead of
+    over HTTP, which is what makes a raw TCP door possible:
+
+        socat TCP-LISTEN:9101,reuseaddr,fork EXEC:'p2pchase serve --transport stdio ...'
+
+    gal-roy1 proposed this and the reasoning is sound. MCP's stdio transport is
+    already newline-delimited JSON-RPC 2.0, so a socket carrying those bytes is
+    a valid MCP transport -- the tools, schemas and dialect are untouched, and
+    ``config_sha256`` with them. It removes the entire class of bugs that has
+    cost this league its month: no session header to omit, no ``Accept`` to get
+    wrong, no free-tier interstitial, no half-closed SSE stream.
+
+    socat's ``fork`` is worth more than the transport. One process per
+    connection means a peer *cannot* carry state between sub-games even by
+    accident -- and we have shipped exactly that bug, a round counter that
+    climbed 68, 103, 137, 172, 207, 240 across gal-roy1's attempts while every
+    one of them was declined.
+
+    HTTP stays primary and unchanged. This is a second door, not a move.
     """
     from .accept_probe import probe_middleware
 
     handlers = handlers or PeerHandlers(config)
     server = build_server(handlers, name=f"p2pchase-{config.group_id}-{config.role}")
+    if transport == "stdio":
+        # No host, no port, no middleware: stdin and stdout are the socket, and
+        # anything written to stdout that is not JSON-RPC corrupts the stream.
+        LOGGER.info("peer server on stdio (role=%s, group=%s)", config.role, config.group_id)
+        server.run(transport="stdio")
+        return
     bind_port = port or config.my_port
     LOGGER.info("peer server listening on http://%s:%d/mcp (role=%s, group=%s)",
                 host, bind_port, config.role, config.group_id)

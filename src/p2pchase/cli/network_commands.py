@@ -95,7 +95,8 @@ def serve(args: Any) -> int:
     session = PeerSession(sdk.config, args.role, args.game_id, sub_game=args.sub_game)
     handlers = PeerHandlers(sdk.config, session)
     try:
-        run_server(sdk.config, handlers, host=args.host, port=args.port)
+        run_server(sdk.config, handlers, host=args.host, port=args.port,
+                   transport=getattr(args, "transport", "http"))
     except MissingTransportError as error:
         print(error)
         return EXIT_CONFIG

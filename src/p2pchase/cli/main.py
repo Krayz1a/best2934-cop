@@ -90,6 +90,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_common(serve)
     serve.add_argument("--host", default="127.0.0.1", help="bind address")
     serve.add_argument("--port", type=int, default=None, help="bind port")
+    serve.add_argument("--transport", choices=("http", "stdio"), default="http",
+                       help="stdio speaks the same JSON-RPC on stdin/stdout, for a "
+                            "raw TCP door behind socat (see mcp/server.serve)")
     serve.add_argument("--game-id", default="local-rehearsal", help="game id to serve")
     serve.add_argument("--sub-game", type=int, default=1, help="sub-game number")
     serve.add_argument("--opponent", default="",
