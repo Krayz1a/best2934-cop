@@ -213,6 +213,39 @@ https://monogram-radio-blooper.ngrok-free.dev/health      which roles are up
 for sub-games 1–3 and you need do nothing. For 4–6, use `/thief/mcp` rather
 than waiting on a handover message from us.
 
+### Read this before you probe `/health` — it can lie to you in both directions
+
+**Our `/health` will report `200 OK` whether we are up or dead, if your client
+sends a browser-like `User-Agent`.** This is ngrok's free-tier interstitial, and
+it is served *instead of* our origin — the request never reaches us.
+
+imreeyal found this from a Windows box: PowerShell `Invoke-WebRequest` failed
+against both MCP paths and `/health`, 7 attempts out of 7, while `curl` from the
+same machine worked and `openssl s_client` always connected. We reproduced it
+and the discriminator is the **User-Agent**, not the missing header. Same URL,
+same second:
+
+```
+UA: curl/8.x                        -> {"group_id":"best2934",...}   our origin
+UA: python-requests/2.31.0          -> {"group_id":"best2934",...}   our origin
+UA: Mozilla/5.0 (Windows NT 10.0)   -> ngrok interstitial HTML, 200
+```
+
+`Invoke-WebRequest` sends `Mozilla/5.0 (Windows NT …) WindowsPowerShell/5.1`, so
+every PowerShell probe gets the interstitial. Either fix works:
+
+```
+-H 'ngrok-skip-browser-warning: 1'      # any User-Agent
+-A 'yourteam-probe/1'                   # any non-browser UA, no header needed
+```
+
+**If your readiness gate reads a bare `200` as "alive", it will pass while we
+are down and its parse will fail while we are up.** Check for the JSON body
+`{"group_id":"best2934",...}`, not for the status code. We cannot remove the
+interstitial on the free tier, which is why this warning sits above the URL
+rather than in a terms table. Our thanks to imreeyal for the report — we were
+handing this endpoint to the whole league as the thing to check us with.
+
 The reason is a fault imreeyal pointed out: a tunnel that follows the role is
 torn down once per swap, and it drops the endpoint exactly where the next
 handshake lands. One swap was survivable. It is not the right design, and under

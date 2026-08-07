@@ -107,11 +107,44 @@ class ReportingService:
         return raw, attachment_name
 
     # ---------------------------------------------------------------- sending
+    def incompleteness(self, result: dict[str, Any]) -> str:
+        """Why this report must not be sent, or ``""`` when it is complete.
+
+        imreeyal lost a series to exactly this and told us so: their driver
+        stopped correctly at sub-game 3, then built and mailed a perfectly
+        consistent two-game "series tie" for a six-game match. *Consistent and
+        incomplete* is the dangerous shape -- nothing inside the artifact
+        contradicts itself, so no self-check inside it can catch the fault, and
+        rule 35 charges both teams when the two reports disagree.
+
+        Their advice, adopted verbatim: the completeness check has to be an
+        explicit assertion rather than a property of the loop's shape. Ours was
+        the latter -- ``run_series`` iterates ``range(1, count + 1)`` and is
+        therefore complete by construction, which holds exactly until someone
+        adds a ``break`` for a timeout or a lost peer. That is the change most
+        likely to be made in a hurry, on the day it matters most.
+
+        Checked against the *signed* ``num_sub_games`` rather than against
+        whatever the artifact happens to say, because the artifact's count is
+        derived from the same short list that is the bug.
+        """
+        signed = int(self.config.num_sub_games)
+        played = int(result.get("num_sub_games", 0) or 0)
+        if played == signed:
+            return ""
+        return (f"refusing to send an incomplete report: {played} sub-game(s) recorded "
+                f"against the signed num_sub_games of {signed}")
+
     def send_result(self, result: dict[str, Any], dry_run: bool = False) -> DeliveryReceipt:
         """Send one result report. ``dry_run`` composes without delivering."""
         raw, attachment_name = self.compose(result)
         recipient = self.config.email["recipient"]
         subject = self.subject(result)
+
+        short = self.incompleteness(result)
+        if short and not dry_run:
+            LOGGER.error("%s", short)
+            return DeliveryReceipt(False, recipient, subject, attachment_name, reason=short)
 
         if dry_run or not self.config.email.get("enabled", False):
             reason = "dry run" if dry_run else "email.enabled is false in setup.json"
