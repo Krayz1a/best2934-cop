@@ -33,6 +33,16 @@ committed by an `git add -A` at two in the morning. Both repositories are
 public, and a leaked secret stays leaked because history cannot be un-pushed
 (rules 39-40).
 
+Those three names live in `.env`, and **the CLI now reads that file itself**
+(`shared/dotenv.py`, applied in `cli/main.py` before any subcommand runs). It
+did not, at first, and the failure was a good example of a silent one: only
+`tools/endpoint.py` read `.env`, for the peer it launched, so a served match was
+signed and a hand-run command was not. The visible symptom was
+`authorize-gmail` reporting *"no OAuth client file at credentials.json"* — a
+relative path — while the operator was looking at the absolute path they had
+just written into `.env`. A real export still wins over the file, so anyone
+debugging by hand is never overridden.
+
 `email.enabled` is now `true` in both role configs. A send that fails because no
 token exists returns a delivery receipt carrying the reason -- it does not
 abort the match.

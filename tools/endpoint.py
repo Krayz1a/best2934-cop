@@ -153,29 +153,19 @@ def _environment() -> dict[str, str]:
     """The parent environment, plus anything ``.env`` defines that it lacks.
 
     A detached process inherits the shell that launched it, and this one is
-    usually launched from a shell that never sourced ``.env``. Nothing reads
-    that file on our behalf -- the code goes straight to ``os.environ`` -- so a
-    peer started here would sign its step-0 declaration with an empty secret and
+    usually launched from a shell that never sourced ``.env``. The peer started
+    here would otherwise sign its step-0 declaration with an empty secret and
     say nothing about it (rule 24, and ``declaration.py`` falls back to an
-    unkeyed digest rather than failing). Reading it here is the difference
-    between a signed declaration and a quietly unsigned one.
+    unkeyed digest rather than failing).
 
-    The real environment wins, so an operator who exports a value by hand is
-    never overridden by a stale file.
+    One parser, shared with the CLI: two copies of a config format drift, and
+    the pair that disagrees here is a peer whose declaration verifies when
+    launched one way and not the other.
     """
-    import os
+    sys.path.insert(0, str(REPO / "src"))
+    from p2pchase.shared import dotenv
 
-    environment = dict(os.environ)
-    source = REPO / ".env"
-    if not source.exists():
-        return environment
-    for line in source.read_text(encoding="utf-8").splitlines():
-        entry = line.strip()
-        if not entry or entry.startswith("#") or "=" not in entry:
-            continue
-        name, _, value = entry.partition("=")
-        environment.setdefault(name.strip(), value.strip())
-    return environment
+    return dotenv.environment(REPO)
 
 
 def _detached(args: list[str], log: Path) -> None:

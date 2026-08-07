@@ -19,6 +19,7 @@ import logging
 import sys
 
 from .. import constants
+from ..shared import dotenv
 from . import commands, network_commands
 
 
@@ -127,6 +128,13 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)-7s %(name)-28s %(message)s",
         datefmt="%H:%M:%S",
     )
+    # Before dispatch, because the secrets in ``.env`` are read at the point of
+    # use and both of the things that need them fail *quietly* when they are
+    # missing: an unsigned step-0 declaration, and an OAuth client looked for at
+    # a relative path nobody put one at. Names only in the log -- never values.
+    loaded = dotenv.load()
+    if loaded:
+        logging.getLogger(__name__).debug("loaded from .env: %s", ", ".join(loaded))
     return int(args.func(args))
 
 
