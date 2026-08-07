@@ -36,6 +36,14 @@ The six values have been transcribed out of `best2934-ex01.pdf` into
 and is to be deleted once the `.docx` is filled in. They are still not written
 here, for the reason below.
 
+**The form itself is already generated**: `~/uni-project/fill_submission.py`
+writes `best2934-final-project-2026.docx` from one data block — Student 3 block
+cloned in, Hebrew names tagged `w:rtl`. It is re-runnable on purpose, because
+§3 below changes until the deadline and the script *derives* the self-score
+from the length of its games list rather than taking it as a separate value.
+A form cannot then claim a grade its own table contradicts. Both the script and
+its output stay outside the repositories: they hold ID numbers.
+
 ID numbers and Hebrew spellings are personal data and stay out of this file on
 purpose. **This repository is public**, so anything written here is published to
 everyone, permanently and irrevocably — a git history cannot be un-pushed. Three
