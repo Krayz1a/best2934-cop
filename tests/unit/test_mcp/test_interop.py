@@ -109,6 +109,51 @@ def test_a_second_sub_game_does_not_inherit_the_first_ones_round_counter(peer_co
     assert adapter.turns(adapter.handlers.session).claimed is None, "and so must the claim"
 
 
+def test_a_nil_opener_restarts_the_sub_game_without_any_declaration(peer_config):
+    """The same fault again, through the door gal-roy1 actually uses.
+
+    The reset above hangs off ``declare_step0``. gal-roy1 has never called it:
+    their dialect is ``propose_config``, ``submit_turn``, ``confirm_result``,
+    and they open a sub-game with a *nil turn* at step 0. So the fix was inert
+    against the one peer it was written for, and on 7 August the counter
+    climbed 68, 103, 137, 172, 207, 240 across six attempts we all declined --
+    while they recorded a survival at step 35 against a cop that never moved.
+
+    Whichever opener arrives is the opponent's choice of dialect, not a
+    statement about whether a sub-game is beginning.
+    """
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    adapter = InteropAdapter(PeerHandlers(peer_config, session))
+    stale = adapter.turns(session)
+    stale.round = 240
+    stale.session.state.opponent_steps_seen = 239
+
+    answer = adapter.submit_turn({"step": 0, "nil": True, "sender": "THIEF"})
+
+    assert adapter.handlers.session is not session, "a nil opener must not reuse a played board"
+    assert answer.get("acted") is not False, f"we declined the opener again: {answer}"
+    assert adapter.turns(adapter.handlers.session).round <= 1
+
+
+def test_a_turn_mid_sub_game_never_restarts_the_board(peer_config):
+    """Only step 0 opens a sub-game; step 7 is the middle of one.
+
+    Restarting on any turn would hand the opponent a way to wipe our board at
+    will -- including the record of a capture we had just claimed.
+    """
+    from p2pchase.runtime.peer_session import PeerSession
+
+    session = PeerSession(peer_config, "police", "best2934-vs-gal-roy1", sub_game=1, seed=1)
+    adapter = InteropAdapter(PeerHandlers(peer_config, session))
+    adapter.turns(session).round = 7
+
+    adapter.submit_turn({"step": 7, "nil": True, "sender": "THIEF"})
+
+    assert adapter.handlers.session is session, "a mid-game turn must not reset the board"
+
+
 def test_a_fresh_sub_game_is_not_restarted_underneath_itself(peer_config):
     """Step 0 on a session that has not moved is the opening, not a retry.
 

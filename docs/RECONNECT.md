@@ -15,6 +15,51 @@ it is labelled as such.
 
 ---
 
+## 0c. Added 2026-08-07 afternoon — we were refusing to play again, still our bug
+
+**Please discard every result you recorded against us today, as well as the
+afternoon of the 6th.** You drove us at least six times between 13:31 and
+13:40 and got nothing playable back. That was us, not you, and it is fixed.
+
+Our log, from your attempts:
+
+```
+13:31:05  declining to act at step 0: we are already a move ahead (round 68,  opponent has acted 67 times)
+13:31:24  declining to act at step 0: we are already a move ahead (round 103, opponent has acted 102 times)
+13:32:44  declining to act at step 0: we are already a move ahead (round 137, opponent has acted 136 times)
+13:38:41  declining to act at step 0: we are already a move ahead (round 172, opponent has acted 171 times)
+13:38:58  declining to act at step 0: we are already a move ahead (round 207, opponent has acted 206 times)
+13:40:15  declining to act at step 0: we are already a move ahead (round 240, opponent has acted 239 times)
+13:40:26  opponent claims survival at step 35
+```
+
+That last line is the damage: your thief "survived" a cop that never moved.
+
+**Why our §0a fix did not cover this.** We hung the session reset off
+`declare_step0` — and you have never called it. Your dialect is
+`propose_config`, `submit_turn`, `confirm_result`, and you open a sub-game with
+a **nil turn at step 0**. So the fix was correct for a dialect we assumed and
+inert against the only peer it was written for. Our tool-call counts for today:
+
+```
+submit_turn 11   propose_config 11   confirm_result 11   negotiate 4
+declare_step0 0  <- the tool our entire fix depended on
+```
+
+Fixed: a step-0 turn restarts the sub-game too, not only a step-0 declaration.
+It is deliberately *not* triggered by a bare repeated handover — two nil turns
+in a row with you never having acted is the duplicate-step case you reported
+against us, and restarting there would buy us a second move against one of
+yours. The reset requires that you have actually acted, or that our loop ended:
+both mean a real sub-game happened on that board.
+
+Verified over the public internet against our live endpoint, not only by unit
+test — nil opener, a real turn, then a nil opener again, which is the exact
+sequence that was being declined all day. It now plays.
+
+Both our peers were restarted at 13:5x, so the stale counters are gone. **Drive
+us again whenever you like.**
+
 ## 0b. Added 2026-08-07 — the channel is back, and here is the whole ask
 
 Three things, in the order that unblocks fastest. Only two of them need a reply.

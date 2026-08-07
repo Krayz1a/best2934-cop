@@ -131,6 +131,25 @@ class InteropAdapter:
         self._restart_if_a_new_sub_game(payload)
         return self.handlers.declare_step0(payload)
 
+    def _opener_is_a_retry(self) -> bool:
+        """Whether a step-0 turn opens a *new* attempt or repeats this one's.
+
+        A declaration says "a sub-game is beginning" in as many words, so
+        :meth:`declare_step0` can restart on our progress alone. A nil turn does
+        not: it says "your move", and two of them in a row is the duplicate
+        handover gal-roy1 reported against us. Restarting on that one would hand
+        them a second of our moves against one of theirs -- a cheat, and a worse
+        outcome than the stall it would cure.
+
+        So the opener only counts as a retry once the opponent has actually
+        acted, or the loop has ended. Both mean a real sub-game happened on this
+        board; neither is true of a handover repeated at the opening.
+        """
+        loop = self._turns
+        if loop is None:
+            return False
+        return bool(loop.finished) or loop.session.state.opponent_steps_seen > 0
+
     def _restart_if_a_new_sub_game(self, payload: dict[str, Any]) -> None:
         """Swap in a fresh session when step 0 opens a sub-game we already played.
 
@@ -138,6 +157,11 @@ class InteropAdapter:
         a peer retrying sub-game 1 sends the same number and still needs a clean
         board. The number is honoured when it is present and different, so a
         series that advances normally is not treated as a retry.
+
+        Called from both openers -- ``declare_step0`` and a step-0
+        ``submit_turn`` -- because which one arrives is the opponent's choice of
+        dialect, and a peer that opens with a nil turn is starting a sub-game
+        just as definitely as one that declares.
         """
         from ..runtime.peer_session import PeerSession
 
@@ -166,7 +190,19 @@ class InteropAdapter:
         match over outbound connections only -- neither peer needs the other to
         be dialable, which removes the failure mode a rotating tunnel URL would
         otherwise create.
+
+        Step 0 restarts the sub-game here too, and not only in
+        :meth:`declare_step0`. gal-roy1 opens with a nil turn at step 0 and has
+        never once called ``declare_step0`` -- their dialect is
+        ``propose_config``, ``submit_turn``, ``confirm_result``. Hanging the
+        session reset off a tool the opponent does not call left it inert for
+        the only peer it was written for: on 7 August our round counter climbed
+        68, 103, 137, 172, 207, 240 across six of their attempts while we
+        declined every one, and they recorded a survival at step 35 against a
+        cop that never moved.
         """
+        if not int(payload.get("step", 0) or 0) and self._opener_is_a_retry():
+            self._restart_if_a_new_sub_game(payload)
         session = self.handlers.session
         if session is None:
             return {"ack": False, "error": "no sub-game is in progress"}
