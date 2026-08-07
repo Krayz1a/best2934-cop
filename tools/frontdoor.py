@@ -61,6 +61,14 @@ HOP_BY_HOP = {"connection", "keep-alive", "transfer-encoding", "upgrade", "host"
 #: process exists to keep playable.
 TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)
 
+#: Streamable-HTTP refuses anything that will not take both media types.
+ACCEPT = {"Accept": "application/json, text/event-stream",
+          "Content-Type": "application/json"}
+
+HELLO = {"jsonrpc": "2.0", "id": 0, "method": "initialize",
+         "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                    "clientInfo": {"name": "best2934-frontdoor", "version": "1"}}}
+
 
 def _forwardable(headers) -> dict[str, str]:
     return {k: v for k, v in headers.items() if k.lower() not in HOP_BY_HOP}
@@ -100,25 +108,32 @@ async def _probe_tools(role: str, message_id) -> JSONResponse:
     while we were dead. Every field here comes from the live peer, and if the
     peer is down this fails exactly as it should.
     """
-    accept = {"Accept": "application/json, text/event-stream",
-              "Content-Type": "application/json"}
-    hello = {"jsonrpc": "2.0", "id": 0, "method": "initialize",
-             "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                        "clientInfo": {"name": "frontdoor-readiness", "version": "1"}}}
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-        opened = await client.post(UPSTREAM[role], headers=accept, json=hello)
-        session = opened.headers.get("mcp-session-id", "")
-        if not session:
-            raise httpx.HTTPError("upstream refused a session")
-        keyed = {**accept, "mcp-session-id": session}
-        await client.post(UPSTREAM[role], headers=keyed,
-                          json={"jsonrpc": "2.0", "method": "notifications/initialized"})
-        listed = await client.post(UPSTREAM[role], headers=keyed,
+        session = await _open_session(client, UPSTREAM[role])
+        listed = await client.post(UPSTREAM[role],
+                                   headers={**ACCEPT, "mcp-session-id": session},
                                    json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
         await client.delete(UPSTREAM[role], headers={"mcp-session-id": session})
     body = _sse_payload(listed.text)
     return JSONResponse({"jsonrpc": "2.0", "id": message_id,
                          "result": body.get("result", {})})
+
+
+async def _open_session(client: httpx.AsyncClient, url: str) -> str:
+    """Complete a handshake upstream and return the session id it issued.
+
+    Whoever calls this owns the ``DELETE``. Sessions are server-side state that
+    a peer holds until it is told to let go, and 255 of them accumulated in
+    each of our two peers today -- see :func:`_upstream_status` for a third of
+    that total, and for why the tidy-looking probe was the leak.
+    """
+    opened = await client.post(url, headers=ACCEPT, json=HELLO)
+    session = opened.headers.get("mcp-session-id", "")
+    if not session:
+        raise httpx.HTTPError("upstream refused a session")
+    await client.post(url, headers={**ACCEPT, "mcp-session-id": session},
+                      json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+    return session
 
 
 def _sse_payload(text: str) -> dict:
@@ -187,19 +202,35 @@ async def health(request: Request) -> JSONResponse:
 
 
 async def _upstream_status() -> dict[str, str]:
-    """Ask each peer whether it speaks MCP, by the answer only it can give.
+    """Ask each peer whether it speaks MCP, by opening a session and closing it.
 
-    A 406 is the *healthy* reading here: the transport requires an Accept of
-    both JSON and text/event-stream, so a bare GET that reaches a live MCP
-    server is refused by the server itself. Anything else is either not our
-    peer or not running.
+    This used to send a bare ``GET`` and read the resulting **406** as healthy:
+    the transport requires an Accept of both JSON and text/event-stream, so a
+    live MCP server refuses a plain GET itself, and nothing else answers that
+    way. Clever, cheap, and it was quietly poisoning the process it checked.
+
+    FastMCP allocates the session *before* it inspects Accept, so every probe
+    created a transport that was then abandoned -- no session id ever came back
+    to us, so there was nothing to ``DELETE``. 83 of the cop's 261 orphaned
+    sessions today were ours, and 71 of the thief's 249. The monitor was a
+    third of the leak it existed to notice.
+
+    So the probe now completes a real handshake and hangs up after it, which
+    costs one extra local round trip and is a strictly better question besides:
+    a 406 only proved something was listening and fussy about media types,
+    while a session id proves the peer can actually start a sub-game.
+
+    Deliberately still not a process check. A listening socket is not an
+    endpoint -- that assumption is what let us tell an opponent we were up
+    while we had been dead for nine hours.
     """
     verdicts = {}
     async with httpx.AsyncClient(timeout=5.0) as client:
         for role, url in UPSTREAM.items():
             try:
-                answer = await client.get(url)
-                verdicts[role] = "up" if answer.status_code == 406 else f"http {answer.status_code}"
+                session = await _open_session(client, url)
+                await client.delete(url, headers={"mcp-session-id": session})
+                verdicts[role] = "up"
             except httpx.HTTPError as exc:
                 verdicts[role] = f"down ({exc.__class__.__name__})"
     return verdicts

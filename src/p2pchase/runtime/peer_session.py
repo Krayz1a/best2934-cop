@@ -32,6 +32,7 @@ from ..strategy.talk_engine import build_talk_engine
 from ..strategy.talk_prompt import TalkRequest
 from . import session_disclosure as disclosure
 from .match_side import judge_claim, record_claim
+from .opponent_ending import record_ending
 
 LOGGER = logging.getLogger(__name__)
 
@@ -204,9 +205,27 @@ class PeerSession:
 
         Recorded rather than acted on: the runner decides what to do about it,
         and a peer that stopped early still owes us a chain that has to audit.
+
+        **The first stated ending wins.** An unstated ending means survival --
+        a peer that ran out the horizon has nothing to declare -- but only when
+        it is the *first* thing they say. gal-roy1 drove us on 7 August at
+        14:48 and sent two ``confirm_result`` calls in the same second: the
+        first conceding ``CAPTURE`` at [5, 1], the second carrying no outcome
+        at all. Under the old rule the second one read as survival and
+        overwrote the concession, so our cop won the sub-game, was told it had
+        won, and then quietly recorded the opponent as having survived.
+
+        That is the worst available direction for this bug. Our own board still
+        said ``capture`` (:meth:`TurnLoop.concede` keeps it), so the two halves
+        of one peer disagreed, and rule 35 voids the match for *both* teams
+        when the reports disagree -- costing gal-roy1 a game they did nothing
+        wrong in. Nothing warned; the only trace was the word ``unstated`` in a
+        log nobody reads during a game.
+
+        The rule, the game it was written from and the casing it normalises all
+        live in :mod:`p2pchase.runtime.opponent_ending`.
         """
-        self.opponent_finished = outcome or constants.OUTCOME_SURVIVAL
-        LOGGER.info("the opponent has ended sub-game %d: %s", self.sub_game, outcome or "unstated")
+        self.opponent_finished = record_ending(self.opponent_finished, outcome, self.sub_game)
 
     def on_reveal(self, step: int, move: str, hint: str,
                   barrier: list[int] | None,
