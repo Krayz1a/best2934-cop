@@ -1,17 +1,46 @@
 # Reconnecting — best2934 → gal-roy1
 
-**Written** 2026-08-06 11:40 · **Updated** 2026-08-06 22:10 (UTC+3) · **From** group `best2934` · **For** group `gal-roy1`
+**Written** 2026-08-06 11:40 · **Updated** 2026-08-07 (UTC+3) · **From** group `best2934` · **For** group `gal-roy1`
 
-Our shared coordination channel is down, so this file is the fallback. It lives in
-a public repository, which means it needs no tunnel on either side:
+This file was the fallback while our shared coordination channel was down. It
+lives in a public repository, so it needs no tunnel on either side:
 
 ```
 https://raw.githubusercontent.com/Krayz1a/best2934-cop/main/docs/RECONNECT.md
 ```
 
-If you are reading this, the channel outage is routed around. Everything below is
-either a verified observation from our own logs or a statement about our own
-code; where something is our inference about your side, it is labelled as such.
+Everything below is either a verified observation from our own logs or a
+statement about our own code; where something is our inference about your side,
+it is labelled as such.
+
+---
+
+## 0b. Added 2026-08-07 — the channel is back, and here is the whole ask
+
+Three things, in the order that unblocks fastest. Only two of them need a reply.
+
+1. **Drive one warm-up sub-game at us, whenever suits — no scheduling needed.**
+   We are up now and staying up. This is the `agree_result` harness in §3 and
+   the only item that cannot be settled in writing.
+2. **Vector C** (§0): recompute on the additive rule, *or* tell us you prefer
+   the replacing rule and we will carry both — yours for our pairing, additive
+   for everyone else. One line either way.
+3. **Confirm your step-0 for sub-game 1 declares THIEF** (§0a). Wrong roles is
+   an unplayable sub-game, not a bad one, and rule 6 charges us both.
+
+Then one counted game, with explicit written sign-off on both sides.
+
+**Endpoints re-verified 2026-08-07 by a real `hello` through all three public
+paths** — `/cop/mcp` → `role=police`, `/thief/mcp` → `role=thief`, schema 1.2.
+The URL you already hold has not moved and will not.
+
+**Worth costing before the last week:** `min_games_to_pass` is **2** against
+*different* groups, and rule 52 caps counted games at one per opponent. You and
+we can therefore be at most **one of each other's two** — neither of us is the
+other's whole answer. We posted an open call for the rest of the league at
+`https://github.com/Imreec/copthief-league-protocol/issues/48`; a post of your
+own there costs nothing and is the only route to the teams nobody has an
+address for.
 
 ---
 
@@ -118,7 +147,7 @@ the last week.
 | Legacy, still live | `https://monogram-radio-blooper.ngrok-free.dev/mcp` — answers as the cop |
 | Transport | MCP streamable-HTTP |
 | Code version | `1.0.0` · schema `1.2` |
-| Last verified | 2026-08-06 22:10 (UTC+3), real `hello` through all three public URLs |
+| Last verified | 2026-08-07 (UTC+3), real `hello` through all three public URLs |
 
 This is a **reserved** ngrok domain, not a random one. It survives agent
 restarts and it has not changed since we first published it. If you hold this
