@@ -219,11 +219,8 @@ than waiting on a handover message from us.
 sends a browser-like `User-Agent`.** This is ngrok's free-tier interstitial, and
 it is served *instead of* our origin — the request never reaches us.
 
-imreeyal found this from a Windows box: PowerShell `Invoke-WebRequest` failed
-against both MCP paths and `/health`, 7 attempts out of 7, while `curl` from the
-same machine worked and `openssl s_client` always connected. We reproduced it
-and the discriminator is the **User-Agent**, not the missing header. Same URL,
-same second:
+imreeyal found this from a Windows box. The discriminator is the **User-Agent**,
+not the missing header. Same URL, same second:
 
 ```
 UA: curl/8.x                        -> {"group_id":"best2934",...}   our origin
@@ -245,6 +242,35 @@ are down and its parse will fail while we are up.** Check for the JSON body
 interstitial on the free tier, which is why this warning sits above the URL
 rather than in a terms table. Our thanks to imreeyal for the report — we were
 handing this endpoint to the whole league as the thing to check us with.
+
+**What this does *not* explain, stated so nobody builds on it.** imreeyal also
+saw a Windows client fail 7 times out of 7 with a *transport-level close before
+any HTTP status*, then succeed 12 out of 12 an hour later. The interstitial
+cannot be that: it returns `200` with HTML, not a closed connection. We first
+told them the User-Agent finding explained their whole report, and it does not.
+We cannot reproduce the bursty failure — 25 sequential probes here returned
+`200` 25 times — and we are not asserting a cause. If you see a connection to us
+close before any status, please tell us; it is unexplained and we would rather
+collect reports than guess.
+
+### Readiness: probe with `initialize`, or with a bare `tools/list`, both work
+
+The common league readiness check is `POST tools/list` and assert the tool names
+come back. A stateful MCP server answers that with `400 Bad Request: Missing
+session ID`, and imreeyal's gate correctly read our 400 as *"something is
+serving, but it is not a cop-thief peer"* — refusing a window against a
+perfectly healthy peer, 12 times out of 12.
+
+**Fixed as of 2026-08-07.** A sessionless `POST tools/list` now returns `200`
+and our real tool list on `/mcp`, `/cop/mcp` and `/thief/mcp`. It is answered by
+running a genuine handshake against the live peer, never from a canned list — a
+hardcoded answer would report us healthy while we were dead, which is worse than
+the 400 it replaces. A spec-compliant client is unaffected: it sends
+`initialize` first and never reaches that path.
+
+**Assert membership, not equality.** We publish **15** tools — our native set
+*and* the interop dialect — so a gate asserting "exactly these four" still
+refuses us. Check for the names you need.
 
 The reason is a fault imreeyal pointed out: a tunnel that follows the role is
 torn down once per swap, and it drops the endpoint exactly where the next
