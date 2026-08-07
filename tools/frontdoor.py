@@ -37,6 +37,7 @@ belonged to.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 
 import httpx
@@ -65,9 +66,81 @@ def _forwardable(headers) -> dict[str, str]:
     return {k: v for k, v in headers.items() if k.lower() not in HOP_BY_HOP}
 
 
+def _is_bare_tools_list(request: Request, body: bytes) -> bool:
+    """A sessionless ``tools/list`` -- the league's most common readiness probe.
+
+    A stateful MCP server answers this with ``400 Bad Request: Missing session
+    ID``, which is correct and useless. imreeyal's gate reads that reply as
+    "something is serving, but it is not a cop-thief peer" and refuses the
+    window against a perfectly healthy peer -- deterministically, 12 times out
+    of 12. They fixed their gate and told us, but the next team will not: they
+    will conclude we are not a peer and never say why. That is a quiet way to
+    lose an opponent, and rule 6 charges us for the stall either way.
+
+    So we answer it, and answer it *honestly* -- see :func:`_probe_tools`. A
+    spec-compliant client never reaches this path, because it sends
+    ``initialize`` first and carries the session id afterwards.
+    """
+    if request.method != "POST" or request.headers.get("mcp-session-id"):
+        return False
+    try:
+        message = json.loads(body)
+    except (ValueError, TypeError):
+        return False
+    return isinstance(message, dict) and message.get("method") == "tools/list"
+
+
+async def _probe_tools(role: str, message_id) -> JSONResponse:
+    """Run a real handshake upstream and return the peer's real tool list.
+
+    Emphatically not a canned answer. A readiness probe exists to find out
+    whether the peer is alive, so replying from a hardcoded list would turn the
+    one check the league runs against us into a check that can never fail --
+    strictly worse than the 400 it replaces, because it would report us healthy
+    while we were dead. Every field here comes from the live peer, and if the
+    peer is down this fails exactly as it should.
+    """
+    accept = {"Accept": "application/json, text/event-stream",
+              "Content-Type": "application/json"}
+    hello = {"jsonrpc": "2.0", "id": 0, "method": "initialize",
+             "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                        "clientInfo": {"name": "frontdoor-readiness", "version": "1"}}}
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        opened = await client.post(UPSTREAM[role], headers=accept, json=hello)
+        session = opened.headers.get("mcp-session-id", "")
+        if not session:
+            raise httpx.HTTPError("upstream refused a session")
+        keyed = {**accept, "mcp-session-id": session}
+        await client.post(UPSTREAM[role], headers=keyed,
+                          json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+        listed = await client.post(UPSTREAM[role], headers=keyed,
+                                   json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+        await client.delete(UPSTREAM[role], headers={"mcp-session-id": session})
+    body = _sse_payload(listed.text)
+    return JSONResponse({"jsonrpc": "2.0", "id": message_id,
+                         "result": body.get("result", {})})
+
+
+def _sse_payload(text: str) -> dict:
+    """Pull the JSON out of a streamable-HTTP reply, which arrives as SSE."""
+    for line in text.splitlines():
+        if line.startswith("data:"):
+            return json.loads(line[5:].strip())
+    return json.loads(text) if text.strip() else {}
+
+
 async def _proxy(request: Request, role: str) -> StreamingResponse:
     """Relay one request to a peer, streaming both directions."""
     body = await request.body()
+    if _is_bare_tools_list(request, body):
+        try:
+            return await _probe_tools(role, json.loads(body).get("id"))
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            return JSONResponse(
+                {"jsonrpc": "2.0", "id": "server-error",
+                 "error": {"code": -32001,
+                           "message": f"the {role} peer is not answering: {exc}"}},
+                status_code=502)
     client = httpx.AsyncClient(timeout=TIMEOUT)
     upstream = client.build_request(
         request.method, UPSTREAM[role],
