@@ -1,0 +1,56 @@
+{
+  "_source": "Field NAMES ONLY, extracted from the course reference sample run (docs/sample-run/) shipped with the assignment. No values are vendored -- this fixture exists so the artifact builders are checked against the template rather than against our own expectations of it.",
+  "result_top": [
+    "_schema",
+    "schema_version",
+    "report_type",
+    "game_id",
+    "game_uid",
+    "links",
+    "timezone",
+    "groups",
+    "num_sub_games",
+    "sub_games",
+    "final_result",
+    "mutual_agreement"
+  ],
+  "result_sub_game_row": [
+    "sub_game_number",
+    "roles",
+    "started_at",
+    "ended_at",
+    "result",
+    "winner_group",
+    "tie",
+    "github_commit",
+    "tokens",
+    "score",
+    "log_files",
+    "audit"
+  ],
+  "log_top": [
+    "_schema",
+    "schema_version",
+    "game_id",
+    "game_uid",
+    "links",
+    "summary",
+    "records",
+    "mutual_agreement"
+  ],
+  "log_summary": [
+    "sub_game_number",
+    "group_id",
+    "role",
+    "opponent_group_id",
+    "result",
+    "winner_role",
+    "steps",
+    "timezone",
+    "started_at",
+    "ended_at",
+    "duration_seconds",
+    "tokens_total",
+    "audit"
+  ]
+}

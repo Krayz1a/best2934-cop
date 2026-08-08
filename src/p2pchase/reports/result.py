@@ -48,12 +48,16 @@ class SubGameOutcome:
     log_files: dict[str, str]
     audit: dict[str, Any]
     tie: bool = False
-    #: Rounds this sub-game ran. The kit example carries it and we did not, so
-    #: a reader could not tell a capture on move 3 from one on move 34 without
-    #: opening the log. It is *rounds*, not disclosed records: a thief that
-    #: concedes seals a 36th record for a 35-round sub-game (see
-    #: :mod:`p2pchase.runtime.session_terminal`), and reporting 36 here would
-    #: read as a disagreement with an opponent who counted the same game right.
+    #: Rounds this sub-game ran -- carried here, but deliberately **not** in
+    #: :meth:`as_dict`. The course result template's sub-game row is exactly the
+    #: twelve fields below and does not include it; the template puts the step
+    #: count in the *log* summary instead, which is where we emit it. This field
+    #: exists to carry the number from the series into that log artifact.
+    #:
+    #: It is *rounds*, not disclosed records: a thief that concedes seals a 36th
+    #: record for a 35-round sub-game (see
+    #: :mod:`p2pchase.runtime.session_terminal`). imreeyal count rounds too, so
+    #: the two log summaries agree.
     steps: int = 0
 
     def as_dict(self) -> dict[str, Any]:
@@ -65,7 +69,6 @@ class SubGameOutcome:
             "result": self.result,
             "winner_group": self.winner_group,
             "tie": self.tie,
-            "steps": self.steps,
             "github_commit": self.github_commit,
             "tokens": self.tokens,
             "score": self.score,
