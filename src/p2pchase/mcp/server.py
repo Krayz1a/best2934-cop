@@ -85,24 +85,35 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
 
     @mcp.tool
     def negotiate(handshake: dict[str, Any] | None = None,
-                  payload: dict[str, Any] | None = None) -> dict[str, Any]:
+                  payload: dict[str, Any] | None = None,
+                  message: dict[str, Any] | None = None) -> dict[str, Any]:
         """Compare the caller's fingerprints with ours; refuse on mismatch.
 
-        Both spellings, for the same reason as ``declare_step0`` -- and this one
-        we learned the expensive way. gal-roy1 called this with ``payload`` on
-        the first contact after a nine-hour outage; FastMCP refused it for a
-        missing ``handshake`` before any handler ran, and the sub-game died at
-        the handshake. A required positional argument is a bet that the opponent
-        spells it our way.
+        Three spellings, for the same reason as ``declare_step0`` -- and this
+        one we have now learned the expensive way twice. gal-roy1 called this
+        with ``payload`` on the first contact after a nine-hour outage; FastMCP
+        refused it for a missing ``handshake`` before any handler ran, and the
+        sub-game died at the handshake. A required positional argument is a bet
+        that the opponent spells it our way.
 
         They nested the fields *and* a ``handshake`` key inside ``payload``,
         evidently trying to satisfy either convention. That cannot work from the
         caller's side: FastMCP matches top-level argument names only, so nesting
         is invisible to it. It has to be fixed here. We unwrap the inner key when
         it is present and otherwise read the wrapper itself as the handshake.
+
+        ``message`` is the reference-v3 spelling -- imreeyal, anrbj666 and
+        uoh-sqak all use it. Theirs arrived at 19:00:06 on 2026-08-08 carrying a
+        signature that verifies and fourteen terms identical to ours, and was
+        refused by the framework over the one word naming it. Nothing about
+        their bytes was ever in doubt. Note the reference's own asymmetry, which
+        matters for the tools added beside this one: ``negotiate``,
+        ``receive_turn`` and ``receive_control`` take ``message``, but
+        ``submit_audit`` takes ``payload``.
         """
         inner = payload.get("handshake") if isinstance(payload, dict) else None
-        return handlers.negotiate({"handshake": handshake or inner or payload or {}})
+        agreed = handshake or message or inner or payload or {}
+        return handlers.negotiate({"handshake": agreed})
 
     @mcp.tool
     def declare_step0(declaration: dict[str, Any] | None = None,

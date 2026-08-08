@@ -133,6 +133,29 @@ class PeerClient:
             raise TransportError(f"{tool} failed: {type(error).__name__}: {error}") from error
         return _unwrap(result)
 
+    async def list_tools(self) -> list[str]:
+        """The tool names the opponent publishes.
+
+        This, and not a tool call, is what liveness means. A peer that answers
+        ``tools/list`` is up, whatever it does or does not implement -- and the
+        reference-v3 peers implement none of our names, so probing with one of
+        them can only ever report a live opponent as absent.
+
+        It is also the pre-flight we did not have. Two teams compared fourteen
+        hashed terms and never compared this list; the surfaces turned out to
+        share exactly one name, and we found that out at the T rather than in CI.
+        """
+        client = self._connect()
+        try:
+            if self._open:
+                tools = await client.list_tools()
+            else:
+                async with client:
+                    tools = await client.list_tools()
+        except Exception as error:  # noqa: BLE001 -- re-raised as a transport fault
+            raise TransportError(f"tools/list failed: {type(error).__name__}: {error}") from error
+        return [str(getattr(tool, "name", tool)) for tool in tools]
+
     async def hello(self, group_id: str = "") -> dict[str, Any]:
         """Greet the opponent, naming ourselves so they can answer per-pairing.
 
@@ -183,6 +206,16 @@ class LoopbackClient:
         if handler is None:
             return contracts.error(f"unknown tool {tool!r}")
         return handler(payload or {})
+
+    async def list_tools(self) -> list[str]:
+        """Whatever the handler object actually exposes -- never a fixed list.
+
+        Reading it from the same map ``call`` dispatches on is the point: a
+        loopback that advertised a hand-written list could report a surface the
+        handlers do not have, which is the exact class of mistake this method
+        exists to catch on the wire.
+        """
+        return list(self._map)
 
     async def hello(self, group_id: str = "") -> dict[str, Any]:
         return await self.call(contracts.TOOL_HELLO,

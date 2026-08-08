@@ -24,6 +24,7 @@ import asyncio
 import logging
 from typing import Any
 
+from ..mcp import contracts
 from ..mcp.client import TransportError
 from ..mcp.handlers import PeerHandlers
 from ..mcp.server import build_server
@@ -47,24 +48,48 @@ async def _serve_forever(handlers: PeerHandlers, host: str, port: int, name: str
 
 async def _await_opponent(runner: PeerRunner, url: str,
                           timeout: float = OPPONENT_WAIT_SEC) -> dict[str, Any]:
-    """Knock until the opponent's server answers ``hello``.
+    """Knock until the opponent's server answers ``tools/list``.
 
     Two teams never press enter at the same instant, and refusing to wait would
     make the match a race. The wait is bounded because rule 6 charges both sides
     for a sub-game that never starts, so at some point not-playing has to be a
     decision rather than a hang.
+
+    **Liveness is ``tools/list``, not a tool call.** This knocked with ``hello``
+    until 2026-08-08, when it spent five minutes reporting imreeyal as down while
+    they were up and pushing agreements at us: they publish no ``hello``, the
+    ``Unknown tool`` came back as a :class:`TransportError`, and the loop below
+    treats a transport fault as "not here yet". A peer that implements none of
+    our names is still a peer. Collapsing "you do not implement this" into "you
+    are not there" hides the first behind a retry of the second, and they have
+    entirely different fixes.
+
+    The greeting is now best-effort for the same reason. ``hello`` is a
+    convenience that lets us see their locks a moment early; ``negotiate`` is the
+    authority and re-derives everything from their ``group_id`` anyway. So a peer
+    without ``hello`` returns an empty handshake here and proceeds, rather than
+    being refused a match over a tool the league never agreed on.
     """
     deadline = asyncio.get_running_loop().time() + timeout
     last = ""
     while asyncio.get_running_loop().time() < deadline:
         try:
-            greeting = await runner.client.hello(runner.session.group_id)
-            return dict(greeting.get("handshake", {}))
+            published = await runner.client.list_tools()
         except TransportError as error:
             last = str(error)
             LOGGER.info("opponent at %s not up yet; retrying", url)
             await asyncio.sleep(KNOCK_INTERVAL_SEC)
-    raise TransportError(f"opponent at {url} never answered within {timeout:.0f}s: {last}")
+            continue
+        LOGGER.info("opponent at %s is up; publishes %d tools: %s",
+                    url, len(published), ", ".join(sorted(published)) or "(none)")
+        if contracts.TOOL_HELLO not in published:
+            LOGGER.info("no %r on their surface -- negotiate is the authority, proceeding",
+                        contracts.TOOL_HELLO)
+            return {}
+        greeting = await runner.client.hello(runner.session.group_id)
+        return dict(greeting.get("handshake", {}))
+    raise TransportError(f"opponent at {url} never answered tools/list within "
+                         f"{timeout:.0f}s: {last}")
 
 
 async def declare_step0(runner: PeerRunner) -> str:

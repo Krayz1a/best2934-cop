@@ -85,16 +85,41 @@ class Handshake:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> Handshake:
+        """Read a greeting in either the league's flat shape or reference-v3's.
+
+        The reference nests who-you-are under ``identity`` -- ``group_id``,
+        ``group_name``, ``repos`` and an ``mcp_servers`` map -- and leaves the
+        agreement itself (terms, nonce, signature, the locks) at the top level.
+        Reading only the flat shape does not merely lose a label: ``compare``
+        re-derives *our own* per-pair terms from ``theirs.group_id``, so an
+        unread group id silently selects our default scent model. Against
+        imreeyal that is the book's model where the reference's was agreed, and
+        both peers declaring different values is precisely what the lock is
+        built to refuse. We would have refused them for a physics disagreement
+        manufactured by our own parser -- the same fault we had just warned them
+        about, pointing the other way.
+
+        ``mcp_servers`` is a role map rather than one URL, so it is not folded
+        into ``mcp_url``; a greeting names one peer and guessing which role it
+        speaks for would put a wrong endpoint in the record.
+        """
+        identity = payload.get("identity")
+        identity = identity if isinstance(identity, dict) else {}
+
+        def field_of(name: str) -> Any:
+            value = payload.get(name)
+            return identity.get(name, value) if value in (None, "", {}) else value
+
         return cls(
-            group_id=str(payload.get("group_id", "")),
-            group_name=str(payload.get("group_name", "")),
-            code_version=str(payload.get("code_version", "")),
+            group_id=str(field_of("group_id") or ""),
+            group_name=str(field_of("group_name") or ""),
+            code_version=str(field_of("code_version") or ""),
             schema_version=str(payload.get("schema_version", "")),
             config_sha256=str(payload.get("config_sha256", "")),
             scent_fingerprint=str(payload.get("scent_fingerprint", "")),
             scent_model_sha256=str(payload.get("scent_model_sha256", "")),
             mcp_url=str(payload.get("mcp_url", "")),
-            repos=dict(payload.get("repos", {})),
+            repos=dict(field_of("repos") or {}),
             terms=dict(payload.get("terms", {})),
             nonce=str(payload.get("nonce", "")),
             signature=str(payload.get("signature", "")),
@@ -247,7 +272,18 @@ class NegotiationService:
         # MINOR bump, which by our own definition only ever adds optional keys --
         # so two peers that understood each other perfectly refused to play over
         # a digit. A major bump redefines existing keys and must still refuse.
-        if not peer_schema_compatible(ours.schema_version, theirs.schema_version):
+        #
+        # And only when they declare one. ``schema_version`` is ours, not the
+        # league's: the reference-v3 wire does not carry the field at all, so
+        # every peer speaking it arrived with "" and was refused for an
+        # "incompatible major version" it had never claimed. That is the third
+        # time this exact reasoning has had to be applied -- after the two scent
+        # locks and ``config_sha256`` -- and the rule has been the same every
+        # time: refuse when both peers declare and the values are incompatible,
+        # never on silence. A malformed version is still a refusal; ``""`` is
+        # not malformed, it is absent.
+        if theirs.schema_version and not peer_schema_compatible(
+                ours.schema_version, theirs.schema_version):
             mismatches.append(
                 f"schema_version: ours={ours.schema_version} theirs={theirs.schema_version} "
                 "(incompatible major version)"
