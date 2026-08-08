@@ -1,0 +1,65 @@
+{
+  "_source": "Step numbers and record types ONLY, from the course reference sample run's log artifact. No moves, nonces, hashes or group data are vendored. This pins the round-count derivation to the reference implementation's own published number.",
+  "published_steps": 17,
+  "record_count": 19,
+  "chain": [
+    {
+      "step": 0,
+      "type": "system_spec"
+    },
+    {
+      "step": 1
+    },
+    {
+      "step": 2
+    },
+    {
+      "step": 3
+    },
+    {
+      "step": 4
+    },
+    {
+      "step": 5
+    },
+    {
+      "step": 6
+    },
+    {
+      "step": 7
+    },
+    {
+      "step": 8
+    },
+    {
+      "step": 9
+    },
+    {
+      "step": 10
+    },
+    {
+      "step": 11
+    },
+    {
+      "step": 12
+    },
+    {
+      "step": 13
+    },
+    {
+      "step": 14
+    },
+    {
+      "step": 15
+    },
+    {
+      "step": 16
+    },
+    {
+      "step": 17
+    },
+    {
+      "step": 17
+    }
+  ]
+}

@@ -78,14 +78,6 @@ def test_a_chain_with_no_step_zero_is_not_reported_one_round_short():
     assert body["summary"]["steps"] == 35
 
 
-def test_the_old_derivation_survives_for_callers_that_cannot_say():
-    """Not every caller knows the round count; the fallback must stay put."""
-    body = artifacts.build_log_artifact(
-        "a-vs-b", "uid", 1, "a", "police", "b", "survival", None, _records(4),
-        "s", "e", 0, {})
-    assert body["summary"]["steps"] == 3
-
-
 def test_the_log_summary_carries_steps_because_the_template_does():
     """The field imreeyal proposed both sides drop. The template requires it."""
     body = artifacts.build_log_artifact(
@@ -142,3 +134,61 @@ def test_the_template_row_constant_matches_the_course_sample():
     rather than verified *active*.
     """
     assert _template()["result_sub_game_row"] == TEMPLATE_ROW
+
+# ------------------------------- the fallback, pinned to the reference itself
+REFERENCE = pathlib.Path(__file__).resolve().parents[2] / \
+    "fixtures/reference_chain_shape.json"
+
+
+def _reference_chain() -> tuple[list[dict[str, object]], int, int]:
+    data = json.loads(REFERENCE.read_text())
+    records = [{"commit": "c", "nonce": "n", "payload": row} for row in data["chain"]]
+    return records, data["published_steps"], data["record_count"]
+
+
+def test_the_fallback_reproduces_the_reference_sample_s_own_number():
+    """The only artifact either team can appeal to. It publishes 17 over 19.
+
+    imreeyal count ``len(session.records)`` and we counted ``len(records) - 1``.
+    On this chain those give 19 and 18. Both are wrong, and ours was wrong in a
+    way our own tests could not see, because every fixture we had written for
+    the fallback happened to be the tidy shape it assumed.
+    """
+    records, published, count = _reference_chain()
+    body = artifacts.build_log_artifact(
+        "a-vs-b", "uid", 1, "a", "thief", "b", "capture", "police", records,
+        "s", "e", 0, {})
+    assert body["summary"]["steps"] == published
+    assert body["summary"]["steps"] not in (count, count - 1)
+
+
+def test_a_duplicated_terminal_step_does_not_add_a_round():
+    """The reference chain seals two records at step 17 and still reports 17."""
+    records = [{"commit": "c", "nonce": "n", "payload": {"step": n}}
+               for n in (1, 2, 3, 3)]
+    body = artifacts.build_log_artifact(
+        "a-vs-b", "uid", 1, "a", "thief", "b", "survival", "thief", records,
+        "s", "e", 0, {})
+    assert body["summary"]["steps"] == 3
+
+
+def test_a_step_zero_declaration_is_not_a_round():
+    records = [{"commit": "c", "nonce": "n",
+                "payload": {"step": 0, "type": "system_spec"}}] + \
+              [{"commit": "c", "nonce": "n", "payload": {"step": n}} for n in (1, 2)]
+    body = artifacts.build_log_artifact(
+        "a-vs-b", "uid", 1, "a", "police", "b", "capture", "police", records,
+        "s", "e", 0, {})
+    assert body["summary"]["steps"] == 2
+
+
+def test_an_interleaved_control_record_is_not_a_round():
+    """uoh-sqak's shape: a control record numbered inside the game space."""
+    records = [{"commit": "c", "nonce": "n", "payload": {"step": 1}},
+               {"commit": "c", "nonce": "n",
+                "payload": {"step": 1, "type": "control"}},
+               {"commit": "c", "nonce": "n", "payload": {"step": 2}}]
+    body = artifacts.build_log_artifact(
+        "a-vs-b", "uid", 1, "a", "police", "b", "capture", "police", records,
+        "s", "e", 0, {})
+    assert body["summary"]["steps"] == 2
