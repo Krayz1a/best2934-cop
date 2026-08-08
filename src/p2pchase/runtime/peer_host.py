@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
 
 from ..mcp import contracts
@@ -33,8 +34,38 @@ from .peer import PeerOutcome, PeerRunner
 LOGGER = logging.getLogger(__name__)
 
 #: How long to keep knocking before deciding the opponent is not coming.
+#: Bounded on purpose -- see :func:`_await_opponent`. Overridable because the
+#: right bound depends on what was agreed: two minutes is right for a match at
+#: an agreed T, and wrong for an open standby where the other team was told to
+#: dial in at whatever hour suits them. Raising it does not weaken the rule 6
+#: reasoning, it just moves the point at which not-playing becomes a decision.
+OPPONENT_WAIT_ENV = "P2PCHASE_OPPONENT_WAIT_SEC"
 OPPONENT_WAIT_SEC = 120.0
 KNOCK_INTERVAL_SEC = 1.0
+
+
+def opponent_wait_sec() -> float:
+    """The knock deadline, from the environment when it is set and sane.
+
+    A bad value falls back to the default rather than raising. This runs at the
+    top of a match: refusing to start because a shell variable was mistyped
+    would forfeit the sub-game under rule 6, which is a far worse outcome than
+    waiting the default two minutes.
+    """
+    raw = os.environ.get(OPPONENT_WAIT_ENV, "").strip()
+    if not raw:
+        return OPPONENT_WAIT_SEC
+    try:
+        seconds = float(raw)
+    except ValueError:
+        LOGGER.warning("%s=%r is not a number; using the %.0fs default",
+                       OPPONENT_WAIT_ENV, raw, OPPONENT_WAIT_SEC)
+        return OPPONENT_WAIT_SEC
+    if seconds <= 0:
+        LOGGER.warning("%s=%r is not positive; using the %.0fs default",
+                       OPPONENT_WAIT_ENV, raw, OPPONENT_WAIT_SEC)
+        return OPPONENT_WAIT_SEC
+    return seconds
 
 
 async def _serve_forever(handlers: PeerHandlers, host: str, port: int, name: str) -> None:
@@ -47,7 +78,7 @@ async def _serve_forever(handlers: PeerHandlers, host: str, port: int, name: str
 
 
 async def _await_opponent(runner: PeerRunner, url: str,
-                          timeout: float = OPPONENT_WAIT_SEC) -> dict[str, Any]:
+                          timeout: float | None = None) -> dict[str, Any]:
     """Knock until the opponent's server answers ``tools/list``.
 
     Two teams never press enter at the same instant, and refusing to wait would
@@ -70,6 +101,7 @@ async def _await_opponent(runner: PeerRunner, url: str,
     without ``hello`` returns an empty handshake here and proceeds, rather than
     being refused a match over a tool the league never agreed on.
     """
+    timeout = opponent_wait_sec() if timeout is None else timeout
     deadline = asyncio.get_running_loop().time() + timeout
     last = ""
     while asyncio.get_running_loop().time() < deadline:
