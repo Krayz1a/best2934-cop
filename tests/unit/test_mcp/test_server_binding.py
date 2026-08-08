@@ -59,12 +59,14 @@ def test_no_tool_is_exposed_that_nobody_agreed_to(server):
 
     It is no longer *just* our contract: an opponent whose convention differs
     from ours calls three names of their own (ADR-019), and those are agreed
-    too -- in their CONNECT.md rather than in ours. What must not appear is a
-    fourth thing neither document names.
+    too -- in their CONNECT.md rather than in ours. Three more are the kit's
+    published reference-v3 surface, agreed in a promoted vector. What must not
+    appear is a seventh thing no document names.
     """
     from p2pchase.mcp.interop_server import DISTINCT_TOOLS
 
-    agreed = set(contracts.ALL_TOOLS) | set(DISTINCT_TOOLS)
+    agreed = (set(contracts.ALL_TOOLS) | set(DISTINCT_TOOLS)
+              | set(contracts.REFERENCE_V3_TOOLS))
     assert _tool_names(server) == agreed
 
 

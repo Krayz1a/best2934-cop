@@ -51,12 +51,26 @@ INTEROP_TOOLS: tuple[str, ...] = (
     "final_audit", "agree_result",
 )
 
+#: The kit's reference-v3 surface (``vectors/turn_message.json``, SPEC 7.5) --
+#: the dialect imreeyal, anrbj666 and uoh-sqak all speak. ``negotiate`` is
+#: theirs too but is already ours, so it is bound in :mod:`p2pchase.mcp.server`
+#: with their ``message`` spelling widened in; only these three are new names.
+REFERENCE_V3_TOOLS: tuple[str, ...] = (
+    "receive_turn", "submit_audit", "receive_control",
+)
+
 #: Everything this server actually answers to, and so everything ``hello`` must
 #: advertise. gal-roy1 caught us publishing ``ALL_TOOLS`` here while the dialect
 #: tools were registered and unlisted: an opponent trusting the array would
 #: conclude ``propose_config`` does not exist and give up before calling it. A
 #: tool list is a promise, and an incomplete one is a promise broken quietly.
-PUBLISHED_TOOLS: tuple[str, ...] = tuple(sorted(set(ALL_TOOLS) | set(INTEROP_TOOLS)))
+#:
+#: Reference-v3 peers never read this -- they do not call ``hello`` at all, and
+#: ``tools/list`` is the surface they trust. It is kept complete anyway: two
+#: lists that are meant to agree and are maintained separately will disagree,
+#: and this one has already been caught wrong once.
+PUBLISHED_TOOLS: tuple[str, ...] = tuple(sorted(
+    set(ALL_TOOLS) | set(INTEROP_TOOLS) | set(REFERENCE_V3_TOOLS)))
 
 
 def ok(**fields: Any) -> dict[str, Any]:

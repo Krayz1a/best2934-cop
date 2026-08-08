@@ -26,6 +26,7 @@ from ..runtime.peer_session import PeerSession
 from ..services.negotiation_service import NegotiationService
 from ..shared.peer_config import PeerConfig
 from . import contracts
+from .reference_v3_server import Inboxes
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +44,11 @@ class PeerHandlers:
         self.session = session
         self.negotiation = NegotiationService(config)
         self.aborted_reason = ""
+        #: Queues behind the reference-v3 tools. They live here rather than in
+        #: the server binding so the driver and the handlers reach the *same*
+        #: object: a peer that enqueued into one instance while the loop drained
+        #: another would wait out every deadline with a full inbox.
+        self.reference_inboxes = Inboxes()
 
     # ---------------------------------------------------------------- guards
     def _require_session(self) -> PeerSession | None:

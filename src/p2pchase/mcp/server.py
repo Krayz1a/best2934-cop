@@ -31,6 +31,7 @@ from ..shared.peer_config import PeerConfig
 from .handlers import PeerHandlers
 from .interop import InteropAdapter
 from .interop_server import register_interop
+from .reference_v3_server import register_reference_v3
 
 LOGGER = logging.getLogger(__name__)
 
@@ -212,6 +213,7 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
         return handlers.abort({"reason": reason})
 
     register_interop(mcp, adapter)
+    register_reference_v3(mcp, handlers.reference_inboxes)
     return mcp
 
 
