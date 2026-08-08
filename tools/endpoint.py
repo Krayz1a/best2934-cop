@@ -35,6 +35,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -96,6 +97,22 @@ def _port() -> int:
 
 def _expected_url() -> str:
     return str(_setup()["network"]["public_url"])
+
+
+def _reserved_domain() -> str:
+    """The hostname out of ``public_url`` -- the one we told the league to use.
+
+    Derived rather than written down twice. ``up`` used to start the agent with
+    a bare ``ngrok http 8800``, which binds a *random* hostname: the reserved
+    domain was reserved and then never asked for. Every restart therefore moved
+    the endpoint out from under the URL published in three issues and two
+    direct channels, and ``status`` reported it as "URL CHANGED" only if a human
+    happened to run it.
+
+    Which is precisely the failure we described to anrbj666 as theirs to avoid,
+    with the reservation already paid for on our side and simply not passed.
+    """
+    return urllib.parse.urlsplit(_expected_url()).hostname or ""
 
 
 def _listening(port: int) -> bool:
@@ -223,8 +240,13 @@ def up() -> int:
         # Pointed at a role, it would serve that role alone and the other half
         # of the series would be unreachable at the address we published.
         print("starting the tunnel...")
-        _detached(["ngrok", "http", str(FRONT_PORT), "--log", "stdout", "--log-format", "logfmt"],
-                  REPO / "logs" / "ngrok.log")
+        # --url pins the reserved hostname. Without it the agent takes a random
+        # one and the published URL stops resolving to us; see _reserved_domain.
+        command = ["ngrok", "http", str(FRONT_PORT),
+                   "--log", "stdout", "--log-format", "logfmt"]
+        if _reserved_domain():
+            command += ["--url", f"https://{_reserved_domain()}"]
+        _detached(command, REPO / "logs" / "ngrok.log")
     for _ in range(20):
         time.sleep(1)
         if _listening(port) and _tunnel_url():

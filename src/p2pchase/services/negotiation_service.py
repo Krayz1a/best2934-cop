@@ -32,7 +32,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..domain import scent_models
+from ..domain import core_terms, scent_models
 from ..domain.smell import build_kernel, kernel_fingerprint
 from ..shared.config_schema import validate_shared
 from ..shared.peer_config import PeerConfig
@@ -58,6 +58,14 @@ class Handshake:
     #: to empty because an opponent who declares nothing must still be
     #: playable; see :func:`p2pchase.domain.scent_models.lock_refuses`.
     scent_model_sha256: str = ""
+    #: The kit's CORE agreement: the fourteen terms in the clear, a nonce, and
+    #: ``SHA256(canonical_json(terms)|nonce)``. Everything above describes *us*;
+    #: this is the only part that states the game we think we are playing, and
+    #: it is what the rest of the league gates on. See
+    #: :mod:`p2pchase.domain.core_terms`.
+    terms: dict[str, Any] = field(default_factory=dict)
+    nonce: str = ""
+    signature: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -70,6 +78,9 @@ class Handshake:
             "scent_model_sha256": self.scent_model_sha256,
             "mcp_url": self.mcp_url,
             "repos": dict(self.repos),
+            "terms": dict(self.terms),
+            "nonce": self.nonce,
+            "signature": self.signature,
         }
 
     @classmethod
@@ -84,6 +95,9 @@ class Handshake:
             scent_model_sha256=str(payload.get("scent_model_sha256", "")),
             mcp_url=str(payload.get("mcp_url", "")),
             repos=dict(payload.get("repos", {})),
+            terms=dict(payload.get("terms", {})),
+            nonce=str(payload.get("nonce", "")),
+            signature=str(payload.get("signature", "")),
         )
 
 
@@ -117,6 +131,20 @@ class NegotiationService:
 
     def __init__(self, config: PeerConfig) -> None:
         self.config = config
+        #: One nonce for this peer process, not one per call.
+        #:
+        #: A fresh nonce per ``hello`` looked more careful and was wrong. The
+        #: opponent may greet us more than once -- a retry, a reconnect, a
+        #: readiness probe -- and a greeting that answers differently each time
+        #: is not a greeting they can hold us to: the agreement recorded in the
+        #: declaration artifact would not be the one we served a minute later.
+        #: Our own binding tests caught it, comparing two invocations.
+        #:
+        #: Freshness is not what the nonce is for here. Unlike a commitment
+        #: there is nothing to brute-force -- the terms travel in the clear
+        #: beside it -- so it exists to bind the signature to *this pairing*
+        #: rather than to each packet. Process-scoped is exactly that scope.
+        self._nonce = core_terms.new_nonce()
 
     def scent_fingerprint(self, opponent: str = "") -> str:
         """Hash of the emission kernel and decay rate both peers must share.
@@ -136,7 +164,8 @@ class NegotiationService:
                   if model == scent_models.SUBTRACTIVE else build_kernel(shared))
         return kernel_fingerprint(kernel, float(pheromones["pheromone_decay"]))
 
-    def handshake(self, mcp_url: str = "", opponent: str = "") -> Handshake:
+    def handshake(self, mcp_url: str = "", opponent: str = "",
+                  nonce: str = "") -> Handshake:
         """Our own published fingerprints.
 
         ``opponent`` selects the scent model, because that lock is agreed per
@@ -157,6 +186,7 @@ class NegotiationService:
             mcp_url=mcp_url or self.config.public_url or
             f"http://127.0.0.1:{self.config.my_port}/mcp",
             repos=self.config.repos,
+            **core_terms.signed_agreement(self.config.shared, nonce or self._nonce),
         )
 
     def compare(self, theirs: Handshake | dict[str, Any]) -> Agreement:
@@ -166,9 +196,34 @@ class NegotiationService:
         ours = self.handshake(opponent=theirs.group_id)
 
         mismatches: list[str] = []
-        if ours.config_sha256 != theirs.config_sha256:
+
+        # config_sha256 is a digest of OUR config's shape. It gets the same
+        # omission rule as the two scent locks, and for a stronger reason than
+        # politeness: it is not a league value at all.
+        #
+        # We made exactly this argument to imreeyal about their gate -- two
+        # peers hashing differently-shaped objects can never match, so the
+        # mismatch carries no information -- and did not apply it to our own,
+        # where it was refusing them. A peer that sends no config_sha256
+        # arrived with "" and was refused every time, so the two of us refused
+        # each other in both directions and neither could open a sub-game.
+        # The values are compared below, in the shape the league actually
+        # agreed in; the digest is now corroboration between peers who happen
+        # to share our layout, never the gate.
+        if scent_models.lock_refuses(ours.config_sha256, theirs.config_sha256):
             mismatches.append(
                 f"config_sha256: ours={ours.config_sha256} theirs={theirs.config_sha256}")
+
+        # The fourteen CORE terms, compared as values. This is the check that
+        # config_sha256 was standing in for and could not perform across
+        # implementations.
+        if theirs.terms:
+            if not core_terms.signature_verifies(theirs.terms, theirs.nonce, theirs.signature):
+                mismatches.append(
+                    f"terms signature does not verify over the terms sent "
+                    f"(nonce={theirs.nonce!r}); expected "
+                    f"SHA256(canonical_json(terms)|nonce), a single pipe")
+            mismatches.extend(core_terms.term_differences(ours.terms, theirs.terms))
 
         # The two scent locks are compared under the league's omission rule:
         # refuse only when BOTH peers declare and the values differ. Silence is
