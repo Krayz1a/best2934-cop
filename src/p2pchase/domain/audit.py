@@ -71,6 +71,12 @@ class CrossCheckedAudit:
         }
 
 
+#: Sealed records that are not moves. A peer may commit these for its own
+#: integrity -- a hardware declaration, a status note, an equivocation report --
+#: and we never receive them as turn commitments, because they are not turns.
+NON_GAME_TYPES = frozenset({"system_spec", "step_zero", "control", "equivocation"})
+
+
 def _step_of(record: dict[str, Any], fallback: int) -> int:
     payload = record.get("payload")
     if isinstance(payload, dict) and "step" in payload:
@@ -79,6 +85,37 @@ def _step_of(record: dict[str, Any], fallback: int) -> int:
         except (TypeError, ValueError):
             return fallback
     return fallback
+
+
+def is_game_record(record: dict[str, Any], step: int) -> bool:
+    """Is this a sealed *move*, or something else the peer committed?
+
+    Told apart **by type, and by a step outside the game space** -- never by
+    assuming a non-game record is numbered 0. imreeyal gave us this one from
+    their own audit before it could cost us a match: uoh-sqak seals ``control``
+    records *inside* the game step space, so their disclosed steps read
+    ``[1, 2, 1, 2, 3, ... 35]``. Every audit between those two honest peers
+    failed.
+
+    Ours failed harder. A control record numbered 1 does not merely break a
+    continuity run here -- it carries a different commitment from the turn we
+    were handed at step 1, so the cross-check below called it ``forged`` and
+    accused a peer that had done nothing wrong of rewriting history. That is
+    the one verdict in this module nobody can talk their way out of afterwards.
+
+    The exclusion is deliberately not a loophole. A non-game record is verified
+    for self-consistency but does **not** count as its step having been
+    disclosed, so relabelling a real move as ``control`` to escape the
+    cross-check leaves that step withheld, which fails anyway. It buys a cheat
+    nothing and costs an honest peer nothing, which is the correct shape.
+
+    A step below 1 is excused too, typed or not: the game space is 1..N, so a
+    record numbered outside it cannot be standing in for a move. That is
+    uoh-sqak's own durable fix and it holds for peers we have never met.
+    """
+    payload = record.get("payload")
+    kind = str(payload.get("type", "")) if isinstance(payload, dict) else ""
+    return kind not in NON_GAME_TYPES and step >= 1
 
 
 def audit_against_commitments(
@@ -105,9 +142,18 @@ def audit_against_commitments(
 
     for index, record in enumerate(records):
         step = _step_of(record, index)
-        seen.add(step)
         payload, nonce, announced = (record.get("payload"), record.get("nonce"),
                                      record.get("commit"))
+        if not is_game_record(record, step):
+            # Sealed, so still checked -- but against itself only, and it does
+            # not mark ``step`` as disclosed. See :func:`is_game_record`.
+            if isinstance(payload, dict) and isinstance(nonce, str) \
+                    and isinstance(announced, str) and verify(payload, nonce, announced):
+                verified += 1
+            else:
+                failed.append(step)
+            continue
+        seen.add(step)
         if not isinstance(payload, dict) or not isinstance(nonce, str) \
                 or not isinstance(announced, str):
             failed.append(step)
