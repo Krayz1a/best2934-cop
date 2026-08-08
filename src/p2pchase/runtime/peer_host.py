@@ -25,7 +25,7 @@ import logging
 import os
 from typing import Any
 
-from ..mcp import contracts
+from ..mcp import call_log, contracts
 from ..mcp.client import TransportError
 from ..mcp.handlers import PeerHandlers
 from ..mcp.server import build_server
@@ -156,7 +156,7 @@ def select_driver(runner: PeerRunner, handlers: PeerHandlers):
     LOGGER.info("opponent publishes the reference-v3 surface and not %r: "
                 "driving this sub-game on their wire", tools.TOOL_COMMIT)
     return ReferenceDriver(runner.config, runner.session, runner.client,
-                           handlers.reference_inboxes)
+                           handlers.reference_inboxes, handlers.negotiation)
 
 
 async def declare_step0(runner: PeerRunner) -> str:
@@ -237,6 +237,11 @@ async def host_and_play(runner: PeerRunner, handlers: PeerHandlers, host: str, p
         finally:
             await runner.client.close()
     finally:
+        # Whatever happened, name every tool that crossed the wire. On a clean
+        # sub-game it is a receipt; on a stall it is the diagnosis, because the
+        # tool that is *missing* from one of the two lists is the bug. See
+        # :mod:`p2pchase.mcp.call_log`.
+        LOGGER.info("%s", call_log.summary())
         server_task.cancel()
         try:
             await server_task

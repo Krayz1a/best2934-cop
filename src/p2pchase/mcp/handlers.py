@@ -89,8 +89,26 @@ class PeerHandlers:
                     tools=list(contracts.PUBLISHED_TOOLS))
 
     def negotiate(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Compare the opponent's fingerprints against ours (rule 11)."""
-        agreement = self.negotiation.compare(payload.get("handshake", payload))
+        """Compare the opponent's fingerprints against ours (rule 11).
+
+        Also *queues* what they sent, which is the half we were missing. On the
+        reference-v3 wire ``negotiate`` is a push, not a request: their client
+        drops our response body on the floor and blocks until our own agreement
+        lands in their inbox. We answered thirteen of imreeyal's calls on
+        2026-08-09 and they recorded nought received, correctly -- an answer
+        nobody reads is not a reply. The queue is what
+        :mod:`p2pchase.runtime.reference_handshake` waits on, and it is filled
+        here rather than in a tool because we publish one ``negotiate`` for
+        three argument spellings and all three have to feed it.
+
+        Queued before the comparison, and even when the comparison refuses. The
+        driver needs to know their agreement *arrived* -- a mismatch is a thing
+        to report to them, not a reason to sit waiting for a message we already
+        have.
+        """
+        theirs = payload.get("handshake", payload)
+        self.reference_inboxes.queue_agreement(theirs)
+        agreement = self.negotiation.compare(theirs)
         if not agreement.agreed:
             return contracts.error("configuration mismatch", **agreement.as_dict())
         return contracts.ok(**agreement.as_dict())

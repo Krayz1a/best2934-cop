@@ -34,9 +34,8 @@ from typing import Any
 from .. import constants
 from ..domain.protocol import WIRE_ROLE
 from ..mcp import reference_v3
-from ..mcp.turn_message import TurnMessage
 from ..shared.peer_config import PeerConfig
-from . import reference_inbox, session_terminal
+from . import reference_handshake, reference_inbox, session_terminal
 from .peer import OpponentFinishedError, PeerOutcome
 from .peer_session import PeerSession
 from .turn_loop import TurnLoop
@@ -66,11 +65,16 @@ class ReferenceDriver:
     """
 
     def __init__(self, config: PeerConfig, session: PeerSession, client: Any,
-                 inboxes: Any) -> None:
+                 inboxes: Any, negotiation: Any = None) -> None:
         self.config = config
         self.session = session
         self.client = client
         self.inboxes = inboxes
+        #: Used to sign the agreement we push before round 1. Optional only so
+        #: the older tests that drive a bare driver keep working; a live match
+        #: always has one, and without it we do not handshake at all -- which
+        #: is exactly the bug this argument was added to fix.
+        self.negotiation = negotiation
         self.loop = TurnLoop(session)
         self.watchdog = Watchdog(timeout_sec=float(config.watchdog_timeout))
         self.turn_timeout = float(config.turn_timeout)
@@ -122,36 +126,12 @@ class ReferenceDriver:
     async def finish(self, step: int, response: dict[str, Any] | None) -> None:
         """The terminal message: one last sealed ``STAY`` carrying what we owe.
 
-        Owed on three conditions, and it took reading the reference's own
-        sparring peer to get them all: we were caught, we still owe an answer
-        to a claim, or we survived. Only the first is obvious, and shipping
-        only the first is a live bug -- the cop claims a cell on *every* round
-        including the last, so a thief that answers only when caught leaves the
-        final claim unanswered, and a cop cannot see the board well enough to
-        tell "you missed" from "I have gone".
-
-        The sentence is sealed and disclosed as one value. Sealing the
-        concession while sending an empty hint would make our own final record
-        fail the audit it exists to survive.
+        Built by :func:`session_terminal.build_terminal`, which is where the
+        three conditions that make it owed are documented.
         """
-        caught = self.session.i_am_caught
-        hint = (session_terminal.CONCESSION_HINT if caught
-                else session_terminal.CLOSING_HINT)
-        commitment = session_terminal.seal_stay(self.session, step, hint)
-        state = self.session.state
-        survived = state.survival_reached() and not state.is_cop
-        turn = TurnMessage(
-            step=step, sender=self.sender, commit=commitment, hint=hint,
-            # The real lagged field, never ``{}``: to a strict physics checker
-            # an empty grid reads as a trail that vanished for one step rather
-            # than as a peer that has finished speaking.
-            scent_grid=self.loop.trail(),
-            claim_response=response,
-            win_claim={"type": "survival", "steps": int(state.step)} if survived else None,
-        ).as_dict()
-        self.session.apply_own_step()
-        self.session.end_of_turn()
-        LOGGER.info("terminal step %d: caught=%s survived=%s", step, caught, survived)
+        turn = session_terminal.build_terminal(
+            self.session, self.loop, self.sender, step, response)
+        LOGGER.info("terminal step %d: caught=%s", step, self.session.i_am_caught)
         await self.push_turn(turn)
 
     # ---------------------------------------------------------------- inbound
@@ -237,8 +217,22 @@ class ReferenceDriver:
             return
         self._read_concession(message)
 
+    async def handshake(self) -> dict[str, Any]:
+        """Cross signed agreements before round 1 (SPEC 7.5, rule 11).
+
+        Their runtime will not send a turn until this has happened in *both*
+        directions -- ``exchange_agreement`` pushes and then blocks on its own
+        agreements queue. Omitting it does not degrade the match, it deadlocks
+        it, and from our side the deadlock is indistinguishable from an
+        opponent who simply never moved. See
+        :mod:`p2pchase.runtime.reference_handshake`.
+        """
+        return await reference_handshake.exchange(
+            self.negotiation, self.client, self.inboxes, self.session.opponent)
+
     async def run_sub_game(self) -> PeerOutcome:
         """Play until capture, survival, the move ceiling, or a fault (rule 6)."""
+        await self.handshake()
         max_moves = int(self.config.shared["movement_and_barriers"]["max_moves"])
         outcome = constants.OUTCOME_SURVIVAL
         step = 0

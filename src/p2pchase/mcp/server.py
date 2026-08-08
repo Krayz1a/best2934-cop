@@ -54,12 +54,16 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
             "FastMCP is not installed. Run `uv sync` to install the peer transport."
         ) from exc
 
+    from .call_log import build_call_log
     from .tool_guard import build_guard
 
     mcp = FastMCP(name)
     # Nothing below may raise across the wire: an escaping exception reaches the
     # opponent as an opaque transport failure and rule 6 charges *both* teams.
     mcp.add_middleware(build_guard())
+    # Beside the guard, not inside it: see :func:`build_call_log`. This is the
+    # line whose absence made the 2026-08-09 stall undiagnosable.
+    mcp.add_middleware(build_call_log())
 
     adapter = InteropAdapter(handlers)
 

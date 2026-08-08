@@ -35,6 +35,7 @@ from .. import constants
 from ..domain.brains import Decision
 from ..domain.crypto import commit
 from ..domain.protocol import StepIntent
+from ..mcp.turn_message import TurnMessage
 
 #: The one move that asserts nothing. Named here because this module's whole
 #: argument is that the terminal step must be *this* move and not another.
@@ -75,3 +76,41 @@ def seal_stay(session: Any, step: int, hint: str = CONCESSION_HINT) -> str:
     record = commit(intent.payload())
     session._pending = (decision, hint, record)
     return record.commit
+
+
+def build_terminal(session: Any, loop: Any, sender: str, step: int,
+                   response: dict[str, Any] | None) -> dict[str, Any]:
+    """The whole terminal message, sealed and ready to push (reference-v3).
+
+    Owed on three conditions, and it took reading the reference's own sparring
+    peer to get them all: we were caught, we still owe an answer to a claim, or
+    we survived. Only the first is obvious, and shipping only the first is a
+    live bug -- the cop claims a cell on *every* round including the last, so a
+    thief that answers only when caught leaves the final claim unanswered, and
+    a cop cannot see the board well enough to tell "you missed" from "I have
+    gone".
+
+    The sentence is sealed and disclosed as one value. Sealing the concession
+    while sending a different hint would make our own final record fail the
+    audit it exists to survive.
+
+    Lives here rather than on the driver because it is the same argument the
+    module docstring makes: this is how a peer stops, not how it plays.
+    """
+    caught = session.i_am_caught
+    hint = CONCESSION_HINT if caught else CLOSING_HINT
+    commitment = seal_stay(session, step, hint)
+    state = session.state
+    survived = state.survival_reached() and not state.is_cop
+    turn = TurnMessage(
+        step=step, sender=sender, commit=commitment, hint=hint,
+        # The real lagged field, never ``{}``: to a strict physics checker an
+        # empty grid reads as a trail that vanished for one step rather than as
+        # a peer that has finished speaking.
+        scent_grid=loop.trail(),
+        claim_response=response,
+        win_claim={"type": "survival", "steps": int(state.step)} if survived else None,
+    ).as_dict()
+    session.apply_own_step()
+    session.end_of_turn()
+    return turn

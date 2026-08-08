@@ -25,7 +25,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from . import contracts
+from . import call_log, contracts
 from .handlers import PeerHandlers
 
 LOGGER = logging.getLogger(__name__)
@@ -119,6 +119,7 @@ class PeerClient:
 
     async def call(self, tool: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         """Invoke one tool on the opponent and return its structured answer."""
+        call_log.record_outbound(tool)
         client = self._connect()
         try:
             # Connecting is inside the guard on purpose: an opponent whose

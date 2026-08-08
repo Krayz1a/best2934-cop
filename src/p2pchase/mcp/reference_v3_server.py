@@ -59,7 +59,26 @@ class Inboxes:
     turns: deque[dict[str, Any]] = field(default_factory=deque)
     audits: deque[dict[str, Any]] = field(default_factory=deque)
     controls: deque[dict[str, Any]] = field(default_factory=deque)
+    #: Signed agreements pushed at us by a reference-v3 peer. Filled by
+    #: :meth:`p2pchase.mcp.handlers.PeerHandlers.negotiate` rather than by a
+    #: tool of its own, because we publish one ``negotiate`` for every dialect
+    #: and the queue has to be fed whichever spelling the caller used.
+    #:
+    #: It exists because their handshake is a *push*, not a request. Their
+    #: client discards our response body entirely, so answering the call --
+    #: which is all we did until 2026-08-09 -- tells them nothing at all. See
+    #: :mod:`p2pchase.runtime.reference_handshake`.
+    agreements: deque[dict[str, Any]] = field(default_factory=deque)
     refusals: list[str] = field(default_factory=list)
+
+    def queue_agreement(self, theirs: Any) -> None:
+        """Queue a pushed agreement, ignoring the shapes that are not one.
+
+        An empty body is a probe, not a handshake, and letting one satisfy the
+        driver's wait would start a sub-game on terms nobody sent.
+        """
+        if isinstance(theirs, dict) and theirs:
+            self.agreements.append(dict(theirs))
 
     def clear(self) -> None:
         """Drop anything queued. Used between sub-games.
@@ -69,6 +88,14 @@ class Inboxes:
         """
         for queue in (self.turns, self.audits, self.controls):
             queue.clear()
+
+    # ``agreements`` is deliberately NOT cleared here. A turn belongs to a step
+    # and a stale one corrupts the board, which is what this method is for. An
+    # agreement belongs to a pairing: the same peer sends the same fourteen
+    # terms every sub-game, so consuming yesterday's is harmless, while dropping
+    # one that arrived a moment early hangs the next handshake -- and their
+    # peer blocks on ours crossing before it will send a single turn. The two
+    # errors are not the same size.
 
 
 def register_reference_v3(mcp: Any, inboxes: Inboxes) -> tuple[str, ...]:
