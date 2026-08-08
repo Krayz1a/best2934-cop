@@ -49,6 +49,7 @@ def build_log_artifact(
     tokens_total: int,
     audit: dict[str, Any],
     mutual: dict[str, Any] | None = None,
+    steps: int | None = None,
 ) -> dict[str, Any]:
     """One sub-game's full disclosed log.
 
@@ -56,6 +57,16 @@ def build_log_artifact(
     Output: a JSON-ready dict the Replay Viewer can verify unaided.
     Setup:  ``mutual`` carries the opponent's counter-signature once the two
             teams have audited each other (rule 36); it starts unconfirmed.
+
+    ``steps`` is the round count the loop actually reached, and the caller has
+    to supply it because the chain length no longer implies it. The old
+    ``len(records) - 1`` assumed exactly one non-game record at the front and
+    one record per round; on the reference-v3 wire *neither* holds -- there is
+    no step-0 record to subtract, and a conceding thief seals a terminal STAY
+    that makes the chain one longer than the game. The two errors do not even
+    cancel reliably: they run in opposite directions and only one of them
+    applies at a time. Left derived, this field would have reported a 35-round
+    sub-game as 34 or 36 depending on how it ended.
     """
     return {
         "_schema": (
@@ -74,7 +85,8 @@ def build_log_artifact(
             "opponent_group_id": opponent_group_id,
             "result": outcome,
             "winner_role": winner_role,
-            "steps": max(0, len(records) - 1),  # step 0 is the declaration
+            # Derived only when the caller cannot say; see the docstring.
+            "steps": max(0, len(records) - 1) if steps is None else int(steps),
             "timezone": TIMEZONE,
             "started_at": started_at,
             "ended_at": ended_at,

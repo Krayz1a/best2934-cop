@@ -21,6 +21,7 @@ from .. import constants
 from ..domain.crypto import mutual_agreement_hash
 from .agreed import agreed_summary as build_agreed_summary
 from .consensus import interop_signature, interop_summary
+from .league import league_block
 from .naming import TIMEZONE, links_block
 
 
@@ -47,6 +48,13 @@ class SubGameOutcome:
     log_files: dict[str, str]
     audit: dict[str, Any]
     tie: bool = False
+    #: Rounds this sub-game ran. The kit example carries it and we did not, so
+    #: a reader could not tell a capture on move 3 from one on move 34 without
+    #: opening the log. It is *rounds*, not disclosed records: a thief that
+    #: concedes seals a 36th record for a 35-round sub-game (see
+    #: :mod:`p2pchase.runtime.session_terminal`), and reporting 36 here would
+    #: read as a disagreement with an opponent who counted the same game right.
+    steps: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -57,6 +65,7 @@ class SubGameOutcome:
             "result": self.result,
             "winner_group": self.winner_group,
             "tie": self.tie,
+            "steps": self.steps,
             "github_commit": self.github_commit,
             "tokens": self.tokens,
             "score": self.score,
@@ -89,8 +98,14 @@ def build_result_artifact(
     tokens_total_series: dict[str, int],
     confirmed: bool = False,
     repositories: dict[str, dict[str, str]] | None = None,
+    league: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the report both teams send independently.
+
+    ``league`` is the counted/uncounted marker rule 52 hangs on. It defaults to
+    the *disarmed* block rather than to nothing, because a report that omits the
+    marker and a report that declares a friendly look identical to a reader and
+    are not the same claim. See :mod:`p2pchase.reports.league`.
 
     ``repositories`` carries *four* links -- both teams' cop and thief
     repositories (rule 49). The lecturer reads the result JSON, not the e-mail
@@ -112,6 +127,7 @@ def build_result_artifact(
         "game_uid": game_uid,
         "links": links_block(game_id),
         "repositories": repositories or {},
+        "league": league or league_block(),
         "timezone": TIMEZONE,
         "groups": sorted(groups),
         "num_sub_games": len(sub_games),

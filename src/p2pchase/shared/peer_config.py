@@ -133,6 +133,23 @@ class PeerConfig:
         """
         return str(self.pairing(opponent).get("tie_rule", scoring.SERIES_ADD))
 
+    def counted_series(self, opponent: str) -> tuple[bool, str]:
+        """Is a series against this opponent counted, and on whose sign-off?
+
+        Returns ``(counted, reason)`` for :func:`p2pchase.reports.league
+        .league_block`. Both come from the private ``setup.json``, which no code
+        path writes -- arming the marker is a human editing a file, which is the
+        only thing that should be able to turn a friendly into a counted game.
+
+        Absent is uncounted. That is the safe direction and the only one the
+        rulebook forgives: reporting a counted series as a friendly understates
+        our own standing, while reporting a friendly as counted is a false
+        declaration under rules 37-38 and costs both teams.
+        """
+        pairing = self.pairing(opponent)
+        return (bool(pairing.get("counted", False)),
+                str(pairing.get("counted_sign_off", "")))
+
     # ------------------------------------------------------------- strategy
     @property
     def strategy(self) -> dict[str, Any]:

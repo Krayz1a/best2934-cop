@@ -130,8 +130,10 @@ class MatchService:
         result.final_result = tally.finalise()
         result.tokens = {mine: sum(o.tokens.get(mine, 0) for o in result.outcomes),
                          theirs: sum(o.tokens.get(theirs, 0) for o in result.outcomes)}
-        report = artifacts.build_result_artifact(game_id, game_uid, [mine, theirs],
-                                         result.outcomes, result.final_result, result.tokens)
+        report = artifacts.build_result_artifact(
+            game_id, game_uid, [mine, theirs], result.outcomes, result.final_result,
+            result.tokens,
+            league=artifacts.league_block(*self.config.counted_series(theirs)))
         result.paths.append(artifacts.write_json(names.result(), report))
         LOGGER.info("series %s complete: %s", game_id, result.final_result)
         return result
@@ -181,7 +183,7 @@ class MatchService:
         log = artifacts.build_log_artifact(
             game_id, game_uid, number, mine, assignment[mine], opponent, report.outcome,
             report.winner_role, [self.step_zero(number, assignment[mine]), *mine_side.records],
-            started, ended, mine_side.talk.tokens_used, audit,
+            started, ended, mine_side.talk.tokens_used, audit, steps=report.steps,
         )
         result.paths.append(artifacts.write_json(names.log(number), log))
 
@@ -194,4 +196,5 @@ class MatchService:
             github_commit={mine: git_commit()},
             tokens={mine: mine_side.talk.tokens_used, opponent: 0},
             score=score, log_files={mine: names.log(number).name}, audit=audit,
+            steps=report.steps,
         )

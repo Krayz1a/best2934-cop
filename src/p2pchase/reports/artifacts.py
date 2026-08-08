@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from ..domain.crypto import digest_payload
 from .declaration import GroupIdentity, build_config_artifact, build_declaration
+from .league import league_block
 from .match_log import build_log_artifact
 from .naming import (
     TIMEZONE,
@@ -41,6 +42,7 @@ __all__ = [
     "build_log_artifact",
     "build_result_artifact",
     "digest_payload",
+    "league_block",
     "links_block",
     "make_game_id",
     "new_game_uid",

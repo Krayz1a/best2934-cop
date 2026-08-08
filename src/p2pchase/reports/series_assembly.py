@@ -81,6 +81,7 @@ def assemble_series(
             score=score,
             log_files={mine: log.get("_filename", "")},
             audit=dict(summary.get("audit", {})),
+            steps=int(summary.get("steps", 0) or 0),
         ))
 
     return outcomes, tally.finalise(), tokens

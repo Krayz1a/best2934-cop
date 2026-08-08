@@ -116,6 +116,7 @@ class NetworkArtifactService:
             game_id, game_uid, sub_game, self.config.group_id, role, opponent,
             outcome.outcome, self.table.winner_role(outcome.outcome), records,
             started_at, ended_at, tokens, dict(outcome.opponent_audit),
+            steps=int(getattr(outcome, "steps", 0) or 0),
         )
         written.append(artifacts.write_json(names.log(sub_game), log))
         written.append(self.refresh_result(game_id, game_uid, opponent))
@@ -138,7 +139,8 @@ class NetworkArtifactService:
                                                          self.config.tie_rule(opponent))
         report = artifacts.build_result_artifact(
             game_id, game_uid, [mine, opponent], outcomes, final_result, tokens,
-            repositories=self.repositories(game_id, opponent))
+            repositories=self.repositories(game_id, opponent),
+            league=artifacts.league_block(*self.config.counted_series(opponent)))
         return artifacts.write_json(names.result(), report)
 
     def repositories(self, game_id: str, opponent: str) -> dict[str, dict[str, str]]:
