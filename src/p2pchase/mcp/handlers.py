@@ -64,8 +64,22 @@ class PeerHandlers:
 
     # ----------------------------------------------------------------- tools
     def hello(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Identify ourselves and publish the fingerprints a match depends on."""
-        return contracts.ok(handshake=self.negotiation.handshake().as_dict(),
+        """Identify ourselves and publish the fingerprints a match depends on.
+
+        A caller that names itself gets the locks we agreed with *them*. The
+        scent model is a per-pair term -- the book's with anrbj666, the
+        reference's with imreeyal -- so a ``hello`` that ignores the caller
+        publishes our default to everyone and is simply wrong for one of them.
+        ``negotiate`` already re-derives from ``theirs.group_id``; this makes
+        the greeting agree with the verdict instead of contradicting it, which
+        matters because a readiness gate reads the greeting.
+        """
+        named = payload if isinstance(payload, dict) else {}
+        inner = named.get("payload")
+        if not named.get("group_id") and isinstance(inner, dict):
+            named = inner
+        opponent = str(named.get("group_id", ""))
+        return contracts.ok(handshake=self.negotiation.handshake(opponent=opponent).as_dict(),
                     tools=list(contracts.PUBLISHED_TOOLS))
 
     def negotiate(self, payload: dict[str, Any]) -> dict[str, Any]:

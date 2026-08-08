@@ -133,8 +133,17 @@ class PeerClient:
             raise TransportError(f"{tool} failed: {type(error).__name__}: {error}") from error
         return _unwrap(result)
 
-    async def hello(self) -> dict[str, Any]:
-        return await self.call(contracts.TOOL_HELLO)
+    async def hello(self, group_id: str = "") -> dict[str, Any]:
+        """Greet the opponent, naming ourselves so they can answer per-pairing.
+
+        Nested under ``payload`` rather than sent at the top level: FastMCP
+        matches declared argument names only, so a top-level ``group_id`` is
+        refused outright by any peer -- including the version of ourselves from
+        an hour ago -- whose ``hello`` declares just the one object. One object
+        per call is the shape every peer in this league already accepts.
+        """
+        return await self.call(contracts.TOOL_HELLO,
+                               {"payload": {"group_id": group_id}} if group_id else None)
 
     async def negotiate(self, handshake: dict[str, Any]) -> dict[str, Any]:
         return await self.call(contracts.TOOL_NEGOTIATE, {"handshake": handshake})
@@ -175,8 +184,13 @@ class LoopbackClient:
             return contracts.error(f"unknown tool {tool!r}")
         return handler(payload or {})
 
-    async def hello(self) -> dict[str, Any]:
-        return await self.call(contracts.TOOL_HELLO)
+    async def hello(self, group_id: str = "") -> dict[str, Any]:
+        return await self.call(contracts.TOOL_HELLO,
+                               {"group_id": group_id} if group_id else None)
+
+    # Loopback bypasses FastMCP, so the handler is called with whatever we pass
+    # -- the flat spelling here and the nested one over the wire both land on
+    # the same unwrapping in ``PeerHandlers.hello``.
 
     async def negotiate(self, handshake: dict[str, Any]) -> dict[str, Any]:
         return await self.call(contracts.TOOL_NEGOTIATE, {"handshake": handshake})

@@ -44,7 +44,7 @@ def test_play_aborts_at_a_disagreeing_handshake(args, capsys, monkeypatch):
     aborted = {}
 
     class _Client:
-        async def hello(self):
+        async def hello(self, group_id=""):
             return {"handshake": {"group_id": "rival999", "config_sha256": "0" * 64,
                                   "scent_fingerprint": "0" * 64, "code_version": "1.00"}}
 
@@ -71,7 +71,7 @@ def test_play_aborts_at_a_disagreeing_handshake(args, capsys, monkeypatch):
 def test_play_reports_the_outcome_of_a_completed_sub_game(args, thief_config,
                                                           capsys, monkeypatch):
     class _Client:
-        async def hello(self):
+        async def hello(self, group_id=""):
             # A genuinely different team: same agreed physics, different group id.
             # Rule 3 makes an identical id a refusal in its own right.
             from p2pchase.services.negotiation_service import NegotiationService

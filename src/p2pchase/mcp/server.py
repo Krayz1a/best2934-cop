@@ -63,15 +63,25 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
     adapter = InteropAdapter(handlers)
 
     @mcp.tool
-    def hello(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    def hello(payload: dict[str, Any] | None = None,
+              group_id: str = "") -> dict[str, Any]:
         """Identify this peer and publish its configuration fingerprints.
 
-        ``payload`` is optional and ignored: our own client sends nothing, and
-        an opponent whose convention is one object per call sends ``{}``. A
-        signature that named no argument at all would *refuse* the second one,
-        because FastMCP rejects any argument it does not declare.
+        ``payload`` is optional: an opponent whose convention is one object per
+        call sends ``{}``, and a signature naming no argument at all would
+        *refuse* them, because FastMCP rejects any argument it does not declare.
+
+        ``group_id`` is the same bet in the other direction, and we lost it once
+        already -- the moment our own client started naming itself, it sent the
+        field at the top level and FastMCP refused the call before any handler
+        ran, exactly as this docstring had warned about the empty signature. A
+        caller that names itself is answered with the locks agreed with *them*;
+        both spellings are accepted, as with ``negotiate``.
         """
-        return adapter.hello(payload or {})
+        named = payload or {}
+        if group_id:
+            named = dict(named, group_id=group_id)
+        return adapter.hello(named)
 
     @mcp.tool
     def negotiate(handshake: dict[str, Any] | None = None,

@@ -58,7 +58,8 @@ async def _await_opponent(runner: PeerRunner, url: str,
     last = ""
     while asyncio.get_running_loop().time() < deadline:
         try:
-            return dict((await runner.client.hello()).get("handshake", {}))
+            greeting = await runner.client.hello(runner.session.group_id)
+            return dict(greeting.get("handshake", {}))
         except TransportError as error:
             last = str(error)
             LOGGER.info("opponent at %s not up yet; retrying", url)
