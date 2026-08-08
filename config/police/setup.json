@@ -16,6 +16,12 @@
   },
   "opponents": {
     "_remark": "Terms the book leaves to inter-team agreement that are genuinely PER-PAIR rather than league-wide. They live here, in the private unsigned setup, because game.json is hashed into config_sha256 -- adding a key there would move a digest both peers have already verified. Defaults are first_half + multiplicative_book_v1, so an opponent absent from this table is played on the book's own terms.",
+    "anrbj666": {
+      "role_convention": "odd_even",
+      "scent_model": "multiplicative_book_v1",
+      "_remark": "Agreed in the direct channel and on league issue #48: anrbj666 sorts first, so they are cop on sub-games 1/3/5 and best2934 is cop on 2/4/6. Written out rather than left to the defaults, which are first_half + multiplicative_book_v1: the scent model would have been right by luck and the convention wrong, and first_half vs odd_even disagree on sub-games 2 and 5 -- two thieves on 2, two cops on 5, and two cops chase nobody. Their scent lock doc must hash to 934c220d5bf62acaa3297c6c9d723ea954c220260b02292ca17f6d5daef9f4d9; compared in Stage 1.",
+      "tie_rule": "series_add"
+    },
     "gal-roy1": {
       "role_convention": "first_half",
       "scent_model": "multiplicative_book_v1",
