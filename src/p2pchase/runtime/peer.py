@@ -76,6 +76,10 @@ class PeerRunner:
         self.turn_timeout = float(config.turn_timeout)
         #: True once the opponent has confirmed one of our capture claims.
         self.captured_opponent = False
+        #: What ``tools/list`` said the opponent publishes, filled in by the
+        #: knock in :mod:`peer_host`. It is what selects the dialect: three
+        #: teams in this league answer to names this runner cannot call at all.
+        self.opponent_tools: list[str] = []
 
     # ------------------------------------------------------------- waiting
     async def _await_condition(self, predicate, what: str) -> None:

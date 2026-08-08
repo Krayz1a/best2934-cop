@@ -76,6 +76,18 @@ class TurnLoop:
                     "reply_outcome": constants.OUTCOME_CAPTURE}
         return self._answer(step=self._reply_step(turn.step), response=response)
 
+    def absorb(self, payload: dict[str, Any]) -> dict[str, Any] | None:
+        """Apply their turn *without* answering it, returning any claim response.
+
+        Exists for the reference-v3 wire, where absorbing and answering are two
+        separate pushes rather than a call and its return value -- and where the
+        thief acts first, so half the time the answer is already sent by the
+        time their turn arrives. :meth:`receive` keeps both halves together
+        because on gal-roy1's dialect they genuinely are one message.
+        """
+        turn = parse_turn(payload)
+        return None if turn.is_nil else self._absorb(turn)
+
     def concede(self, outcome: str, cell: list[int] | None = None) -> str:
         """Settle the sub-game from the loser's concession (rules 21, 22, 35).
 
@@ -201,7 +213,7 @@ class TurnLoop:
             sender=WIRE_ROLE.get(self.session.role, self.session.role.upper()),
             commit=commitment,
             hint=hint,
-            scent_grid=self._trail(),
+            scent_grid=self.trail(),
             barrier_placed=barrier,
             capture_claim=claim,
             win_claim=self._survival_claim(),
@@ -211,7 +223,7 @@ class TurnLoop:
         self.round = step
         return turn.as_dict()
 
-    def _trail(self) -> dict[str, float]:
+    def trail(self) -> dict[str, float]:
         """Our lagged field, pushed whole (their model) rather than queried."""
         state = self.session.state
         grid = state.broadcast.transmitted(state.my_scent.grid)

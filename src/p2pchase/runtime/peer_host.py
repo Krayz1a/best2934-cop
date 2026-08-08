@@ -82,6 +82,9 @@ async def _await_opponent(runner: PeerRunner, url: str,
             continue
         LOGGER.info("opponent at %s is up; publishes %d tools: %s",
                     url, len(published), ", ".join(sorted(published)) or "(none)")
+        # Kept because it decides which dialect we then speak, and because the
+        # surface is only knowable here -- once play starts nobody asks again.
+        runner.opponent_tools = list(published)
         if contracts.TOOL_HELLO not in published:
             LOGGER.info("no %r on their surface -- negotiate is the authority, proceeding",
                         contracts.TOOL_HELLO)
@@ -90,6 +93,38 @@ async def _await_opponent(runner: PeerRunner, url: str,
         return dict(greeting.get("handshake", {}))
     raise TransportError(f"opponent at {url} never answered tools/list within "
                          f"{timeout:.0f}s: {last}")
+
+
+def select_driver(runner: PeerRunner, handlers: PeerHandlers):
+    """Which dialect to speak, decided by what they publish rather than by a flag.
+
+    A tool list is the one statement about an opponent that cannot be out of
+    date, wishful or mistranscribed -- we asked their running process and it
+    answered. Everything else we know about a peer comes from a document.
+
+    The test is deliberately two-sided: they must publish ``receive_turn``
+    *and* not publish our ``commit_step``. A peer that speaks both is answered
+    in ours, because ours is the dialect we have actually played counted games
+    in. Guessing reference-v3 at a peer that also speaks our own protocol would
+    trade a tested path for an untested one on no evidence.
+
+    Returns ``None`` to mean "use :class:`PeerRunner`", so the default is the
+    long-standing path and the new one has to be positively selected.
+    """
+    from ..mcp import contracts as tools
+    from .reference_driver import ReferenceDriver
+
+    published = set(runner.opponent_tools)
+    if not published:
+        return None
+    speaks_reference = "receive_turn" in published
+    speaks_ours = tools.TOOL_COMMIT in published
+    if not speaks_reference or speaks_ours:
+        return None
+    LOGGER.info("opponent publishes the reference-v3 surface and not %r: "
+                "driving this sub-game on their wire", tools.TOOL_COMMIT)
+    return ReferenceDriver(runner.config, runner.session, runner.client,
+                           handlers.reference_inboxes)
 
 
 async def declare_step0(runner: PeerRunner) -> str:
@@ -151,6 +186,13 @@ async def host_and_play(runner: PeerRunner, handlers: PeerHandlers, host: str, p
         # One session for the whole sub-game: see PeerClient.open.
         await runner.client.open()
         try:
+            # Their wire has no step-0 exchange at all -- the hardware
+            # declaration rides in negotiate.identity and the sealed step-0
+            # record is disclosed inside submit_audit -- so the dialect has to
+            # be chosen before declare_step0, not after it.
+            driver = select_driver(runner, handlers)
+            if driver is not None:
+                return await driver.run_sub_game(), handshake
             # Step 0 before step 1, and it is the last cheap moment to find a
             # role clash: two peers that both think they are the cop chase
             # nobody, and rule 6 charges both teams for the sub-game that never
