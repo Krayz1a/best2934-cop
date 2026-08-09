@@ -29,6 +29,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from ..runtime import pairing_guard
+from . import contracts
 from .handlers import PeerHandlers
 
 LOGGER = logging.getLogger(__name__)
@@ -81,6 +83,9 @@ class InteropAdapter:
         the agreed rule and the two group ids before anyone connects.
         """
         self.recorder.note_caller(payload)
+        clash = pairing_guard.adopt(self.handlers.session, payload)
+        if clash:
+            return contracts.error(f"wrong pairing: {clash}")
         answer = self.handlers.hello(payload)
         shake = dict(answer.get("handshake", {}))
         session = self.handlers.session
@@ -104,6 +109,9 @@ class InteropAdapter:
         perfectly legal config.
         """
         self.recorder.note_caller(payload)
+        clash = pairing_guard.adopt(self.handlers.session, payload)
+        if clash:
+            return contracts.error(f"wrong pairing: {clash}")
         proposed = payload.get("config")
         if isinstance(proposed, dict):
             from ..services.config_proposal import ConfigProposalService
@@ -137,6 +145,9 @@ class InteropAdapter:
         gets a new session -- the same role and game, a clean board.
         """
         self.recorder.note_caller(payload)
+        clash = pairing_guard.adopt(self.handlers.session, payload)
+        if clash:
+            return contracts.error(f"wrong pairing: {clash}")
         self._restart_if_a_new_sub_game(payload)
         return self.handlers.declare_step0(payload)
 
