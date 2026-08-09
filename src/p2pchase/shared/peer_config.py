@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import constants
-from ..domain import roles, scent_models, scoring
+from ..domain import kit_seal, roles, scent_models, scoring
 from ..domain.crypto import canonical_json, digest_payload
 from .config_schema import AGREED_SECTIONS
 
@@ -121,6 +121,17 @@ class PeerConfig:
     def scent_model(self, opponent: str) -> str:
         """Which registered scent model we agreed with this opponent."""
         return str(self.pairing(opponent).get("scent_model", scent_models.DEFAULT_MODEL))
+
+    def seal_form(self, opponent: str) -> str:
+        """How a step commitment is *built* with this opponent.
+
+        Ours merges the nonce into the payload; the league's appends it after a
+        single pipe. Both are sound and the only wrong answer is a pair that
+        picks differently -- which fails every step of the mutual audit while
+        the sub-games themselves look perfect. See
+        :mod:`p2pchase.domain.kit_seal`.
+        """
+        return str(self.pairing(opponent).get("seal_form", kit_seal.DEFAULT_FORM))
 
     def tie_rule(self, opponent: str) -> str:
         """How a dead-level series is scored against this opponent.

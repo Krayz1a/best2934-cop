@@ -134,20 +134,31 @@ class CommitRecord:
         return {"payload": self.payload, "nonce": self.nonce, "commit": self.commit}
 
 
-def commit(payload: dict[str, Any], nonce: str | None = None) -> CommitRecord:
-    """Seal a payload. Returns the record; send only ``record.commit`` now."""
+def commit(payload: dict[str, Any], nonce: str | None = None,
+           form: str = "") -> CommitRecord:
+    """Seal a payload. Returns the record; send only ``record.commit`` now.
+
+    ``form`` names the construction this pairing agreed -- see
+    :mod:`p2pchase.domain.kit_seal`. Empty means ours, which keeps every
+    existing caller and every artifact already on disk unchanged.
+    """
+    from .kit_seal import DEFAULT_FORM, seal
     nonce = nonce or new_nonce()
-    sealed = dict(payload)
-    sealed["nonce"] = nonce
-    return CommitRecord(payload=payload, nonce=nonce, commit=digest_payload(sealed))
+    return CommitRecord(payload=payload, nonce=nonce,
+                        commit=seal(payload, nonce, form or DEFAULT_FORM))
 
 
 def verify(payload: dict[str, Any], nonce: str, announced_commit: str) -> bool:
-    """Re-synthesise the opponent's hash and compare in constant time."""
-    sealed = dict(payload)
-    sealed["nonce"] = nonce
-    recomputed = digest_payload(sealed)
-    return secrets.compare_digest(recomputed, announced_commit)
+    """Re-synthesise the opponent's hash and compare in constant time.
+
+    Accepts *either* registered construction -- ours, with the nonce merged into
+    the payload, or the league's ``canonical|nonce`` pipe. See
+    :mod:`p2pchase.domain.kit_seal` for why both are sound and why refusing on
+    the spelling cost us six sub-games' worth of audit against imreeyal.
+    Imported inside the call because ``kit_seal`` imports this module.
+    """
+    from .kit_seal import opens
+    return opens(payload, nonce, announced_commit)
 
 
 @dataclass

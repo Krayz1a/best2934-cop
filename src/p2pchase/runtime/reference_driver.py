@@ -35,7 +35,7 @@ from .. import constants
 from ..domain.protocol import WIRE_ROLE
 from ..mcp import reference_v3
 from ..shared.peer_config import PeerConfig
-from . import reference_handshake, reference_inbox, session_terminal
+from . import opponent_capture, reference_handshake, reference_inbox, session_terminal
 from .peer import OpponentFinishedError, PeerOutcome
 from .peer_session import PeerSession
 from .turn_loop import TurnLoop
@@ -139,6 +139,7 @@ class ReferenceDriver:
         """Wait for their turn at ``step``, apply it, and return what we owe."""
         message = await reference_inbox.await_turn(
             self.inboxes, step, self.turn_timeout, self.watchdog)
+        opponent_capture.note_turn(step, message)
         response = self.loop.absorb(reference_v3.to_internal(message))
         self._read_concession(message)
         return response

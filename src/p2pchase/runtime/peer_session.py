@@ -113,7 +113,7 @@ class PeerSession:
             barrier=list(decision.barrier) if decision.barrier else None,
             position=self.state.settled_position(decision.move, decision.barrier),
         )
-        record = commit(intent.payload())
+        record = commit(intent.payload(), form=self.config.seal_form(self.opponent))
         self._pending = (decision, hint, record)
         return record.commit
 

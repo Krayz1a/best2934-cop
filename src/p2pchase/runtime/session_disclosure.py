@@ -12,6 +12,7 @@ from typing import Any
 
 from ..domain.audit import audit_against_commitments
 from ..domain.protocol import Phase
+from . import opponent_capture
 
 
 def final_reveal(session: Any) -> list[dict[str, Any]]:
@@ -54,4 +55,9 @@ def audit(session: Any, records: list[dict[str, Any]]) -> dict[str, Any]:
     session.opponent_records = list(records)
     session.last_audit = audit_against_commitments(
         records, dict(session.opponent_commitments)).as_dict()
+    # Their evidence, not only our verdict. This chain used to exist nowhere but
+    # in memory, which is why six failed audits against imreeyal on 2026-08-09
+    # could not be diagnosed after the fact. Off unless P2PCHASE_CAPTURE_DIR is
+    # set, and it never writes inside either repository.
+    opponent_capture.note_audit({"records": records, "verdict": session.last_audit})
     return session.last_audit
