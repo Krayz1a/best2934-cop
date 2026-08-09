@@ -26,6 +26,7 @@ from typing import Any
 from .. import constants
 from ..domain.protocol import WIRE_ROLE
 from ..mcp.turn_message import TurnMessage, claim_response, parse_turn
+from . import wall_capture
 from .peer_session import PeerSession
 
 LOGGER = logging.getLogger(__name__)
@@ -49,6 +50,10 @@ class TurnLoop:
         #: thief, so "we won" is the one direction where a lie would pay, and
         #: the claim is the only thing our own board can check it against.
         self.claimed: tuple[int, int] | None = None
+        #: A barrier of theirs sitting on our cell, carried from their turn to
+        #: the end of ours so rule 46 can be judged over the whole round rather
+        #: than at one instant of it. See :mod:`wall_capture`.
+        self.walled: tuple[int, int] | None = None
 
     # ----------------------------------------------------------------- inbound
     def receive(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -177,6 +182,7 @@ class TurnLoop:
         # where that check happens.
         caught = self.session.on_reveal(
             turn.step, "", turn.hint, turn.barrier_placed, turn.capture_claim)
+        self.walled = wall_capture.entering(self.session, turn.barrier_placed)
         if turn.scent_grid:
             self.session.absorb_scent(turn.scent_grid)
         if turn.win_claim:
@@ -219,6 +225,11 @@ class TurnLoop:
             win_claim=self._survival_claim(),
         )
         self.session.apply_own_step()
+        # Judged after our move, not before: a thief still on the walled cell at
+        # the end of its own round is caught under any reading of I-8 (rule 46).
+        if wall_capture.leaving(self.session, self.walled):
+            self.finished = constants.OUTCOME_CAPTURE
+        self.walled = None
         self.session.end_of_turn()
         self.round = step
         return turn.as_dict()
