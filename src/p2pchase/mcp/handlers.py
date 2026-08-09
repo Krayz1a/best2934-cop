@@ -79,14 +79,25 @@ class PeerHandlers:
         ``negotiate`` already re-derives from ``theirs.group_id``; this makes
         the greeting agree with the verdict instead of contradicting it, which
         matters because a readiness gate reads the greeting.
+
+        And when the caller does *not* name itself, the reply says so:
+        ``pairing`` is either their group id or the literal ``"default"``.
+        imreeyal probed us anonymously on 2026-08-09, read back
+        ``multiplicative_book_v1``, and reported it as the wrong model for this
+        pairing -- which it is, for them, and it was also the only honest answer
+        to a question that had not said who was asking. An unlabelled default is
+        indistinguishable from a considered answer, so the label is the fix
+        rather than guessing at the caller. ``pairing`` sits beside the
+        handshake, never inside it, because everything inside is compared
+        against the opponent's copy field by field.
         """
         named = payload if isinstance(payload, dict) else {}
-        inner = named.get("payload")
-        if not named.get("group_id") and isinstance(inner, dict):
-            named = inner
+        if not named.get("group_id") and isinstance(named.get("payload"), dict):
+            named = named["payload"]
         opponent = str(named.get("group_id", ""))
         return contracts.ok(handshake=self.negotiation.handshake(opponent=opponent).as_dict(),
-                    tools=list(contracts.PUBLISHED_TOOLS))
+                            pairing=opponent or "default",
+                            tools=list(contracts.PUBLISHED_TOOLS))
 
     def negotiate(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Compare the opponent's fingerprints against ours (rule 11).

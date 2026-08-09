@@ -37,6 +37,7 @@ from ..domain.smell import build_kernel, kernel_fingerprint
 from ..shared.config_schema import validate_shared
 from ..shared.peer_config import PeerConfig
 from ..shared.version import CODE_VERSION, peer_schema_compatible
+from . import agreement_floor
 
 LOGGER = logging.getLogger(__name__)
 
@@ -220,7 +221,11 @@ class NegotiationService:
             theirs = Handshake.from_dict(theirs)
         ours = self.handshake(opponent=theirs.group_id)
 
-        mismatches: list[str] = []
+        # The floor under every omission rule below. See
+        # :mod:`p2pchase.services.agreement_floor`: each "refuse only if both
+        # declare" guard is right on its own and together they made an empty
+        # payload the most agreeable message we could receive.
+        mismatches: list[str] = agreement_floor.refusals(theirs)
 
         # config_sha256 is a digest of OUR config's shape. It gets the same
         # omission rule as the two scent locks, and for a stronger reason than
