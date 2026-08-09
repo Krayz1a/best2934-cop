@@ -40,7 +40,8 @@ class MissingTransportError(RuntimeError):
     """FastMCP is not installed -- an environment problem, not a code fault."""
 
 
-def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
+def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer",
+                 record_served: bool = False):
     """Wrap handlers in a FastMCP server.
 
     The import is local so the rest of the package -- domain logic, the replay
@@ -65,7 +66,11 @@ def build_server(handlers: PeerHandlers, name: str = "p2pchase-peer"):
     # line whose absence made the 2026-08-09 stall undiagnosable.
     mcp.add_middleware(build_call_log())
 
-    adapter = InteropAdapter(handlers)
+    # ``record_served`` is off for the server ``play`` runs beside its driver:
+    # that driver writes the artifacts itself when the sub-game ends, and two
+    # writers for one filename is worse than none. Only a standing ``serve``,
+    # which has no driver at all, turns it on.
+    adapter = InteropAdapter(handlers, record_served)
 
     @mcp.tool
     def hello(payload: dict[str, Any] | None = None,
@@ -253,7 +258,8 @@ def serve(config: PeerConfig, handlers: PeerHandlers | None = None,
     from .accept_probe import probe_middleware
 
     handlers = handlers or PeerHandlers(config)
-    server = build_server(handlers, name=f"p2pchase-{config.group_id}-{config.role}")
+    server = build_server(handlers, name=f"p2pchase-{config.group_id}-{config.role}",
+                          record_served=True)
     if transport == "stdio":
         # No host, no port, no middleware: stdin and stdout are the socket, and
         # anything written to stdout that is not JSON-RPC corrupts the stream.

@@ -24,7 +24,7 @@ from p2pchase.runtime.served_recorder import ServedRecorder
 
 @pytest.fixture
 def recorder(peer_config) -> ServedRecorder:
-    return ServedRecorder(peer_config)
+    return ServedRecorder(peer_config, enabled=True)
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def test_an_unidentified_caller_still_produces_a_usable_game_id(recorder):
 
 # -------------------------------------------------------------- the writing
 def test_a_settled_sub_game_is_written(recorder, session, tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("P2PCHASE_ROOT", str(tmp_path))
     recorder.note_caller({"group_id": "gal-roy1"})
     written = recorder.settle(session, "capture", 12)
     assert written
@@ -80,7 +80,7 @@ def test_the_same_sub_game_is_not_written_twice(recorder, session, tmp_path, mon
     """They may call ``agree_result`` more than once for one sub-game, and the
     opener of the next one settles the previous. Rewriting would stamp a fresh
     ``ended_at`` on a game that ended earlier."""
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("P2PCHASE_ROOT", str(tmp_path))
     recorder.note_caller({"group_id": "gal-roy1"})
     first = recorder.settle(session, "capture", 12)
     assert first and recorder.settle(session, "capture", 12) == []
@@ -89,12 +89,33 @@ def test_the_same_sub_game_is_not_written_twice(recorder, session, tmp_path, mon
 def test_an_unsettled_sub_game_writes_nothing(recorder, session, tmp_path, monkeypatch):
     """``settle`` is called at the opener of the next sub-game too, and a peer
     that reconnects mid-series has not finished anything worth reporting."""
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("P2PCHASE_ROOT", str(tmp_path))
     assert recorder.settle(session, "", 0) == []
 
 
 def test_no_session_writes_nothing(recorder):
     assert recorder.settle(None, "capture", 3) == []
+
+
+def test_recording_is_off_unless_a_standing_serve_turns_it_on(peer_config, session,
+                                                              tmp_path, monkeypatch):
+    """``play`` writes its own artifacts when its driver finishes, and a peer
+    speaking our native dialect calls ``agree_result`` -- which routes through
+    this same adapter. Left on by default, the two would race for one filename
+    with different step counts and different ``ended_at`` stamps. Caught after
+    a rehearsal quietly wrote a second, contradictory report set."""
+    monkeypatch.setenv("P2PCHASE_ROOT", str(tmp_path))
+    off = ServedRecorder(peer_config)
+    off.note_caller({"group_id": "gal-roy1"})
+    assert off.enabled is False
+    assert off.settle(session, "capture", 12) == []
+    assert not (tmp_path / "artifacts").exists()
+
+
+def test_the_server_play_runs_beside_its_driver_does_not_record(peer_config):
+    """The default reaches the adapter, not just the recorder: ``peer_host``
+    builds its server with no flag at all and must stay silent."""
+    assert InteropAdapter(PeerHandlers(peer_config)).recorder.enabled is False
 
 
 def test_a_disk_failure_costs_the_report_and_not_the_match(recorder, session, monkeypatch):
@@ -142,9 +163,9 @@ def test_a_fresh_session_is_not_advanced_by_a_reconnect(peer_config):
 def test_agreeing_a_result_writes_the_report(peer_config, tmp_path, monkeypatch):
     """The end of a series is the case the next-opener hook cannot cover: there
     is no next opener, and the last sub-game is owed to the lecturer too."""
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("P2PCHASE_ROOT", str(tmp_path))
     session = PeerSession(peer_config, "police", "g", sub_game=1)
-    adapter = InteropAdapter(PeerHandlers(peer_config, session))
+    adapter = InteropAdapter(PeerHandlers(peer_config, session), record_served=True)
     adapter.hello({"group_id": "gal-roy1"})
     adapter.turns(session).finished = "capture"
     adapter.agree_result({"outcome": "CAPTURE"})

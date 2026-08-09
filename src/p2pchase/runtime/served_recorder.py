@@ -50,8 +50,14 @@ class ServedRecorder:
             served one produce the same files, audited by the same code.
     """
 
-    def __init__(self, config: Any) -> None:
+    def __init__(self, config: Any, enabled: bool = False) -> None:
         self.config = config
+        #: Off unless a standing ``serve`` turned it on. ``play`` writes its own
+        #: artifacts when its driver finishes, and a peer that speaks our native
+        #: dialect calls ``agree_result`` -- which routes through this adapter --
+        #: so leaving it on would have two writers racing for one filename with
+        #: two different step counts and two different ``ended_at`` stamps.
+        self.enabled = enabled
         #: Who actually called, learned from their messages rather than a flag.
         self.opponent = ""
         self.started: dict[int, str] = {}
@@ -93,7 +99,7 @@ class ServedRecorder:
         and its records are in memory; raising here would turn a full disk into
         a lost match, and the opponent is mid-series waiting on our answer.
         """
-        if session is None or not outcome:
+        if not self.enabled or session is None or not outcome:
             return []
         key = (self.opponent, int(session.sub_game))
         if key in self.recorded:

@@ -52,7 +52,7 @@ class InteropAdapter:
     audited by the same code (rule 36).
     """
 
-    def __init__(self, handlers: PeerHandlers) -> None:
+    def __init__(self, handlers: PeerHandlers, record_served: bool = False) -> None:
         from ..runtime.served_recorder import ServedRecorder
 
         self.handlers = handlers
@@ -62,7 +62,7 @@ class InteropAdapter:
         #: Writes the report artifacts, because nothing else on this path does.
         #: A peer we cannot dial drives the whole match through these tools, and
         #: ``play`` -- which is what normally records a sub-game -- never runs.
-        self.recorder = ServedRecorder(handlers.config)
+        self.recorder = ServedRecorder(handlers.config, record_served)
 
     # ------------------------------------------------------------- handshake
     def hello(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
