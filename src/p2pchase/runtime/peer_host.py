@@ -210,11 +210,23 @@ async def host_and_play(runner: PeerRunner, handlers: PeerHandlers, host: str, p
     server_task = asyncio.create_task(_serve_forever(handlers, host, port, name))
     try:
         handshake = await _await_opponent(runner, url)
-        refusal = on_handshake(handshake)
+        # An absent greeting is not an empty one, and only one of the two is a
+        # refusal. `_await_opponent` returns {} as a sentinel meaning "this peer
+        # publishes no `hello`, so we have no greeting to judge" -- not "they
+        # greeted us and declared nothing". Handing that sentinel to the gate
+        # refused imreeyal at 12:26:16Z on 2026-08-09, in the same second their
+        # real agreement arrived inbound on `negotiate` and agreed. It only ever
+        # worked because `compare` used to fail open on an empty dict; the floor
+        # that fixed the fail-open turned this sentinel into an abort, which is
+        # the same silence-versus-declaration distinction one call frame further
+        # out. On their wire `negotiate` is the authority and is checked there.
+        refusal = on_handshake(handshake) if handshake else ""
         if refusal:
             LOGGER.error("refusing to play %s: %s", url, refusal)
             return await runner.abort(f"configuration mismatch at handshake: {refusal}", 0), handshake
-        LOGGER.info("handshake agreed with %s", handshake.get("group_id"))
+        LOGGER.info("pre-flight handshake %s", f"agreed with {handshake.get('group_id')}"
+                    if handshake else "skipped: they publish no 'hello', so there is no "
+                    "greeting to judge -- their negotiate push is the authority")
         # One session for the whole sub-game: see PeerClient.open.
         await runner.client.open()
         try:
