@@ -53,10 +53,16 @@ class InteropAdapter:
     """
 
     def __init__(self, handlers: PeerHandlers) -> None:
+        from ..runtime.served_recorder import ServedRecorder
+
         self.handlers = handlers
         #: The alternating turn loop, once a sub-game is running. Holds the
         #: round counter, so it outlives a single call.
         self._turns: Any = None
+        #: Writes the report artifacts, because nothing else on this path does.
+        #: A peer we cannot dial drives the whole match through these tools, and
+        #: ``play`` -- which is what normally records a sub-game -- never runs.
+        self.recorder = ServedRecorder(handlers.config)
 
     # ------------------------------------------------------------- handshake
     def hello(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -74,6 +80,7 @@ class InteropAdapter:
         handshake is wrong. It is not a disclosure -- both teams derive it from
         the agreed rule and the two group ids before anyone connects.
         """
+        self.recorder.note_caller(payload)
         answer = self.handlers.hello(payload)
         shake = dict(answer.get("handshake", {}))
         session = self.handlers.session
@@ -96,6 +103,7 @@ class InteropAdapter:
         mismatches against empty strings and refused a peer who had proposed a
         perfectly legal config.
         """
+        self.recorder.note_caller(payload)
         proposed = payload.get("config")
         if isinstance(proposed, dict):
             from ..services.config_proposal import ConfigProposalService
@@ -128,6 +136,7 @@ class InteropAdapter:
         if ours has already moved or already ended, this is a new attempt and
         gets a new session -- the same role and game, a clean board.
         """
+        self.recorder.note_caller(payload)
         self._restart_if_a_new_sub_game(payload)
         return self.handlers.declare_step0(payload)
 
@@ -205,13 +214,22 @@ class InteropAdapter:
         if not played and (not number or number == session.sub_game):
             return
 
+        # The one we are leaving is finished, and this is the last moment its
+        # records exist. A peer that never sends ``agree_result`` -- or whose
+        # series is cut short after it -- would otherwise leave no report at all.
+        self.recorder.settle(session, str(getattr(loop, "finished", "") or ""),
+                             int(getattr(loop, "round", 0) or 0))
+        # Their number when they send one, otherwise the next in our own series.
+        # Reusing the current number is what labelled three consecutive gal-roy1
+        # sub-games "3" while they numbered them 1, 2, 3 (rule 35).
+        opening = number or session.sub_game + (1 if played else 0)
         LOGGER.info("an opening turn starts sub-game %s; clean session (was sub-game %s, "
-                    "%d records)", number or session.sub_game, session.sub_game,
-                    len(session.records))
+                    "%d records)", opening, session.sub_game, len(session.records))
         self.handlers.session = PeerSession(
             session.config, session.role, session.game_id,
-            sub_game=number or session.sub_game, seed=session.seed)
+            sub_game=opening, seed=session.seed)
         self._turns = None
+        self.recorder.opened(opening)
 
     # ------------------------------------------------------------------ play
     def submit_turn(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -346,6 +364,12 @@ class InteropAdapter:
             verdict = {**verdict, "ours": ours, "theirs": theirs,
                        "our_outcome": ours, "their_outcome": theirs,
                        "agreed": agreed}
+        # The sub-game is over and both peers have said how it ended, so this is
+        # the moment its report exists. Written here rather than at the next
+        # opener because a series can stop on its last sub-game, and the last
+        # one is no less owed to the lecturer than the first (book ch9).
+        self.recorder.settle(self.handlers.session, self.our_outcome(),
+                             int(getattr(self._turns, "round", 0) or 0))
         return {**verdict, "digest_covers": {
             "sub_game": list(AGREED_SUB_GAME_FIELDS),
             "totals": list(AGREED_TOTALS_FIELDS)}}
