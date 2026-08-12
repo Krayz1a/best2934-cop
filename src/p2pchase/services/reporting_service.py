@@ -24,7 +24,9 @@ from typing import Any
 
 from ..infra import gmail_sender
 from ..infra.gatekeeper import ApiGatekeeper, build_gatekeeper
+from ..reports.naming import opponent_in_game_id
 from ..shared.peer_config import PeerConfig
+from . import friendly_recipient
 
 LOGGER = logging.getLogger(__name__)
 
@@ -72,7 +74,8 @@ class ReportingService:
             f"{self.config.group_id} result report"
         )
 
-    def compose(self, result: dict[str, Any]) -> tuple[dict[str, str], str]:
+    def compose(self, result: dict[str, Any],
+                recipient: str = "") -> tuple[dict[str, str], str]:
         """Build the raw message and the attachment filename."""
         attachment_name = f"result_{result.get('game_id', 'game')}.json"
         raw = gmail_sender.build_message(
@@ -80,7 +83,7 @@ class ReportingService:
             attachment_name=attachment_name,
             attachment=result,
             sender=gmail_sender.sender_address(),
-            recipient=self.config.email["recipient"],
+            recipient=recipient or self.config.email["recipient"],
         )
         return raw, attachment_name
 
@@ -113,11 +116,23 @@ class ReportingService:
         return (f"refusing to send an incomplete report: {played} sub-game(s) recorded "
                 f"against the signed num_sub_games of {signed}")
 
-    def send_result(self, result: dict[str, Any], dry_run: bool = False) -> DeliveryReceipt:
-        """Send one result report. ``dry_run`` composes without delivering."""
-        raw, attachment_name = self.compose(result)
-        recipient = self.config.email["recipient"]
+    def send_result(self, result: dict[str, Any], dry_run: bool = False,
+                    to: str = "") -> DeliveryReceipt:
+        """Send one result report. ``dry_run`` composes without delivering.
+
+        ``to`` redirects a FRIENDLY to the opposing team and away from the
+        lecturer; a counted series refuses it. See
+        :mod:`p2pchase.services.friendly_recipient`.
+        """
         subject = self.subject(result)
+        attachment_name = f"result_{result.get('game_id', 'game')}.json"
+        opponent = opponent_in_game_id(str(result.get("game_id", "")),
+                                       self.config.group_id)
+        recipient, refusal = friendly_recipient.resolve(self.config, opponent, to)
+        if refusal:
+            LOGGER.error("%s", refusal)
+            return DeliveryReceipt(False, "", subject, attachment_name, reason=refusal)
+        raw, attachment_name = self.compose(result, recipient)
 
         short = self.incompleteness(result)
         if short and not dry_run:
@@ -142,9 +157,10 @@ class ReportingService:
         LOGGER.info("report delivered to %s (id=%s)", recipient, message_id)
         return DeliveryReceipt(True, recipient, subject, attachment_name, message_id)
 
-    def send_result_file(self, path: Path | str, dry_run: bool = False) -> DeliveryReceipt:
+    def send_result_file(self, path: Path | str, dry_run: bool = False,
+                         to: str = "") -> DeliveryReceipt:
         """Load a written result artifact and send it."""
         import json
 
         with Path(path).open("r", encoding="utf-8") as handle:
-            return self.send_result(json.load(handle), dry_run=dry_run)
+            return self.send_result(json.load(handle), dry_run=dry_run, to=to)

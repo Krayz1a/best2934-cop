@@ -77,6 +77,9 @@ def build_parser() -> argparse.ArgumentParser:
     report = sub.add_parser("send-report", help="send the result report (rules 33-35)")
     _add_common(report)
     report.add_argument("--result", required=True, help="path to result_<game_id>.json")
+    report.add_argument("--to", default="",
+                        help="friendly only: comma-separated recipients, INSTEAD of the "
+                             "league address. Refused for a counted series.")
     report.add_argument("--live", action="store_true",
                         help="actually send; without it the report is only composed")
     report.set_defaults(func=commands.send_report)

@@ -112,7 +112,8 @@ def audit(args: Any) -> int:
 def send_report(args: Any) -> int:
     """Compose and optionally send the result report (rules 33-35)."""
     sdk = _sdk(args)
-    receipt = sdk.reporting.send_result_file(args.result, dry_run=not args.live)
+    receipt = sdk.reporting.send_result_file(
+        args.result, dry_run=not args.live, to=getattr(args, "to", ""))
     print(json.dumps(receipt.as_dict(), indent=2, ensure_ascii=False))
     if not args.live:
         print("\nDry run: nothing was sent. Re-run with --live to deliver.")
