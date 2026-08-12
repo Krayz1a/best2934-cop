@@ -335,7 +335,7 @@ class InteropAdapter:
         session = self.handlers.session
         if session is None:
             return ""
-        return str(self.turns(session).finished or "")
+        return str(self.turns(session).outcome() or "")
 
     def agree_result(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Rule 35, in both dialects: a digest pair, or a named outcome.

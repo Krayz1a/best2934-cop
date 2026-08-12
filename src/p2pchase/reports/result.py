@@ -21,7 +21,6 @@ from .. import constants
 from ..domain.crypto import mutual_agreement_hash
 from .agreed import agreed_summary as build_agreed_summary
 from .consensus import interop_signature, interop_summary
-from .league import league_block
 from .naming import TIMEZONE, links_block
 
 
@@ -105,10 +104,21 @@ def build_result_artifact(
 ) -> dict[str, Any]:
     """Assemble the report both teams send independently.
 
-    ``league`` is the counted/uncounted marker rule 52 hangs on. It defaults to
-    the *disarmed* block rather than to nothing, because a report that omits the
-    marker and a report that declares a friendly look identical to a reader and
-    are not the same claim. See :mod:`p2pchase.reports.league`.
+    ``league`` is accepted and deliberately **not emitted**. It was added as a
+    counted/uncounted marker, and the course template has no such field --
+    ``tests/fixtures/course_template_fields.json``, taken from the assignment's
+    own sample run, lists twelve top-level keys and this is not one of them.
+    imreeyal, who proposed it, withdrew it on 2026-08-12 as their own mistake.
+
+    Emitting it cost more than the shape. Both peers mail a result and diff the
+    two copies before agreeing; a field one side invents is a difference to
+    explain in the worst place to be explaining anything (rule 35). Nothing ever
+    read it back either -- whether a series is counted is decided by
+    ``setup.json`` via :meth:`PeerConfig.counted_series`, armed by a human, and
+    that is still the only place it is decided.
+
+    The parameter stays so callers need not change and so this paragraph has
+    somewhere to live.
 
     ``repositories`` carries *four* links -- both teams' cop and thief
     repositories (rule 49). The lecturer reads the result JSON, not the e-mail
@@ -130,7 +140,6 @@ def build_result_artifact(
         "game_uid": game_uid,
         "links": links_block(game_id),
         "repositories": repositories or {},
-        "league": league or league_block(),
         "timezone": TIMEZONE,
         "groups": sorted(groups),
         "num_sub_games": len(sub_games),

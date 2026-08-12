@@ -15,6 +15,8 @@ human edits, and refuses to arm at all when nobody wrote down why.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from p2pchase.reports import artifacts
 from p2pchase.reports.league import DISARMED, UNSIGNED, league_block
 
@@ -68,18 +70,53 @@ def test_a_reason_without_counted_does_not_arm_anything():
     assert league_block(False, SIGN_OFF)["counted"] is False
 
 
-def test_the_result_artifact_carries_the_block_by_default():
-    """Not optional: omitting the marker and declaring a friendly differ."""
+def test_the_result_artifact_does_not_carry_the_block():
+    """Reversed on 2026-08-12, deliberately, and this test is the record.
+
+    The marker is not in the course template -- ``course_template_fields.json``
+    is taken from the assignment's own sample run and lists twelve top-level
+    keys without it. imreeyal proposed the field and withdrew it as their own
+    mistake, having run four counted pairings without it.
+
+    Both peers mail a result and diff the two copies before agreeing it, so a
+    field one side invents is a difference to explain at the moment when an
+    unexplained difference voids the sub-game for both teams (rule 35).
+    """
     body = artifacts.build_result_artifact("a-vs-b", "uid", ["a", "b"], [], {}, {})
-    assert body["league"]["counted"] is False
+    assert "league" not in body
 
 
-def test_the_result_artifact_carries_an_armed_block_when_given_one():
+def test_an_armed_block_is_still_not_emitted():
+    """Even passed explicitly. The caller cannot put it back by accident."""
     body = artifacts.build_result_artifact(
         "a-vs-b", "uid", ["a", "b"], [], {}, {},
         league=league_block(True, SIGN_OFF))
-    assert body["league"] == {"counted": True, "reason": SIGN_OFF,
-                              "authority": league_block()["authority"]}
+    assert "league" not in body
+
+
+def test_counted_ness_is_still_decided_by_the_private_setup():
+    """Dropping the field changed the report, not the decision.
+
+    Whether a series counts is read from ``setup.json`` and armed by a human;
+    no code path ever read the emitted block back. If that stops being true the
+    marker has to come back in some form, so this is the test that would fail.
+    """
+    from p2pchase.reports.league import league_block as block
+    assert block(True, SIGN_OFF)["counted"] is True
+    assert block()["counted"] is False
+
+
+def test_the_result_matches_the_course_template_exactly():
+    """The whole point of the removal, checked against the template itself."""
+    import json
+    template = json.loads(
+        (Path(__file__).resolve().parents[3] / "tests" / "fixtures"
+         / "course_template_fields.json").read_text(encoding="utf-8"))
+    body = artifacts.build_result_artifact("a-vs-b", "uid", ["a", "b"], [], {}, {})
+    extra = [k for k in body if k not in template["result_top"]]
+    assert extra == ["repositories"], (
+        "only `repositories` may exceed the template -- it carries the four "
+        "rule-49 repo links and no other artifact does")
 
 
 def test_the_marker_is_outside_the_agreement_digest():

@@ -73,7 +73,13 @@ def seal_stay(session: Any, step: int, hint: str = CONCESSION_HINT) -> str:
         move=decision.move, hint=hint, intent=decision.intent, barrier=None,
         position=session.state.settled_position(decision.move, None),
     )
-    record = commit(intent.payload())
+    # The pairing's form, exactly as PeerSession.prepare_step seals every other
+    # step. Missing it here sealed the terminal record in our own construction
+    # while steps 1..N-1 used the kit's: imreeyal audited our thief chain 20/21
+    # on 2026-08-09 and named the last record. A chain hashed two ways is the
+    # one shape no auditor can pass, and it hides at the end of a won sub-game.
+    record = commit(intent.payload(),
+                    form=session.config.seal_form(session.opponent))
     session._pending = (decision, hint, record)
     return record.commit
 

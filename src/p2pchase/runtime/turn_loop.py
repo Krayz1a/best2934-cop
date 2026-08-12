@@ -240,6 +240,30 @@ class TurnLoop:
         grid = state.broadcast.transmitted(state.my_scent.grid)
         return {f"{r},{c}": round(v, 6) for (r, c), v in sorted(grid.items())}
 
+    def outcome(self) -> str:
+        """How this peer reads the sub-game, including endings nobody announced.
+
+        ``finished`` records an ending we *observed*: a capture either side
+        settled, our own survival at the threshold, or a survival they claimed.
+        It leaves out the one ending that arrives by nothing happening -- the
+        thief running out the clock on a cop who is never told.
+
+        gal-roy1 saw that from the other side on 2026-08-09: our ``agree_result``
+        named an outcome on the capture path and nothing on the survival path,
+        because their thief simply survived and our cop had no observation to
+        write down. A peer that cannot name its own loss cannot agree a result,
+        and rule 35 voids a sub-game whose two reports disagree -- including
+        when one of them is silent.
+
+        The horizon is symmetric and both boards can see it, so the cop derives
+        it rather than waiting to be told. This reports our own defeat, which is
+        the point: the truthful answer is the one that agrees with theirs.
+        """
+        if self.finished:
+            return self.finished
+        return (constants.OUTCOME_SURVIVAL
+                if self.session.state.survival_reached() else "")
+
     def _survival_claim(self) -> dict[str, Any] | None:
         """Thief only, at the threshold. Nobody else can see this ending."""
         state = self.session.state
