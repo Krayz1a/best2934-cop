@@ -41,7 +41,7 @@ def test_the_scope_is_send_only():
 
 
 def test_the_report_travels_as_a_json_attachment(tmp_path):
-    message = _decode(build_message("subject", "body", "result_a-vs-b.json", RESULT))
+    message = _decode(build_message("subject", "result_a-vs-b.json", RESULT))
     attachments = [p for p in message.walk()
                    if p.get_filename() == "result_a-vs-b.json"]
     assert len(attachments) == 1
@@ -50,30 +50,59 @@ def test_the_report_travels_as_a_json_attachment(tmp_path):
 
 def test_the_attachment_round_trips_unicode_intact():
     """Hebrew group names and messages must survive base64 and MIME."""
-    message = _decode(build_message("s", "b", "r.json", RESULT))
+    message = _decode(build_message("s", "r.json", RESULT))
     part = next(p for p in message.walk() if p.get_filename() == "r.json")
     assert json.loads(part.get_payload(decode=True).decode("utf-8")) == RESULT
 
 
-def test_the_body_carries_a_summary_and_never_the_report_itself():
-    """Rule 34: the binding content is the attachment, not the prose."""
-    message = _decode(build_message("subject", "human summary here", "r.json", RESULT))
+def test_the_body_is_the_attachment_byte_for_byte():
+    """Reversed on 2026-08-12. Rule 34 still holds -- read the docstring.
+
+    This test used to assert the body was prose and never the report, on the
+    reading that rule 34 makes the attachment the binding content. It does, and
+    it still does: mirroring the attachment does not make the body binding.
+
+    What changed is knowing the failure mode. imreeyal named the league's
+    near-miss: an email whose pasted body and attached file are two *separate*
+    serializations of one result and do not byte-match. A reader cannot tell
+    which is the report, and rule 35 turns any unexplained difference between
+    two copies into a voided sub-game for both teams. Identical bytes cannot
+    have that argument.
+
+    So the body is not composed at all -- there is one serialization and it is
+    used twice.
+    """
+    message = _decode(build_message("subject", "r.json", RESULT))
+    parts = list(message.walk())
+    body = next(p for p in parts if p.get_content_type() == "text/plain")
+    attached = next(p for p in parts if p.get_filename() == "r.json")
+    assert (body.get_payload(decode=True).decode("utf-8").rstrip("\n")
+            == attached.get_payload(decode=True).decode("utf-8").rstrip("\n"))
+
+
+def test_the_body_no_longer_leaks_our_members_to_a_cc():
+    """A side effect worth pinning: the result JSON carries no member names.
+
+    The old prose body listed them. For a friendly, whose report goes to the
+    opposing team as well as the lecturer, that disclosed our teammates' names
+    to another group for no reason. The template has no members field, so the
+    mirrored body cannot carry one.
+    """
+    message = _decode(build_message("subject", "r.json", RESULT))
     body = next(p for p in message.walk() if p.get_content_type() == "text/plain")
-    text = body.get_payload(decode=True).decode("utf-8")
-    assert "human summary here" in text
-    assert '"final_result"' not in text
+    assert "Members:" not in body.get_payload(decode=True).decode("utf-8")
 
 
 def test_the_recipient_defaults_to_the_league_address():
     from p2pchase import constants
 
-    message = _decode(build_message("s", "b", "r.json", RESULT))
+    message = _decode(build_message("s", "r.json", RESULT))
     assert message["To"] == constants.AGENT_REPORT_EMAIL
 
 
 def test_a_sender_is_only_set_when_one_is_configured():
-    with_sender = _decode(build_message("s", "b", "r.json", RESULT, sender="me@example.com"))
-    without = _decode(build_message("s", "b", "r.json", RESULT))
+    with_sender = _decode(build_message("s", "r.json", RESULT, sender="me@example.com"))
+    without = _decode(build_message("s", "r.json", RESULT))
     assert with_sender["From"] == "me@example.com"
     assert without["From"] is None
 

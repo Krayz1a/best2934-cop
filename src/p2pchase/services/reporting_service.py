@@ -72,33 +72,11 @@ class ReportingService:
             f"{self.config.group_id} result report"
         )
 
-    def body(self, result: dict[str, Any]) -> str:
-        """Human-readable summary. The binding content is the attachment."""
-        final = result.get("final_result", {})
-        lines = [
-            f"Group: {self.config.group_id} ({self.config.group_name})",
-            f"Members: {', '.join(self.config.members)}",
-            f"Game: {result.get('game_id', '')}   uid: {result.get('game_uid', '')}",
-            f"Sub-games played: {result.get('num_sub_games', 0)}",
-            f"Total score: {final.get('total_score', {})}",
-            f"Sub-games won: {final.get('sub_games_won', {})}",
-            f"Winner: {final.get('winner_group') or 'series tie'}",
-            f"Tokens: {final.get('tokens_total_series', {})}",
-            f"Mutual agreement sha256: {result.get('mutual_agreement', {}).get('sha256', '')}",
-            "",
-            "Cop repository:   " + self.config.repos.get("cop", ""),
-            "Thief repository: " + self.config.repos.get("thief", ""),
-            "",
-            "The binding report is the attached JSON file (rule 34).",
-        ]
-        return "\n".join(lines)
-
     def compose(self, result: dict[str, Any]) -> tuple[dict[str, str], str]:
         """Build the raw message and the attachment filename."""
         attachment_name = f"result_{result.get('game_id', 'game')}.json"
         raw = gmail_sender.build_message(
             subject=self.subject(result),
-            body=self.body(result),
             attachment_name=attachment_name,
             attachment=result,
             sender=gmail_sender.sender_address(),

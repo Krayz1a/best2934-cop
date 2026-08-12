@@ -53,22 +53,33 @@ def sender_address() -> str:
     return os.environ.get("P2PCHASE_GMAIL_SENDER", "")
 
 
-def build_message(subject: str, body: str, attachment_name: str,
+def build_message(subject: str, attachment_name: str,
                   attachment: dict[str, Any], sender: str = "",
                   recipient: str = constants.AGENT_REPORT_EMAIL) -> dict[str, str]:
     """Build the raw, base64url-encoded message the Gmail API expects.
 
     Separated from sending so the exact bytes can be asserted in a unit test
     without touching the network or holding a credential.
+
+    There is deliberately no ``body`` parameter. imreeyal, who have run four
+    counted pairings, asked for the body to be the exact bytes of the attached
+    file and never a second serialization; a parameter would let a caller
+    reintroduce the divergence one refactor later.
     """
     message = EmailMessage()
     message["To"] = recipient
     message["Subject"] = subject
     if sender:
         message["From"] = sender
-    message.set_content(body)
 
+    # ONE serialization, used twice. The league's near-miss is an email whose
+    # pasted body and attached file are two renderings of the same object that
+    # do not byte-match; the reader cannot tell which is the report, and rule 35
+    # turns any unexplained difference into a voided sub-game for both teams.
+    # Serializing separately for the body would be exactly that bug, so the body
+    # is not built at all -- it *is* the attachment.
     payload = json.dumps(attachment, indent=2, ensure_ascii=False).encode("utf-8")
+    message.set_content(payload.decode("utf-8"))
     message.add_attachment(payload, maintype="application", subtype="json",
                            filename=attachment_name)
     return {"raw": base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")}
