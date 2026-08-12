@@ -83,7 +83,7 @@ class InteropAdapter:
         the agreed rule and the two group ids before anyone connects.
         """
         self.recorder.note_caller(payload)
-        clash = pairing_guard.adopt(self.handlers.session, payload)
+        clash = pairing_guard.at_the_door(self, payload)
         if clash:
             return contracts.error(f"wrong pairing: {clash}")
         answer = self.handlers.hello(payload)
@@ -109,7 +109,7 @@ class InteropAdapter:
         perfectly legal config.
         """
         self.recorder.note_caller(payload)
-        clash = pairing_guard.adopt(self.handlers.session, payload)
+        clash = pairing_guard.at_the_door(self, payload)
         if clash:
             return contracts.error(f"wrong pairing: {clash}")
         proposed = payload.get("config")
@@ -145,7 +145,7 @@ class InteropAdapter:
         gets a new session -- the same role and game, a clean board.
         """
         self.recorder.note_caller(payload)
-        clash = pairing_guard.adopt(self.handlers.session, payload)
+        clash = pairing_guard.at_the_door(self, payload)
         if clash:
             return contracts.error(f"wrong pairing: {clash}")
         self._restart_if_a_new_sub_game(payload)

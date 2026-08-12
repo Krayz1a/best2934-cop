@@ -107,3 +107,81 @@ def test_the_late_refusal_names_both_pairings():
     session = _session("imreeyal", "best2934-vs-imreeyal", records=[{}, {}])
     refusal = pairing_guard.adopt(session, {"group_id": "gal-roy1"})
     assert "imreeyal" in refusal and "gal-roy1" in refusal
+
+
+# ------------------------------------- retiring a sub-game that is over
+class _Adapter:
+    """The smallest thing shaped like an InteropAdapter for this decision."""
+
+    def __init__(self, session, finished: str = ""):
+        self.handlers = SimpleNamespace(session=session)
+        self._turns = SimpleNamespace(finished=finished, round=35) if finished != "-" else None
+        self.restarted = 0
+
+    def _restart_if_a_new_sub_game(self, payload):
+        self.restarted += 1
+        self.handlers.session = _session(self.handlers.session.opponent,
+                                         self.handlers.session.game_id)
+
+
+def test_a_finished_sub_game_is_retired_rather_than_defended(monkeypatch):
+    """gal-roy1, 2026-08-12: sub-game 4 settled clean, sub-game 5 was refused.
+
+    The records existed and were unextendable -- the sub-game they belonged to
+    had ended thirty-five rounds earlier. Refusing to continue a chain nobody
+    was continuing is what made our standing door a one-sub-game door.
+    """
+    monkeypatch.setattr(pairing_guard, "build_own_state",
+                        lambda *a: SimpleNamespace(board=a[2]))
+    adapter = _Adapter(_session("", "local-rehearsal", records=[{}] * 35),
+                       finished="SURVIVAL")
+    assert pairing_guard.at_the_door(adapter, {"group_id": "gal-roy1"}) == ""
+    assert adapter.restarted == 1
+    assert adapter.handlers.session.opponent == "gal-roy1"
+
+
+def test_a_live_sub_game_still_refuses():
+    """The original refusal is untouched: these records can still be extended."""
+    adapter = _Adapter(_session("imreeyal", "best2934-vs-imreeyal", records=[{}] * 12))
+    refusal = pairing_guard.at_the_door(adapter, {"group_id": "gal-roy1"})
+    assert "already sealed" in refusal
+    assert adapter.restarted == 0
+    assert adapter.handlers.session.opponent == "imreeyal"
+
+
+def test_the_reset_happens_before_the_pairing_is_judged(monkeypatch):
+    """Ordering is the whole defect, so it is asserted directly.
+
+    The three call sites used to run the guard first and the reset second, so
+    the guard was handed state the next line would have discarded.
+    """
+    monkeypatch.setattr(pairing_guard, "build_own_state",
+                        lambda *a: SimpleNamespace(board=a[2]))
+    seen: list[int] = []
+    adapter = _Adapter(_session("", "local-rehearsal", records=[{}] * 35),
+                       finished="CAPTURE")
+    original = adapter._restart_if_a_new_sub_game
+
+    def spy(payload):
+        seen.append(len(adapter.handlers.session.records))
+        original(payload)
+
+    adapter._restart_if_a_new_sub_game = spy
+    assert pairing_guard.at_the_door(adapter, {"group_id": "gal-roy1"}) == ""
+    assert seen == [35], "the reset must see the old records, the guard must not"
+
+
+def test_a_door_that_has_never_played_needs_no_reset():
+    adapter = _Adapter(_session("imreeyal", "best2934-vs-imreeyal"), finished="-")
+    assert pairing_guard.at_the_door(adapter, {}) == ""
+    assert adapter.restarted == 0
+
+
+def test_the_same_opponent_returning_for_a_new_sub_game_is_let_through(monkeypatch):
+    """imreeyal's case: no pairing change at all, just the next sub-game."""
+    monkeypatch.setattr(pairing_guard, "build_own_state",
+                        lambda *a: SimpleNamespace(board=a[2]))
+    adapter = _Adapter(_session("imreeyal", "best2934-vs-imreeyal", records=[{}] * 35),
+                       finished="SURVIVAL")
+    assert pairing_guard.at_the_door(adapter, {"group_id": "imreeyal"}) == ""
+    assert adapter.restarted == 1

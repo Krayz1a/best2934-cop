@@ -53,6 +53,34 @@ def caller_group(payload: dict[str, Any] | None) -> str:
     return str(named.get("group_id", "") or "").strip()
 
 
+def at_the_door(adapter: Any, payload: dict[str, Any] | None) -> str:
+    """Judge the caller's pairing, after retiring a sub-game that is already over.
+
+    :func:`adopt` refuses when records are already sealed, and that refusal is
+    right for records belonging to the chain being played. It is wrong for
+    records belonging to a chain that *finished*, and on 2026-08-12 gal-roy1
+    hit exactly that: sub-game 4 settled clean at 35 rounds, its records stayed
+    in the session, and their sub-game 5 handshake was refused for continuing a
+    chain nobody was continuing. Their reading was right -- our standing door
+    played one sub-game per process.
+
+    The distinction is what is at stake, not what exists. A finished sub-game's
+    records cannot be extended by anything the next caller does; they are
+    history, and history is retired here rather than defended. A *live*
+    sub-game's records still can be, so that refusal stands untouched.
+
+    Reaching into the adapter is deliberate. The reset and the pairing check
+    have to happen in that order at every door, and three call sites each
+    remembering to do it in the right order is how the ordering bug happens
+    again -- the second time, in this same file's story. One function that
+    cannot be called half-way is the fix.
+    """
+    loop = getattr(adapter, "_turns", None)
+    if loop is not None and getattr(loop, "finished", ""):
+        adapter._restart_if_a_new_sub_game(payload)
+    return adopt(adapter.handlers.session, payload)
+
+
 def adopt(session: Any, payload: dict[str, Any] | None) -> str:
     """Re-point a session at the peer that is actually calling it.
 
