@@ -24,6 +24,7 @@ from .match_log import build_log_artifact
 from .naming import (
     TIMEZONE,
     ArtifactSet,
+    derive_game_uid,
     links_block,
     make_game_id,
     new_game_uid,
@@ -45,6 +46,7 @@ __all__ = [
     "league_block",
     "links_block",
     "make_game_id",
+    "derive_game_uid",
     "new_game_uid",
     "now_iso",
     "write_json",

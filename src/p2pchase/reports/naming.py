@@ -14,6 +14,7 @@ so two teams' artifact sets line up file for file when they audit each other.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from dataclasses import dataclass, field
@@ -31,8 +32,38 @@ def now_iso() -> str:
 
 
 def new_game_uid() -> str:
-    """A globally unique id for one match, generated once by the initiator."""
+    """A random uid, for a match that has no agreed terms to derive one from.
+
+    Kept for the local rehearsal and the solo paths, which have no opponent to
+    agree with and therefore nothing to derive from. **A networked match must
+    use :func:`derive_game_uid` instead** -- see the warning there.
+    """
     return str(uuid.uuid4())
+
+
+def derive_game_uid(terms: dict[str, Any], group_a: str, group_b: str) -> str:
+    """The uid both peers reach independently, with no round-trip.
+
+    ``UUID(SHA256(canonical(terms) + "|" + "|".join(sorted(pair)))[:16])``, the
+    kit's CORE construction (SPEC section 4, ``vectors/game_uid.json``). Both
+    sides sort the pair, so neither has to be told whose name comes first.
+
+    We shipped ``uuid4()`` here until 2026-08-14, and the friendly against
+    imreeyal is what exposed it: their report carried
+    ``0d98626a-7369-b854-e473-3df1898d45f1`` and ours carried
+    ``f8e9733a-7665-4044-a392-69640a28ac64``, for the same six sub-games, from
+    identical terms. Theirs is not even a version-4 uuid -- the version nibble
+    is ``b`` -- which is the tell that it was derived while ours was rolled.
+
+    A uid is what joins the four artifacts of one match, so two uids means the
+    lecturer receives two matches that cannot be joined, from two teams who
+    both played correctly. anrbj666 put the cost precisely on league issue #49:
+    a mismatch found before play is a five-minute fix, and found at settlement
+    it voids the match for both teams under rule 35.
+    """
+    from ..domain.crypto import canonical_json  # local: naming is imported early
+    preimage = canonical_json(terms) + "|" + "|".join(sorted([group_a, group_b]))
+    return str(uuid.UUID(bytes=hashlib.sha256(preimage.encode("utf-8")).digest()[:16]))
 
 
 def make_game_id(group_a: str, group_b: str) -> str:

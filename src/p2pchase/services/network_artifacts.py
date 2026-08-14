@@ -20,9 +20,11 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from ..domain.core_terms import core_terms
 from ..domain.scoring import build_score_table
 from ..infra.sysinfo import collect_hardware, git_commit
 from ..reports import artifacts
+from ..reports.naming import opponent_in_game_id
 from ..reports.series_assembly import assemble_series
 from ..shared.paths import artifacts_dir, sibling_artifacts_dir
 from ..shared.peer_config import PeerConfig
@@ -85,7 +87,7 @@ class NetworkArtifactService:
         if path.exists():
             existing = json.loads(path.read_text(encoding="utf-8"))
             return str(existing.get("game_uid", "")), path
-        game_uid = artifacts.new_game_uid()
+        game_uid = self.game_uid_for(game_id)
         payload = artifacts.build_declaration(
             game_id, game_uid, self._mine(), self._identity(handshake),
             num_sub_games=self.config.num_sub_games,
@@ -122,6 +124,25 @@ class NetworkArtifactService:
         written.append(self.refresh_result(game_id, game_uid, opponent))
         LOGGER.info("sub-game %d artifacts written under %s", sub_game, self.output_dir)
         return written
+
+    def game_uid_for(self, game_id: str) -> str:
+        """The match uid, derived from the agreed terms rather than rolled.
+
+        Both peers reach this number independently from the flat fourteen and
+        the sorted group pair, so the four artifacts of one match join up
+        across two codebases. We rolled a ``uuid4()`` here until the imreeyal
+        friendly on 2026-08-14 put their derived uid beside our random one in
+        two reports describing the same six sub-games.
+
+        Falls back to a random uid only when the game id does not name us and
+        an opponent -- a rehearsal, a renamed group -- where there is no agreed
+        pairing to derive from and nobody on the other side to disagree with.
+        """
+        opponent = opponent_in_game_id(game_id, self.config.group_id)
+        if not opponent:
+            return artifacts.new_game_uid()
+        return artifacts.derive_game_uid(core_terms(self.config.shared),
+                                         self.config.group_id, opponent)
 
     # --------------------------------------------------------------- result
     def series_logs(self, game_id: str) -> list[dict[str, Any]]:
