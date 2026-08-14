@@ -68,11 +68,52 @@ def test_a_friendly_pays_no_diversity_reward(ledger):
     assert block["diversity_reward_applied"] == {"best2934": False, "imreeyal": False}
 
 
-def test_a_counted_first_meeting_pays_it_to_both(ledger):
-    block = standings_block("best2934", "imreeyal", counted=True,
-                            opponent_games=5, directory=ledger)
+def test_the_diversity_reward_goes_to_the_winner_alone(ledger):
+    """The correction, and the one a friendly could never have surfaced.
 
-    assert block["diversity_reward_applied"] == {"best2934": True, "imreeyal": True}
+    We first wrote this as "counted and first meeting", paid to both sides.
+    imreeyal contradicted it on issue #45 -- we had asked to be -- and the book
+    settles it against us twice: ch, "a *victory* over an opponent you have not
+    yet played earns the full reward", and App F table row 2, "score for a
+    *victory* against a new opponent -- 10 -- fixed". The reward is for winning
+    a new opponent, not for meeting one.
+    """
+    block = standings_block("best2934", "imreeyal", counted=True,
+                            opponent_games=5, winner_group="best2934",
+                            directory=ledger)
+
+    assert block["diversity_reward_applied"] == {"best2934": True, "imreeyal": False}
+
+
+def test_the_loser_of_a_counted_first_meeting_is_paid_nothing(ledger):
+    block = standings_block("best2934", "imreeyal", counted=True,
+                            opponent_games=5, winner_group="imreeyal",
+                            directory=ledger)
+
+    assert block["diversity_reward_applied"] == {"best2934": False, "imreeyal": True}
+
+
+def test_a_tied_counted_series_pays_neither(ledger):
+    """``winner_group`` is null on a tie, so nobody won a new opponent."""
+    block = standings_block("best2934", "imreeyal", counted=True,
+                            opponent_games=5, winner_group=None,
+                            directory=ledger)
+
+    assert block["diversity_reward_applied"] == {"best2934": False, "imreeyal": False}
+
+
+def test_both_spellings_agree_on_every_friendly_which_is_why_it_hid(ledger):
+    """The reason this survived a six-sub-game friendly and a review.
+
+    Paid-to-both and paid-to-winner print false/false on any uncounted series
+    and on any tie. They diverge only on a counted series someone wins -- in the
+    mail, on a standings field, under rule 35.
+    """
+    friendly = standings_block("best2934", "imreeyal", counted=False,
+                               opponent_games=5, winner_group="best2934",
+                               directory=ledger)
+
+    assert friendly["diversity_reward_applied"] == {"best2934": False, "imreeyal": False}
 
 
 def test_a_second_series_against_the_same_team_is_not_a_first_meeting(ledger):
@@ -81,7 +122,8 @@ def test_a_second_series_against_the_same_team_is_not_a_first_meeting(ledger):
     record_counted_game("imreeyal", ledger)
 
     block = standings_block("best2934", "imreeyal", counted=True,
-                            opponent_games=5, directory=ledger)
+                            opponent_games=5, winner_group="best2934",
+                            directory=ledger)
 
     assert block["first_meeting_between_groups"] is False
     assert block["diversity_reward_applied"]["best2934"] is False
