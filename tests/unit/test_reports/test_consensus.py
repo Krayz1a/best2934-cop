@@ -13,6 +13,8 @@ so the suite stays hermetic and keeps passing when nobody has that repo.
 
 from __future__ import annotations
 
+from p2pchase import constants
+from p2pchase.reports import consensus
 from p2pchase.reports.consensus import (
     interop_aggregate,
     interop_canonical,
@@ -238,3 +240,32 @@ def test_the_withdrawn_six_key_digest_is_reproducible_and_is_not_ours():
                                        for row in summary["sub_games"]])
     assert interop_signature(six_key) == KIT_PAIRING_SIX_KEY_SIGNATURE
     assert interop_signature(summary) != KIT_PAIRING_SIX_KEY_SIGNATURE
+
+
+# ------------------------------------------------------- the forfeit spelling
+def test_a_forfeit_is_spelled_timeout_in_the_league_row():
+    """Our word for the category, in a slot that wants their word for the value.
+
+    The reference's ``domain/protocol.py`` types the field as
+    ``"capture" | "survival" | "timeout"``; "technical loss" appears only in its
+    ``domain/scoring.py``, naming the *category* that timeout, tamper_forfeit
+    and stopped all fall into at 0/0. So ``technical_loss`` was a category name
+    in a value slot, and it went out unmapped on every report we filed.
+
+    Harmless on a clean series, and precisely what bites on a forfeit -- the one
+    ending where the two teams can least afford a spelling argument, because at
+    least one of them has stopped answering. Confirmed with imreeyal on league
+    issue #45 before mapping it rather than guessed at.
+    """
+    assert consensus.league_result(constants.OUTCOME_TECHNICAL_LOSS) == "timeout"
+
+
+def test_the_two_endings_that_already_agreed_are_left_alone():
+    for outcome in (constants.OUTCOME_CAPTURE, constants.OUTCOME_SURVIVAL):
+        assert consensus.league_result(outcome) == outcome
+
+
+def test_an_ending_we_do_not_recognise_passes_through_rather_than_vanishing():
+    """A value we cannot map is a disagreement to see, not one to hide. Blanking
+    it would file a row whose result field says nothing at all."""
+    assert consensus.league_result("resigned") == "resigned"

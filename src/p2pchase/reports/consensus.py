@@ -99,20 +99,46 @@ def interop_sub_game(outcome: Any) -> dict[str, Any]:
     failed settlement just as completely, and one layer further down where
     nothing would have looked suspicious.
 
-    ``technical_loss`` is ours alone -- the reference's vocabulary is
-    ``capture``/``survival``/``timeout``. It passes through unmapped rather
-    than guessed at, and is raised with opponents instead: a forfeit is exactly
-    when nobody wants to discover a spelling disagreement.
+    ``technical_loss`` is the one value that does need translating, and it is
+    now translated -- see :data:`LEAGUE_RESULT`.
     """
     ours = wire_sub_game(outcome)
     raw = outcome.as_dict() if hasattr(outcome, "as_dict") else dict(outcome)
     return {
         "sub_game_number": ours["sub_game"],
         "roles": dict(raw.get("roles", {})),
-        "result": str(raw.get("result", "")),
+        "result": league_result(raw.get("result", "")),
         "winner_group": ours["winner"],
         "score": ours["scores"],
     }
+
+
+#: Our outcome vocabulary in the league's spelling. One entry, because the other
+#: two already agree: ``capture`` and ``survival`` are the reference's own words
+#: and ours by coincidence of both reading the same book.
+#:
+#: ``technical_loss`` is ours alone. The reference calls the *value* ``timeout``
+#: (``domain/protocol.py``: ``"capture" | "survival" | "timeout"``) and uses
+#: "technical loss" only for the *category* those endings fall into -- its
+#: ``domain/scoring.py`` says "any other outcome (timeout / tamper_forfeit /
+#: stopped) is a technical loss: 0/0". So we were putting a category name in a
+#: value slot.
+#:
+#: It passed through unmapped until 2026-08-14, on the reasoning that guessing
+#: was worse than asking. Asking is what settled it: imreeyal confirmed on
+#: league issue #45 that their row carries ``timeout``, and the reference's own
+#: source says the same thing, so this is no longer a guess.
+#:
+#: It cannot bite on a clean series and it is exactly what bites on a forfeit --
+#: the one ending where the two teams are least able to sort anything out
+#: afterwards, because at least one of them is not answering.
+LEAGUE_RESULT = {constants.OUTCOME_TECHNICAL_LOSS: "timeout"}
+
+
+def league_result(result: Any) -> str:
+    """One sub-game's outcome, spelled the way the league spells it."""
+    value = str(result)
+    return LEAGUE_RESULT.get(value, value)
 
 
 def interop_aggregate(group_ids: list[str], sub_games: list[dict[str, Any]],
