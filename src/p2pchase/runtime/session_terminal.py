@@ -36,6 +36,7 @@ from ..domain.brains import Decision
 from ..domain.crypto import commit
 from ..domain.protocol import StepIntent
 from ..mcp.turn_message import TurnMessage
+from . import wall_capture
 
 #: The one move that asserts nothing. Named here because this module's whole
 #: argument is that the terminal step must be *this* move and not another.
@@ -103,11 +104,15 @@ def build_terminal(session: Any, loop: Any, sender: str, step: int,
     Lives here rather than on the driver because it is the same argument the
     module docstring makes: this is how a peer stops, not how it plays.
     """
-    caught = session.i_am_caught
+    # Asked before the hint is chosen, so a thief walled in on the final round
+    # concedes in the sentence it seals as well as in the claim it withholds
+    # (rule 47). Both halves are disclosed at the audit and an opponent reading
+    # "still running" beside a board with no exits has found a contradiction.
+    caught = wall_capture.boxed_in(session) or session.i_am_caught
     hint = CONCESSION_HINT if caught else CLOSING_HINT
     commitment = seal_stay(session, step, hint)
     state = session.state
-    survived = state.survival_reached() and not state.is_cop
+    survived = state.survival_reached() and not state.is_cop and not caught
     turn = TurnMessage(
         step=step, sender=sender, commit=commitment, hint=hint,
         # The real lagged field, never ``{}``: to a strict physics checker an

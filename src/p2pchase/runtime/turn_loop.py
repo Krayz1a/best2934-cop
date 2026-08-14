@@ -183,6 +183,11 @@ class TurnLoop:
         caught = self.session.on_reveal(
             turn.step, "", turn.hint, turn.barrier_placed, turn.capture_claim)
         self.walled = wall_capture.entering(self.session, turn.barrier_placed)
+        if wall_capture.boxed_in(self.session):
+            # Their wall took our last exit. Rule 47, and it is settled the
+            # moment the barrier is declared -- not at the move ceiling, which
+            # is where it used to arrive dressed as a survival.
+            self.finished = constants.OUTCOME_CAPTURE
         if turn.scent_grid:
             self.session.absorb_scent(turn.scent_grid)
         if turn.win_claim:
@@ -227,7 +232,8 @@ class TurnLoop:
         self.session.apply_own_step()
         # Judged after our move, not before: a thief still on the walled cell at
         # the end of its own round is caught under any reading of I-8 (rule 46).
-        if wall_capture.leaving(self.session, self.walled):
+        if wall_capture.leaving(self.session, self.walled) or \
+                wall_capture.boxed_in(self.session):
             self.finished = constants.OUTCOME_CAPTURE
         self.walled = None
         self.session.end_of_turn()
@@ -261,13 +267,30 @@ class TurnLoop:
         """
         if self.finished:
             return self.finished
+        if wall_capture.boxed_in(self.session):
+            # The last-resort reading of rule 47, for a sub-game that ended by
+            # something other than a round of this loop -- a dropped connection,
+            # a watchdog, an abort. The board is still ours to read, and a thief
+            # with no exit lost whatever else went wrong.
+            return constants.OUTCOME_CAPTURE
         return (constants.OUTCOME_SURVIVAL
                 if self.session.state.survival_reached() else "")
 
     def _survival_claim(self) -> dict[str, Any] | None:
-        """Thief only, at the threshold. Nobody else can see this ending."""
+        """Thief only, at the threshold, and only if we are not walled in.
+
+        Reaching the ceiling is necessary and it is not sufficient. A thief that
+        has been boxed since step 7 also reaches step 35, and claiming survival
+        there asserts the opposite of what the board says -- against an opponent
+        holding our own signed record of thirty stationary steps. Rule 47 is
+        checked here as well as where the wall lands because the two rounds are
+        not the same round, and this is the one that speaks.
+        """
         state = self.session.state
         if state.is_cop or not state.survival_reached():
+            return None
+        if wall_capture.boxed_in(self.session):
+            self.finished = constants.OUTCOME_CAPTURE
             return None
         self.finished = constants.OUTCOME_SURVIVAL
         return {"type": "survival", "steps": int(state.step)}
