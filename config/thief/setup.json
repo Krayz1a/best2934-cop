@@ -52,7 +52,9 @@
     "brain": "",
     "area_weight": 1.0,
     "distance_weight": 1.2,
-    "endgame_window": 4
+    "endgame_window": 4,
+    "_exit_min_safe_remark": "Refuse a cell with this many ways out or fewer while any alternative exists (rule 47). 2 is the corner count on an unwalled 7x7. Fielded on wire evidence against harness advice: all TWELVE networked thief sub-games we have played -- nine vs gal-roy1, three vs imreeyal -- ended in the same corner (6,6), reached at step 6 and stationary from step 18, identically every time; imreeyal sealed it with two barriers and all three were captures under rule 47. In the local harness this move is worth +47/60 survival against our own fielded cop and -47/60 against a barrier-heavy one -- but that harness cop shares our scent model and transmitted field, and no real opponent has ever captured us by pursuit: imreeyal converted 0 times by chasing and 3 times by walling a corner our own policy walked into. Set to 0 to disable the veto if a real match says otherwise; do not re-pick it from the harness.",
+    "exit_min_safe": 2
   },
   "trash_talk": {
     "provider": "template",

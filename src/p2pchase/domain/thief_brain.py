@@ -42,11 +42,9 @@ class ThiefBrain(BrainBase):
     ADJACENCY_PENALTY = 6.0
     #: Standing still saturates our own scent field and paints a target.
     IDLE_PENALTY = 1.0
-    #: Ways out at or below which a cell is a trap worth refusing...
+    #: Ways out at or below which a cell is a trap worth refusing while any
+    #: alternative exists. Two is the corner count on an unwalled board.
     EXIT_MIN_SAFE = 2
-    #: ...but only with the believed cop this close. A barrier comes from a cop
-    #: standing beside the cell, so a corner with nobody near it is just a cell.
-    EXIT_THREAT_RANGE = 3
 
     def _decide_move(self, state: OwnState) -> Decision:
         move = self._pick_move(state)
@@ -74,37 +72,41 @@ class ThiefBrain(BrainBase):
         return sum(1 for move in state.board.legal_moves(cell) if move != "STAY")
 
     def _trappable(self, state: OwnState, cell: tuple[int, int]) -> bool:
-        """Whether a cop close to ``cell`` could seal us into it (rule 47).
+        """Whether ``cell`` has few enough ways out to be sealed us into.
 
         ``reachable_area`` cannot see this. On an open board a corner and a
         centre cell reach nearly the same number of squares, so the two score
         alike right up until the moment the corner is sealed -- and by then it
-        is not a scoring question any more. imreeyal walled our thief into
-        (6, 6) behind (5, 6) and (6, 5) in all three of our thief sub-games on
-        2026-08-14, every time inside seven moves, because the old score walked
-        us there and had nothing to say about it.
+        is not a scoring question any more.
 
-        **A veto rather than a term in the score, deliberately.** Scoring open
-        cells higher is the obvious fix and it is the wrong one: high-exit cells
-        are central cells, so the preference pulls the thief *toward* the cop it
-        is running from. Measured over sixty seeds a standing exit bonus took
-        survival against a wall-happy cop from 59/60 to 6/60 -- and the same
-        sweep moved by twenty games between neighbouring weights with no
-        monotone trend, which is a chaotic harness being overfitted rather than
-        a signal (ADR-025).
+        **Why this is unconditional, against the harness's advice.** Every
+        networked thief sub-game we have ever played -- nine against gal-roy1,
+        three against imreeyal, twelve of twelve -- ended in the same corner.
+        Not similar: identical. Reached (6, 6) at step 6 every time, last
+        movement at step 18 every time, then stationary to the ceiling. The old
+        score maximised distance from a cop that starts at (0, 0) while we start
+        at (3, 3), so it pointed at (6, 6) and kept pointing there, and both
+        opponents needed two barriers to finish what our own policy started.
+        imreeyal did exactly that and all three were captures under rule 47.
 
-        What is not a matter of tuning: a barrier only ever comes from a cop
-        standing beside the cell, and a cell with two exits needs two of them.
-        So this vetoes the narrow case that actually beat us -- few ways out,
-        and a cop believed close enough to spend the walls -- and says nothing
-        at all about the rest of the board.
+        A twelve-for-twelve failure against two independent opponents outweighs
+        a sixty-seed harness in which the cop shares our scent model, our
+        transmitted field and our blind spots. It is also the harness that
+        argued for the value that has never once fired in a match (see
+        :mod:`p2pchase.runtime.belief_probe`), so its objection here is not
+        evidence of the same kind.
+
+        Still a veto and not a term in the score, for the reason it always was:
+        preferring open cells prefers *central* cells, which walks the thief
+        toward the cop it is running from -- measured at 59/60 to 6/60 against a
+        wall-happy cop. This forbids the trap and leaves the rest of the board
+        to the score, which is a much smaller claim.
+
+        Falls back where every option is trappable, in
+        :meth:`_survivable`. Late in a sub-game with walls everywhere, a corner
+        may genuinely be the best cell left, and refusing all of them is not a
+        decision.
         """
-        peak = self._target_cell(state)
-        if peak is None:
-            return False
-        if state.board.manhattan(cell, peak) > self._tuned("exit_threat_range",
-                                                           self.EXIT_THREAT_RANGE):
-            return False
         return self._exits(state, cell) <= self._tuned("exit_min_safe", self.EXIT_MIN_SAFE)
 
     def _score(self, state: OwnState, move: str, cell: tuple[int, int],

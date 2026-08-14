@@ -65,10 +65,34 @@ def test_a_thief_with_room_may_still_stand_still(thief):
     assert "STAY" in moves(thief)
 
 
-def test_the_corner_itself_is_not_forbidden(thief):
-    """Two exits is not a trap on its own, and refusing every edge cell would
-    hand the middle of the board to the cop."""
+def test_the_corner_is_refused_while_anything_else_is_available(thief):
+    """The whole match record, in one assertion.
+
+    Every networked thief sub-game we have played ended in this cell -- nine
+    against gal-roy1, three against imreeyal, twelve of twelve. Not similar:
+    identical. Reached (6,6) at step 6 each time, last movement at step 18 each
+    time, stationary to the ceiling. The score maximised distance from a cop
+    starting at (0,0) while we start at (3,3), so it pointed here and kept
+    pointing here, and both opponents only had to spend two barriers on a trap
+    our own policy had already walked into.
+
+    The local harness objects: this costs 47/60 survival against a barrier-heavy
+    cop. That cop shares our scent model and our transmitted field, and no real
+    opponent has ever captured us by pursuit -- imreeyal converted zero times by
+    chasing and three times by sealing this corner. Twelve-for-twelve against
+    two independent opponents outweighs a harness playing itself.
+    """
     thief.position = (6, 5)
+
+    assert CORNER not in [cell for _m, cell in
+                          ThiefBrain()._survivable(thief, ThiefBrain()._candidates(thief))]
+
+
+def test_a_corner_is_still_taken_when_it_is_all_there_is(thief):
+    """Refusing everything is not a decision. Late in a sub-game with walls
+    everywhere a corner may be the best cell left."""
+    thief.position = (6, 5)
+    wall(thief, (5, 5), (6, 4))  # only (6,6) remains
 
     assert CORNER in [cell for _m, cell in
                       ThiefBrain()._survivable(thief, ThiefBrain()._candidates(thief))]
