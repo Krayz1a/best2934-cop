@@ -74,7 +74,20 @@ def at_the_door(adapter: Any, payload: dict[str, Any] | None) -> str:
     remembering to do it in the right order is how the ordering bug happens
     again -- the second time, in this same file's story. One function that
     cannot be called half-way is the fix.
+
+    A caller we are *already* playing changes nothing here and must not, which
+    is the correction gal-roy1 filed hours after the first version shipped. The
+    outcome of a finished sub-game lives on the turn loop, and retiring the
+    sub-game discards it -- so a ``hello`` arriving between the last move and
+    ``agree_result`` made us answer with no outcome at all, re-opening the exact
+    rule-35 hole we had just closed for them. Retiring is for the peer we are
+    changing to, never for the peer we are already talking to.
     """
+    session = adapter.handlers.session
+    theirs = caller_group(payload)
+    if not theirs or session is None or theirs == str(getattr(session, "opponent", "") or ""):
+        return ""
+
     loop = getattr(adapter, "_turns", None)
     if loop is not None and getattr(loop, "finished", ""):
         adapter._restart_if_a_new_sub_game(payload)

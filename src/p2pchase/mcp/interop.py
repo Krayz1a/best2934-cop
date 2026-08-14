@@ -239,6 +239,10 @@ class InteropAdapter:
         self.handlers.session = PeerSession(
             session.config, session.role, session.game_id,
             sub_game=opening, seed=session.seed)
+        # The fresh session re-derives its opponent from the game id, which is
+        # the very assertion the caller outranked. Carry the pairing we learned
+        # across, or the next sub-game seals in the default form (ADR-024).
+        pairing_guard.adopt(self.handlers.session, {"group_id": session.opponent})
         self._turns = None
         self.recorder.opened(opening)
 

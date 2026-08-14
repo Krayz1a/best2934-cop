@@ -177,11 +177,60 @@ def test_a_door_that_has_never_played_needs_no_reset():
     assert adapter.restarted == 0
 
 
-def test_the_same_opponent_returning_for_a_new_sub_game_is_let_through(monkeypatch):
-    """imreeyal's case: no pairing change at all, just the next sub-game."""
+def test_the_same_opponent_returning_for_a_new_sub_game_is_left_alone(monkeypatch):
+    """Reversed on gal-roy1's evidence, and the reversal is the point.
+
+    This first asserted ``restarted == 1`` -- that the same opponent knocking
+    after a finished sub-game should be rolled over here. That is what broke
+    their ``agree_result``: rolling over discards the loop holding the outcome.
+
+    Sub-game rollover for a peer we are already playing belongs to the openers,
+    ``declare_step0`` and a step-0 ``submit_turn``, which say a sub-game is
+    beginning rather than merely that someone knocked. This function's only job
+    is the pairing, and for an unchanged pairing there is no job.
+    """
     monkeypatch.setattr(pairing_guard, "build_own_state",
                         lambda *a: SimpleNamespace(board=a[2]))
     adapter = _Adapter(_session("imreeyal", "best2934-vs-imreeyal", records=[{}] * 35),
                        finished="SURVIVAL")
     assert pairing_guard.at_the_door(adapter, {"group_id": "imreeyal"}) == ""
-    assert adapter.restarted == 1
+    assert adapter.restarted == 0
+
+
+# ------------------------------- the caller we are already playing
+def test_a_caller_we_already_play_never_retires_their_own_sub_game():
+    """gal-roy1's regression report, hours after the first version shipped.
+
+    The outcome of a finished sub-game lives on the turn loop. Retiring the
+    sub-game discards it, so a ``hello`` between the last move and
+    ``agree_result`` made us answer with no outcome -- re-opening the rule-35
+    hole we had just closed for them, by way of the fix for a different one.
+    """
+    adapter = _Adapter(_session("gal-roy1", "best2934-vs-gal-roy1", records=[{}] * 35),
+                       finished="SURVIVAL")
+    assert pairing_guard.at_the_door(adapter, {"group_id": "gal-roy1"}) == ""
+    assert adapter.restarted == 0, "the peer we are talking to is not a pairing change"
+    assert adapter._turns is not None, "the loop still holds the outcome"
+
+
+def test_an_anonymous_call_never_retires_anything():
+    adapter = _Adapter(_session("gal-roy1", "best2934-vs-gal-roy1", records=[{}] * 35),
+                       finished="SURVIVAL")
+    assert pairing_guard.at_the_door(adapter, {}) == ""
+    assert adapter.restarted == 0
+
+
+def test_a_restart_keeps_the_pairing_the_caller_taught_us(monkeypatch):
+    """A rebuilt session must not forget who it is playing.
+
+    ``PeerSession`` re-derives its opponent from the game id, which is exactly
+    the assertion an inbound ``group_id`` outranks. Without carrying the learned
+    pairing across a rollover, the next sub-game seals under the default form --
+    the same class of fault that made thirteen gal-roy1 records unauditable.
+    """
+    monkeypatch.setattr(pairing_guard, "build_own_state",
+                        lambda *a: SimpleNamespace(board=a[2]))
+    fresh = _session("", "local-rehearsal")
+    assert pairing_guard.adopt(fresh, {"group_id": "gal-roy1"}) == ""
+    assert fresh.opponent == "gal-roy1"
+    assert fresh.config.seal_form("gal-roy1") == kit_seal.MERGED
