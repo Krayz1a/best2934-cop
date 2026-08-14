@@ -24,7 +24,7 @@ from ..domain.scoring import build_score_table
 from ..infra.sysinfo import collect_hardware, git_commit
 from ..reports import artifacts
 from ..reports.series_assembly import assemble_series
-from ..shared.paths import artifacts_dir
+from ..shared.paths import artifacts_dir, sibling_artifacts_dir
 from ..shared.peer_config import PeerConfig
 
 LOGGER = logging.getLogger(__name__)
@@ -124,14 +124,39 @@ class NetworkArtifactService:
         return written
 
     # --------------------------------------------------------------- result
+    def series_logs(self, game_id: str) -> list[dict[str, Any]]:
+        """Every log of this series, from *both* of the team's repositories.
+
+        Rule 41 puts our cop and our thief in separate repositories, and a
+        six-sub-game series alternates roles -- so three logs land here and
+        three land in the sibling. Globbing only this directory produced two
+        result artifacts, each internally consistent, each signed, and each
+        naming the *opposite* winner: the cop repo settled g01/g03/g05 as
+        imreeyal 30-15 while the thief repo settled g02/g04/g06 as best2934
+        30-15, when the series was in fact a 45-45 tie. Filing either one is
+        the rule-35 contradiction, and it is only visible once the two halves
+        disagree -- which is to say, on a close series, at the settlement, too
+        late. Found by the imreeyal friendly on 2026-08-14, which is precisely
+        what they insisted the friendly was for.
+
+        Our own directory wins on a duplicate sub-game number. Each sub-game is
+        played from exactly one repository, so a collision means a stale or
+        hand-copied file rather than a real disagreement -- and preferring the
+        local copy at least makes the outcome deterministic and explicable.
+        """
+        found: dict[str, dict[str, Any]] = {}
+        directories = [d for d in (sibling_artifacts_dir(), self.output_dir) if d]
+        for directory in directories:  # ours last, so ours overwrites theirs
+            for path in sorted(Path(directory).glob(f"log_{game_id}_g*.json")):
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload["_filename"] = path.name
+                found[path.name] = payload
+        return [found[name] for name in sorted(found)]
+
     def refresh_result(self, game_id: str, game_uid: str, opponent: str) -> Path:
         """Rebuild `result_<game_id>.json` from every log this match has produced."""
         names = artifacts.ArtifactSet(game_id=game_id, directory=self.output_dir)
-        logs = []
-        for path in sorted(self.output_dir.glob(f"log_{game_id}_g*.json")):
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            payload["_filename"] = path.name
-            logs.append(payload)
+        logs = self.series_logs(game_id)
 
         mine = self.config.group_id
         outcomes, final_result, tokens = assemble_series(logs, mine, opponent, self.table,

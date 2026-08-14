@@ -48,6 +48,41 @@ def artifacts_dir() -> Path:
     return project_root() / "artifacts"
 
 
+#: Repository-name suffixes that mark the two halves of one team (rule 41).
+_ROLE_SUFFIXES = (("-cop", "-thief"), ("-police", "-thief"))
+_ENV_SIBLING = "P2PCHASE_SIBLING_ARTIFACTS"
+
+
+def sibling_artifacts_dir() -> Path | None:
+    """The *other* role's artifacts directory, or ``None`` if there isn't one.
+
+    Rule 41 splits one team across two repositories, one per role. A series
+    alternates roles, so its logs land partly here and partly there -- and a
+    result assembled from only one side is a half-series that names the wrong
+    winner with total confidence. This is how the other half is found.
+
+    Discovery is by convention (``best2934-cop`` <-> ``best2934-thief``, as
+    siblings under one parent) because that is the layout the two repos are
+    generated in, and by ``P2PCHASE_SIBLING_ARTIFACTS`` when it is not. Absent
+    is a legitimate answer: a fresh clone, CI, and the test suite all have no
+    sibling, and must still assemble whatever they do have rather than fail.
+    """
+    override = os.environ.get(_ENV_SIBLING)
+    if override:
+        path = Path(override).expanduser().resolve()
+        return path if path.is_dir() else None
+
+    root = project_root()
+    for left, right in _ROLE_SUFFIXES:
+        for mine, theirs in ((left, right), (right, left)):
+            if not root.name.endswith(mine):
+                continue
+            candidate = root.parent / (root.name[: -len(mine)] + theirs) / "artifacts"
+            if candidate.is_dir():
+                return candidate
+    return None
+
+
 def logs_dir() -> Path:
     return project_root() / "logs"
 
