@@ -46,8 +46,21 @@ from .agreed import wire_sub_game
 
 #: The trimmed per-sub-game row: everything two honest teams must agree on and
 #: nothing they may legitimately differ on.
+#:
+#: Five keys, and ``tie`` is deliberately not the sixth. We carried it until
+#: 2026-08-14 on the reasoning that two honest teams must agree a sub-game was
+#: tied -- which is true, and still not a reason to hash it. The reference's
+#: ``report.emit`` builds this preimage with exactly these five and writes
+#: ``tie`` into the *document* row only, so a digest carrying it reproduces
+#: nothing anybody plays. Proven against the reference's own published sample
+#: artifact rather than argued: see the regression test named for it.
+#:
+#: The failure mode is the expensive one. A trimmed digest that nobody else
+#: computes does not fail loudly at handshake -- it fails at the settlement
+#: diff, where two honest reports look contradictory and rule 35 scores both
+#: teams zero. Found by anrbj666 against the kit's bundle (league issue #55).
 INTEROP_SUB_GAME_FIELDS = ("sub_game_number", "roles", "result", "winner_group",
-                           "tie", "score")
+                           "score")
 INTEROP_AGGREGATE_FIELDS = ("total_score", "sub_games_won", "ties", "winner_group",
                             "series_tie")
 
@@ -69,14 +82,35 @@ def interop_signature(payload: dict[str, Any]) -> str:
 
 
 def interop_sub_game(outcome: Any) -> dict[str, Any]:
-    """One finished sub-game, trimmed and renamed to the cross-team spelling."""
+    """One finished sub-game, trimmed and renamed to the cross-team spelling.
+
+    ``roles`` and ``result`` are taken from the outcome directly rather than
+    from :func:`wire_sub_game`, and that is the whole subtlety of this
+    function. Our own settlement scope upper-cases them -- ``COP``, ``CAPTURE``
+    -- and gal-roy1 adopted that scope, so it stays exactly as it is. The
+    league's row is a different row, and it is lower-case: the reference's
+    ``report.emit`` writes ``scoring.CAPTURE == "capture"`` and roles
+    ``police``/``thief`` straight into the preimage, and the kit's own filed
+    pairing artifact reproduces its published digest only with those spellings.
+
+    Our internal constants are already that vocabulary, so passing the raw
+    values through *is* the alignment; the upper-casing only ever existed for
+    our own scope. Getting the key set right and the values wrong would have
+    failed settlement just as completely, and one layer further down where
+    nothing would have looked suspicious.
+
+    ``technical_loss`` is ours alone -- the reference's vocabulary is
+    ``capture``/``survival``/``timeout``. It passes through unmapped rather
+    than guessed at, and is raised with opponents instead: a forfeit is exactly
+    when nobody wants to discover a spelling disagreement.
+    """
     ours = wire_sub_game(outcome)
+    raw = outcome.as_dict() if hasattr(outcome, "as_dict") else dict(outcome)
     return {
         "sub_game_number": ours["sub_game"],
-        "roles": ours["roles"],
-        "result": ours["result"],
+        "roles": dict(raw.get("roles", {})),
+        "result": str(raw.get("result", "")),
         "winner_group": ours["winner"],
-        "tie": ours["tie"],
         "score": ours["scores"],
     }
 

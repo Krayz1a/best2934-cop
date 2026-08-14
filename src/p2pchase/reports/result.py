@@ -159,7 +159,9 @@ def build_result_artifact(
                      "roles/result/winner/tie/scores, and derived totals",
             "interop_sha256": interop_signature(
                 interop_summary(game_id, sub_games, sorted(groups))),
-            "interop_scope": "league trimmed scope, spaced canonical form "
-                             "(copthief-league-protocol SPEC section 6)",
+            "interop_scope": "league trimmed scope -- game_id, derived aggregate, "
+                             "and the five-key per sub-game row (sub_game_number, "
+                             "roles, result, winner_group, score); spaced canonical "
+                             "form (copthief-league-protocol SPEC section 6)",
         },
     }
