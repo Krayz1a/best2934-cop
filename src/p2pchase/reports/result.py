@@ -76,14 +76,21 @@ class SubGameOutcome:
         }
 
 
-#: The template's ``final_result``, in its order. Six keys, and the two we used
-#: to add are not among them -- see :func:`template_final_result`.
+#: The template's ``final_result``, in its order: the six the reference's own
+#: sample carries -- neither of the two we used to add is among them, see
+#: :func:`template_final_result` -- then the three the lecturer's standings are
+#: built from. Those three come from the book's attached example set, which we do
+#: not hold; :mod:`p2pchase.reports.standings` has the citation, the derivations,
+#: and the reason an unverifiable source was still worth acting on.
 FINAL_RESULT_FIELDS = ("total_score", "sub_games_won", "ties", "winner_group",
-                       "series_tie", "tokens_total_series")
+                       "series_tie", "tokens_total_series",
+                       "games_played_including_this", "first_meeting_between_groups",
+                       "diversity_reward_applied")
 
 
 def template_final_result(final_result: dict[str, Any],
-                          tokens_total_series: dict[str, int]) -> dict[str, Any]:
+                          tokens_total_series: dict[str, int],
+                          standings: dict[str, Any] | None = None) -> dict[str, Any]:
     """Our scoring engine's figures, cut to the shape the grader reads.
 
     We were adding ``raw_score`` (the sums before the tie rule) and ``tie_rule``
@@ -97,11 +104,19 @@ def template_final_result(final_result: dict[str, Any],
     our own tooling still reads them; this is the boundary where the artifact
     stops being ours and starts being the course's.
 
-    Raised by imreeyal on league issue #45. Their advice came with three extra
-    fields of their own to adopt in exchange, and those are declined for the
-    same reason -- see the reply on that thread.
+    Raised by imreeyal on league issue #45, along with three standings fields of
+    their own. Those were declined for a day and then adopted when they produced
+    a citation -- to a document we do not hold and cannot check. The reasoning,
+    including why an unverifiable citation was still worth acting on, is in
+    :mod:`p2pchase.reports.standings`; it does not belong in a function whose job
+    is to select keys.
+
+    ``standings`` is passed in rather than derived here so this stays a pure
+    projection, and so a caller with no ledger -- a test, a rehearsal -- still
+    gets a valid block with the six fields it can honestly fill.
     """
-    complete = {**final_result, "tokens_total_series": tokens_total_series}
+    complete = {**final_result, "tokens_total_series": tokens_total_series,
+                **(standings or {})}
     return {name: complete[name] for name in FINAL_RESULT_FIELDS if name in complete}
 
 
@@ -130,6 +145,7 @@ def build_result_artifact(
     confirmed: bool = False,
     repositories: dict[str, dict[str, str]] | None = None,
     league: dict[str, Any] | None = None,
+    standings: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the report both teams send independently.
 
@@ -172,7 +188,8 @@ def build_result_artifact(
         "groups": sorted(groups),
         "num_sub_games": len(sub_games),
         "sub_games": [sub_game.as_dict() for sub_game in sub_games],
-        "final_result": template_final_result(final_result, tokens_total_series),
+        "final_result": template_final_result(final_result, tokens_total_series,
+                                              standings),
         "mutual_agreement": {
             "sha256": mutual_agreement_hash(summary),
             "confirmed": confirmed,

@@ -26,6 +26,7 @@ from ..infra.sysinfo import collect_hardware, git_commit
 from ..reports import artifacts
 from ..reports.naming import opponent_in_game_id
 from ..reports.series_assembly import assemble_series
+from ..reports.standings import standings_block
 from ..shared.paths import artifacts_dir, sibling_artifacts_dir
 from ..shared.peer_config import PeerConfig
 
@@ -183,10 +184,19 @@ class NetworkArtifactService:
         outcomes, final_result, tokens = assemble_series(logs, mine, opponent, self.table,
                                                          git_commit(),
                                                          self.config.tie_rule(opponent))
+        counted, _sign_off = self.config.counted_series(opponent)
         report = artifacts.build_result_artifact(
             game_id, game_uid, [mine, opponent], outcomes, final_result, tokens,
             repositories=self.repositories(game_id, opponent),
-            league=artifacts.league_block(*self.config.counted_series(opponent)))
+            league=artifacts.league_block(counted, _sign_off),
+            standings=standings_block(
+                mine, opponent, counted,
+                # Their declared count, recorded by the operator from what they
+                # told us (rule 37 makes each team declare its own). Never
+                # guessed: a number we invent for another team is a false
+                # declaration in *their* column of the lecturer's standings.
+                int(self.config.pairing(opponent).get("opponent_counted_games", 0)),
+                self.output_dir))
         return artifacts.write_json(names.result(), report)
 
     def repositories(self, game_id: str, opponent: str) -> dict[str, dict[str, str]]:
