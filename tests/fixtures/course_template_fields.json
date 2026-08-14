@@ -1,5 +1,5 @@
 {
-  "_source": "Field NAMES ONLY, extracted from the course reference sample run (docs/sample-run/) shipped with the assignment. No values are vendored -- this fixture exists so the artifact builders are checked against the template rather than against our own expectations of it.",
+  "_source": "Field NAMES ONLY, extracted from the course reference sample run (docs/sample-run/) shipped with the assignment. No values are vendored, and the schema_version below is a field NAME's value only because the number itself is the thing being checked. ``result_final_result`` was added on 2026-08-14: we were emitting two extra keys inside that block for weeks because nothing looked at it. No values are vendored -- this fixture exists so the artifact builders are checked against the template rather than against our own expectations of it.",
   "result_top": [
     "_schema",
     "schema_version",
@@ -52,5 +52,14 @@
     "duration_seconds",
     "tokens_total",
     "audit"
-  ]
+  ],
+  "result_final_result": [
+    "total_score",
+    "sub_games_won",
+    "ties",
+    "winner_group",
+    "series_tie",
+    "tokens_total_series"
+  ],
+  "artifact_schema_version": "1.1"
 }

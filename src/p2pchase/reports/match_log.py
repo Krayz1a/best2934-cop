@@ -107,7 +107,7 @@ def build_log_artifact(
             "cryptographic verification: commit/reveal records, moves, hints, "
             "nonces and hashes."
         ),
-        "schema_version": constants.SCHEMA_VERSION,
+        "schema_version": constants.ARTIFACT_SCHEMA_VERSION,
         "game_id": game_id,
         "game_uid": game_uid,
         "links": links_block(game_id),

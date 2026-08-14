@@ -17,7 +17,22 @@ from typing import Final
 
 CODE_VERSION: Final[str] = "1.0.0"
 BOOK_VERSION: Final[str] = "3.0.0"
+#: The version of *our config document* (``game.json``). Ours, and negotiated
+#: with an opponent by content hash rather than by this number.
 SCHEMA_VERSION: Final[str] = "1.2"
+#: The version of the four *artifacts* -- declaration, config, log, result --
+#: which is a different document with a different history.
+#:
+#: We stamped ``SCHEMA_VERSION`` on both until 2026-08-14, so every artifact we
+#: have ever filed claimed 1.2. All four of the reference implementation's
+#: sample artifacts carry 1.1, and its own ``game.json`` carries 1.3 -- three
+#: numbers, three documents, versioned independently. Conflating them is not a
+#: cosmetic error: the grader reads these files against a schema, and a report
+#: announcing a version the schema does not know is a report it may not parse.
+#:
+#: Raised by imreeyal on league issue #45; the number below is taken from
+#: ``reference-repo/docs/sample-run/`` rather than from their message.
+ARTIFACT_SCHEMA_VERSION: Final[str] = "1.1"
 
 # --- Appendix F, Table 13: board, axes and start positions -----------------
 GRID_SIZE: Final[int] = 7  # minimum

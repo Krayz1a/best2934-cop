@@ -78,10 +78,15 @@ def test_step_zero_is_the_first_record(live_sub_game):
 
 
 def test_the_result_carries_four_repository_links(live_sub_game):
-    """Rule 49: both teams' cop and thief repositories, inside the JSON."""
+    """Rule 49: both teams' cop and thief repositories, inside the JSON.
+
+    Under ``links.github`` since 2026-08-14. A top-level ``repositories`` was
+    our one field the course template has no room for, and links belong in
+    ``links`` -- which is also where imreeyal already puts theirs.
+    """
     _, _, paths, _ = live_sub_game
     result = json.loads(next(p for p in paths if p.name.startswith("result_")).read_text())
-    repos = result["repositories"]
+    repos = result["links"]["github"]
     assert set(repos) == {"test1234", "rival999"}
     assert repos["rival999"]["thief"] == "https://example.invalid/their-thief"
     assert repos["test1234"]["cop"] == "https://example.invalid/cop"

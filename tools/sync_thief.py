@@ -26,6 +26,23 @@ REPO = Path(__file__).resolve().parents[1]
 #: Never copied: git metadata, virtualenvs, caches and generated coverage HTML.
 SKIP = {".git", ".venv", "__pycache__", ".pytest_cache", ".ruff_cache", "coverage"}
 
+#: Never copied *and never deleted* -- the target's own, not a copy of ours.
+#:
+#: This is the difference between the code, which is derived, and the record of
+#: what was played, which is not. Rule 41 puts our cop and our thief in separate
+#: repositories, so a six-sub-game series leaves three logs here and three
+#: there: the two directories hold *different halves of one match*, and mirroring
+#: one onto the other destroys half the evidence.
+#:
+#: Which is exactly what happened on 2026-08-14. ``_copy`` rmtree'd the target
+#: directory before writing it, so a routine sync deleted the thief's g02, g04
+#: and g06 logs from the imreeyal friendly -- sealed records with our own
+#: nonces, unrecoverable from this repository because artifacts are git-ignored
+#: by design. They came back from a working copy that happened to still exist.
+#: The next time there would be nothing to come back from, and if it happened
+#: after a counted series we would have no answer to an audit at all.
+KEEP = {"artifacts", "logs", "results"}
+
 CONSTANTS = "src/p2pchase/constants.py"
 ROLE_LINE_COP = "DEFAULT_ROLE: Final[str] = ROLE_COP"
 ROLE_LINE_THIEF = "DEFAULT_ROLE: Final[str] = ROLE_THIEF"
@@ -64,9 +81,9 @@ README_SUBS = [
 
 
 def _copy(target: Path) -> None:
-    """Mirror the working tree, leaving the target's .git alone."""
+    """Mirror the working tree, leaving the target's .git and records alone."""
     for path in REPO.iterdir():
-        if path.name in SKIP:
+        if path.name in SKIP or path.name in KEEP:
             continue
         destination = target / path.name
         if path.is_dir():

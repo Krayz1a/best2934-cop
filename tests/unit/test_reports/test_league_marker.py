@@ -106,17 +106,61 @@ def test_counted_ness_is_still_decided_by_the_private_setup():
     assert block()["counted"] is False
 
 
-def test_the_result_matches_the_course_template_exactly():
-    """The whole point of the removal, checked against the template itself."""
+def _template() -> dict:
     import json
-    template = json.loads(
+    return json.loads(
         (Path(__file__).resolve().parents[3] / "tests" / "fixtures"
          / "course_template_fields.json").read_text(encoding="utf-8"))
+
+
+def test_the_result_matches_the_course_template_exactly():
+    """Not "almost", and no longer with one field of ours allowed through.
+
+    ``repositories`` was that one field, and it moved into ``links.github`` on
+    2026-08-14 -- links belong in ``links``, imreeyal already spells it that
+    way, and it leaves nothing at the top level for either team to query.
+    """
     body = artifacts.build_result_artifact("a-vs-b", "uid", ["a", "b"], [], {}, {})
-    extra = [k for k in body if k not in template["result_top"]]
-    assert extra == ["repositories"], (
-        "only `repositories` may exceed the template -- it carries the four "
-        "rule-49 repo links and no other artifact does")
+
+    assert [k for k in body if k not in _template()["result_top"]] == []
+
+
+def test_final_result_carries_the_template_keys_and_no_others():
+    """The block nothing was checking, which is why two of ours lived in it.
+
+    ``raw_score`` and ``tie_rule`` are useful and they are ours, and every
+    report we filed carried both inside the grader's own aggregate. A rule 35
+    diff is the worst place to discover a field the other side has never seen.
+    """
+    body = artifacts.build_result_artifact("a-vs-b", "uid", ["a", "b"], [],
+                                           {"total_score": {}, "raw_score": {},
+                                            "tie_rule": "series_add"}, {})
+
+    assert list(body["final_result"]) == [
+        name for name in _template()["result_final_result"]
+        if name in body["final_result"]]
+    assert "raw_score" not in body["final_result"]
+    assert "tie_rule" not in body["final_result"]
+
+
+def test_every_artifact_announces_the_template_s_schema_version():
+    """All four of the reference's samples say 1.1. We said 1.2 on all four,
+    because one constant was doing duty for two different documents -- our
+    ``game.json`` is 1.2 and theirs is 1.3, which is the giveaway that the
+    number was never ours to reuse."""
+    body = artifacts.build_result_artifact("a-vs-b", "uid", ["a", "b"], [], {}, {})
+
+    assert body["schema_version"] == _template()["artifact_schema_version"]
+
+
+def test_the_four_repository_links_survive_the_move(peer_config):
+    """Rule 49 asks for four links in the JSON; the move must not lose them."""
+    repos = {"a": {"cop": "u1", "thief": "u2"}, "b": {"cop": "u3", "thief": "u4"}}
+    body = artifacts.build_result_artifact("a-vs-b", "uid", ["a", "b"], [], {}, {},
+                                           repositories=repos)
+
+    assert body["links"]["github"] == repos
+    assert "repositories" not in body
 
 
 def test_the_marker_is_outside_the_agreement_digest():

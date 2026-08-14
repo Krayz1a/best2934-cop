@@ -97,8 +97,28 @@ def opponent_in_game_id(game_id: str, mine: str) -> str:
     return halves[1] if halves[0] == str(mine) else halves[0]
 
 
-def links_block(game_id: str) -> dict[str, Any]:
-    """Cross-references between the four artifacts of one match."""
+def links_block(game_id: str,
+                repositories: dict[str, dict[str, str]] | None = None) -> dict[str, Any]:
+    """Cross-references between the four artifacts of one match.
+
+    ``repositories`` adds ``github``: both teams' cop and thief repositories,
+    keyed by group id -- four links, which is what rule 49 asks for in the JSON.
+
+    They lived in a top-level ``repositories`` key until 2026-08-14, and that
+    was our only field the course template has no room for. ``links`` is where
+    a link belongs, imreeyal already emits them there, and agreeing the spelling
+    before a counted series is worth more than preferring our own.
+
+    Omitted entirely when there is nothing to put in it. An empty ``github: {}``
+    would be a third spelling of "no links", after absence and ``null``.
+    """
+    block = _links(game_id)
+    if repositories:
+        block["github"] = {group: dict(repos) for group, repos in repositories.items()}
+    return block
+
+
+def _links(game_id: str) -> dict[str, Any]:
     return {
         "_remark": (
             "Logical roles, NOT fixed filenames. Match-level files "

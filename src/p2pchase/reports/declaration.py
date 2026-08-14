@@ -76,7 +76,7 @@ def build_declaration(
             "MCP servers, hardware, model, agreed token cap and timings. "
             "Signed and locked before play (book ch5, Step-0)."
         ),
-        "schema_version": constants.SCHEMA_VERSION,
+        "schema_version": constants.ARTIFACT_SCHEMA_VERSION,
         "declaration_type": "pre_game_declaration",
         "game_id": game_id,
         "game_uid": game_uid,
@@ -104,7 +104,7 @@ def build_config_artifact(
             "binding parameter table (Appendix F). Both teams hold "
             "byte-identical copies and lock them via config_sha256."
         ),
-        "schema_version": constants.SCHEMA_VERSION,
+        "schema_version": constants.ARTIFACT_SCHEMA_VERSION,
         "agreed_between": sorted(agreed_between),
     }
     body.update(agreed)

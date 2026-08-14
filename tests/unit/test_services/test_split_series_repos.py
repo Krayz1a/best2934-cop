@@ -89,8 +89,12 @@ def test_a_level_series_settles_as_a_tie_rather_than_a_confident_win(two_repos, 
 
     assert final["series_tie"] is True
     assert final["winner_group"] is None
+    # 45-45 raw, and 47-47 after series_add pays the tie score to both. The
+    # raw figures left ``final_result`` on 2026-08-14 -- the course template has
+    # six keys and neither of ours is among them -- so the level series is
+    # checked through the total the grader actually reads.
     mine = peer_config.group_id
-    assert final["raw_score"] == {mine: 45, "imreeyal": 45}
+    assert final["total_score"] == {mine: 47, "imreeyal": 47}
 
 
 def test_the_two_repositories_agree_on_the_result(two_repos, peer_config, monkeypatch):

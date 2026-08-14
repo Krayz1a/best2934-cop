@@ -76,6 +76,35 @@ class SubGameOutcome:
         }
 
 
+#: The template's ``final_result``, in its order. Six keys, and the two we used
+#: to add are not among them -- see :func:`template_final_result`.
+FINAL_RESULT_FIELDS = ("total_score", "sub_games_won", "ties", "winner_group",
+                       "series_tie", "tokens_total_series")
+
+
+def template_final_result(final_result: dict[str, Any],
+                          tokens_total_series: dict[str, int]) -> dict[str, Any]:
+    """Our scoring engine's figures, cut to the shape the grader reads.
+
+    We were adding ``raw_score`` (the sums before the tie rule) and ``tie_rule``
+    (which rule scored them). Both are genuinely useful and neither belongs
+    here: the reference implementation's own sample carries exactly the six keys
+    below, and a report that invents two more is two differences to explain in
+    the worst possible place -- a rule 35 diff against an opponent's copy, where
+    every difference has to be talked through before either team can file.
+
+    They are not lost. :meth:`SeriesTally.final_result` still returns them and
+    our own tooling still reads them; this is the boundary where the artifact
+    stops being ours and starts being the course's.
+
+    Raised by imreeyal on league issue #45. Their advice came with three extra
+    fields of their own to adopt in exchange, and those are declined for the
+    same reason -- see the reply on that thread.
+    """
+    complete = {**final_result, "tokens_total_series": tokens_total_series}
+    return {name: complete[name] for name in FINAL_RESULT_FIELDS if name in complete}
+
+
 def agreed_summary(game_id: str, groups: list[str], sub_games: list[SubGameOutcome],
                    final_result: dict[str, Any] | None = None) -> dict[str, Any]:
     """The part of the result the two teams must agree on, and only that (rule 35).
@@ -134,17 +163,16 @@ def build_result_artifact(
             "used to build the league standings. Both teams must agree on this "
             "result and each sends its own copy to the lecturer (book ch9)."
         ),
-        "schema_version": constants.SCHEMA_VERSION,
+        "schema_version": constants.ARTIFACT_SCHEMA_VERSION,
         "report_type": "final_game_result",
         "game_id": game_id,
         "game_uid": game_uid,
-        "links": links_block(game_id),
-        "repositories": repositories or {},
+        "links": links_block(game_id, repositories),
         "timezone": TIMEZONE,
         "groups": sorted(groups),
         "num_sub_games": len(sub_games),
         "sub_games": [sub_game.as_dict() for sub_game in sub_games],
-        "final_result": {**final_result, "tokens_total_series": tokens_total_series},
+        "final_result": template_final_result(final_result, tokens_total_series),
         "mutual_agreement": {
             "sha256": mutual_agreement_hash(summary),
             "confirmed": confirmed,
