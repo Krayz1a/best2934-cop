@@ -1,24 +1,27 @@
 """One log line per round, aimed at the question our artifacts cannot answer.
 
-Our cop places six to eight barriers per sub-game in the local harness. It has
-placed **zero** across eight networked sub-games against two different
-opponents -- roughly 280 steps without a single one, and no captures either.
+Written to diagnose a cop that placed **zero** barriers against imreeyal across
+three networked sub-games while placing 5.2 per sub-game against gal-roy1 and
+six to eight in the local harness -- and captured nothing in either match.
 
-The fielded ``barrier_engage_range`` is 1: the cop considers a wall only when
-the belief peak is within one step. In the harness it sits that close on 56% of
-turns, which is why the sweep chose the value and why it has never once fired in
-a real match. The gate is not the defect. The posterior underneath it is.
+It answered on its first run, and not the way the question was posed. The
+posterior is **fine**: the peak tracks the real thief cell for cell -- (3,3),
+(4,3), (5,3), (6,3) against a thief actually walking that path -- with 25 to 30
+scent cells arriving per round. What it also showed is that the peak sits at
+distance 5 and stays there, because two agents that both move one cell per turn
+cannot close, and the fielded ``barrier_engage_range`` was 1.
 
-In the harness both peers hand over their whole transmitted field. Over the wire
-we get whatever the opponent decided to push, in whatever shape, and nothing we
-keep records what our belief did with it -- the four artifacts carry positions,
-commitments and outcomes, and no posterior at all. So the difference between "a
-field arrives and fails to inform us" and "almost nothing arrives" is currently
-undiagnosable after the fact, which is why eight sub-games have gone by without
-it being diagnosed.
+So the gate was the defect and the belief never was. See
+``config/police/setup.json`` for the re-derivation to 4 and for the correction of
+the miscount that framed this module's original question -- the sealed record
+encodes a barrier *inside* the move string as ``BARRIER:r,c``, and counting a
+separate key found none anywhere.
 
-Two numbers separate the cases: how many cells arrived, and how flat we are
-afterwards. Both go here, per round, so the next real match answers it.
+Kept, and worth keeping. The four artifacts carry positions, commitments and
+outcomes and no posterior at all, so "a field arrives and fails to inform us"
+and "almost nothing arrives" are indistinguishable after the fact without it.
+Two numbers separate them: how many cells arrived, and how flat we are
+afterwards.
 
 This writes to the log, never to an artifact. The log artifact's ``summary``
 field list is the course template's, and matching it exactly is worth more than
