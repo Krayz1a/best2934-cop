@@ -30,6 +30,7 @@ from ..shared.peer_config import PeerConfig
 from ..strategy.landmarks import heading_word, pick_landmark
 from ..strategy.talk_engine import build_talk_engine
 from ..strategy.talk_prompt import TalkRequest
+from . import belief_probe
 from . import session_disclosure as disclosure
 from .match_side import judge_claim, record_claim
 from .opponent_ending import record_ending
@@ -269,13 +270,15 @@ class PeerSession:
         Settling the standing verbal claim here keeps the networked path
         identical to the local harness -- the trail is what a claim is checked
         against, so this is the first moment the check is possible.
+
+        :mod:`belief_probe` is called here rather than logged inline because it
+        answers a question this method cannot: our cop has placed zero barriers
+        across eight networked sub-games while placing six to eight per sub-game
+        in the harness, and nothing we keep records what the posterior did.
         """
         self.state.sample_opponent_scent(samples, merge=True)
         self.state.belief.update_from_scent(self.state.opponent_scent)
-        honest = judge_claim(self.state)
-        LOGGER.debug("claim judged %s; trust now %.3f",
-                     {True: "credible", False: "doubtful"}.get(honest, "unreadable"),
-                     self.state.belief.trust)
+        belief_probe.record(self.state, samples, judge_claim(self.state))
 
     # ------------------------------------------------------------ finishing
     def end_of_turn(self) -> None:
