@@ -69,6 +69,18 @@ def identity_block(handshake: dict[str, Any]) -> dict[str, Any]:
         "group_id": handshake.get("group_id", ""),
         "group_name": handshake.get("group_name", ""),
         "repos": dict(handshake.get("repos") or {}),
+        # Mirrored from the flat handshake rather than moved. We send both
+        # shapes because a reader should not have to know which level a field
+        # lives at: ours ride flat on the handshake, anrbj666's reader looks
+        # under `identity`, and on 2026-08-15 that cost them two dirty columns
+        # in an otherwise clean six -- our data was on their disk the whole
+        # time, one level deeper than they looked.
+        #
+        # Duplication is the cheap side of this trade. A field present twice
+        # with the same value costs bytes; a field present once in the wrong
+        # place costs a friendly.
+        "counted_games_played": handshake.get("counted_games_played", 0),
+        "github_commit": handshake.get("github_commit", ""),
     }
 
 

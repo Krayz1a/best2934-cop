@@ -110,8 +110,37 @@ def test_our_agreement_carries_an_identity_with_our_group_id(peer_config):
 def test_the_identity_block_carries_nothing_personal(peer_config):
     """Group-level facts only. This dict is pushed to an opponent."""
     identity = reference_handshake.identity_block(
-        {"group_id": "best2934", "group_name": "Best", "repos": {"cop": "url"}})
-    assert set(identity) == {"group_id", "group_name", "repos"}
+        {"group_id": "best2934", "group_name": "Best", "repos": {"cop": "url"},
+         "counted_games_played": 1, "github_commit": "abc1234"})
+
+    # An exact set, not a subset: the value of this test is that a field
+    # cannot join the pushed dict without someone deciding it may. The two
+    # additions are a count and a commit sha -- both group-level facts an
+    # opponent is entitled to under rules 37-38.
+    assert set(identity) == {"group_id", "group_name", "repos",
+                             "counted_games_played", "github_commit"}
+
+
+def test_the_identity_block_mirrors_the_fields_our_peers_read_nested(peer_config):
+    """anrbj666's reader looks under `opponent_info.identity`; ours rode flat.
+
+    Both spellings carry the same two rule-37 facts, so neither team has to
+    change its reader to see a declaration the other one made.
+    """
+    identity = reference_handshake.identity_block(
+        {"group_id": "best2934", "counted_games_played": 2,
+         "github_commit": "abc1234"})
+
+    assert identity["counted_games_played"] == 2
+    assert identity["github_commit"] == "abc1234"
+
+
+def test_a_handshake_without_the_new_fields_still_yields_a_block(peer_config):
+    """An opponent on older code must not crash our identity mirror."""
+    identity = reference_handshake.identity_block({"group_id": "best2934"})
+
+    assert identity["counted_games_played"] == 0
+    assert identity["github_commit"] == ""
 
 
 def test_it_is_sent_under_message_because_that_is_their_argument_name(peer_config):

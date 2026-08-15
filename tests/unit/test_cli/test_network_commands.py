@@ -24,7 +24,9 @@ from p2pchase.cli.commands import EXIT_CONFIG, EXIT_FAILED, EXIT_OK
 
 @pytest.fixture
 def args(config_dir) -> Namespace:
-    return Namespace(role="police", config_dir=str(config_dir), game_id="a-vs-b",
+    # The derived id for this pairing. Typing an id the pairing does not derive
+    # is now refused outright -- see test_game_id_is_derived.py.
+    return Namespace(role="police", config_dir=str(config_dir), game_id="",
                      sub_game=1, seed=1, host="127.0.0.1", port=9901,
                      opponent_url=None, opponent="rival999", sub_games=1, text=True)
 

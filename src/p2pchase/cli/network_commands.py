@@ -17,7 +17,7 @@ from typing import Any
 from ..domain import roles
 from ..mcp.client import PeerClient
 from ..mcp.handlers import PeerHandlers
-from ..reports.naming import now_iso
+from ..reports.naming import make_game_id, now_iso
 from ..runtime.peer import PeerRunner
 from ..runtime.peer_host import host_and_play
 from ..runtime.peer_session import PeerSession
@@ -37,6 +37,50 @@ def _sdk(args: Any) -> P2PChaseSDK:
 
 class RoleClashError(RuntimeError):
     """``--role`` contradicts the role the agreed rule derives for this sub-game."""
+
+
+class GameIdClashError(RuntimeError):
+    """Raised when --game-id contradicts the id the pairing derives."""
+
+
+def _game_id_for(args: Any, config: Any) -> str:
+    """The sorted, order-independent id for this pairing.
+
+    Derived rather than typed, for the same reason the role is: there is
+    exactly one right answer once --opponent names who we are playing, and the
+    operator should not have to reproduce it at match time.
+
+    Two real failures in one evening, both from a typed id:
+
+    ``best2934-vs-anrbj666-f2`` -- a suffix added to keep two friendlies apart.
+    ``opponent_in_game_id`` splits on ``-vs-``, so the opponent parsed as
+    "anrbj666-f2", the pairing lookup missed, and every per-pairing term fell
+    back to a default: first_half instead of odd_even, own instead of league.
+    Sub-game 2 would have put two thieves on the board.
+
+    ``best2934-vs-anrbj666`` -- unsorted. `make_game_id` has always sorted, and
+    nothing called it. It was right against imreeyal and gal-roy1 for one
+    reason: `best2934` sorts before both. anrbj666 is the first opponent ahead
+    of us alphabetically and the first pairing where it could show -- as a
+    digest disagreement rather than an error, because game_id leads the SPEC-6
+    scope while `game_uid` hashes `sorted([a, b])` and was never wrong.
+
+    A contradicting id is refused rather than corrected, matching the role
+    rule: an operator who typed an id meant it, and a peer that quietly played
+    under a different name is stranger to debug than a message.
+    """
+    opponent = str(getattr(args, "opponent", "") or "")
+    typed = str(getattr(args, "game_id", "") or "")
+    if not opponent or opponent == config.group_id:
+        return typed
+    derived = make_game_id(config.group_id, opponent)
+    if typed in ("", "local-rehearsal", derived):
+        return derived
+    raise GameIdClashError(
+        f"--game-id {typed!r} contradicts the id this pairing derives: "
+        f"{derived!r}. The id is sorted so both peers reach the same name, and "
+        f"it leads the mutual_agreement scope. Drop --game-id to let the "
+        f"pairing decide.")
 
 
 def _sdk_for_sub_game(args: Any) -> P2PChaseSDK:
@@ -92,7 +136,8 @@ def serve(args: Any) -> int:
     except RoleClashError as error:
         print(error)
         return EXIT_CONFIG
-    session = PeerSession(sdk.config, args.role, args.game_id, sub_game=args.sub_game)
+    game_id = _game_id_for(args, sdk.config)
+    session = PeerSession(sdk.config, args.role, game_id, sub_game=args.sub_game)
     handlers = PeerHandlers(sdk.config, session)
     try:
         run_server(sdk.config, handlers, host=args.host, port=args.port,
@@ -123,7 +168,8 @@ def play(args: Any) -> int:
         return EXIT_CONFIG
     print(f"role           : {args.role} (sub-game {args.sub_game})")
 
-    session = PeerSession(sdk.config, args.role, args.game_id,
+    game_id = _game_id_for(args, sdk.config)
+    session = PeerSession(sdk.config, args.role, game_id,
                           sub_game=args.sub_game, seed=args.seed)
     client = PeerClient(url, timeout=float(sdk.config.turn_timeout))
     runner = PeerRunner(sdk.config, session, client,
@@ -159,7 +205,9 @@ def _write_artifacts(sdk: P2PChaseSDK, session: PeerSession, args: Any,
     opponent = str(handshake.get("group_id") or args.opponent or "unknown")
     try:
         return sdk.record_networked_sub_game(
-            args.game_id, args.sub_game, opponent, outcome, started, now_iso(),
+            # From the session, which was built with the DERIVED id --
+            # never from args, which is what a typed id gets wrong.
+            session.game_id, args.sub_game, opponent, outcome, started, now_iso(),
             session.talk.tokens_used, handshake)
     except OSError as error:
         LOGGER.error("could not write the match artifacts: %s", error)
