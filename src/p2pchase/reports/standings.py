@@ -46,10 +46,23 @@ def standings_block(mine: str, opponent: str, counted: bool,
                     directory: Any = None) -> dict[str, Any]:
     """The three standings fields, derived from our own ledger.
 
-    ``opponent_games`` is *their* declared count and cannot be derived here --
-    rule 37 makes each team declare its own, and we record what they declared
-    rather than inventing it. Zero when they have not told us, which is honest
-    about an unknown rather than a claim that they have played none.
+    ``opponent_games`` is *their* declared count **before this series** and
+    cannot be derived here -- rule 37 makes each team declare its own, and we
+    record what they declared rather than inventing it. Zero when they have not
+    told us, which is honest about an unknown rather than a claim that they
+    have played none.
+
+    This series is then added to **both** columns, because the field is named
+    ``games_played_including_this``. We used to add it to ours and emit theirs
+    untouched, so a counted series filed 5 in imreeyal's column while imreeyal
+    filed 6 in their own. They predicted the correct value on league issue #45
+    before the series was played, we shipped the wrong one, and the defect
+    reached the lecturer's inbox in message ``1a005d476b4d5da0`` on 2026-08-15
+    before either team's cross-diff caught it.
+
+    Two reports of one match disagreeing on a standings field is the rule-35
+    shape however small the field, and "small" is exactly why nobody reads it
+    until it is the thing that voids a match.
 
     ``winner_group`` decides the diversity reward, and getting that wrong is the
     reason this argument is documented rather than obvious. We first wrote the
@@ -75,10 +88,12 @@ def standings_block(mine: str, opponent: str, counted: bool,
     from two definitions.
     """
     first_meeting = opponent not in counted_opponents(directory)
-    ours = counted_games_played(directory) + (1 if counted else 0)
+    played = 1 if counted else 0
+    ours = counted_games_played(directory) + played
+    theirs = int(opponent_games) + played
     earned = counted and first_meeting
     return {
-        "games_played_including_this": {mine: ours, opponent: int(opponent_games)},
+        "games_played_including_this": {mine: ours, opponent: theirs},
         "first_meeting_between_groups": first_meeting,
         "diversity_reward_applied": {
             mine: earned and winner_group == mine,

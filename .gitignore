@@ -52,3 +52,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+# The counted-series tree: same reason as artifacts/*.json, but the glob above
+# is non-recursive so a subdirectory slips through. An untracked directory here
+# also makes every github_commit stamp read "-dirty" during a counted series.
+artifacts/counted/
+artifacts/outside_declared_series/
