@@ -34,6 +34,8 @@ from typing import Any
 
 from ..domain import core_terms, scent_models
 from ..domain.smell import build_kernel, kernel_fingerprint
+from ..infra.sysinfo import git_commit
+from ..reports.history import counted_games_played
 from ..shared.config_schema import validate_shared
 from ..shared.peer_config import PeerConfig
 from ..shared.version import CODE_VERSION, peer_schema_compatible
@@ -53,6 +55,14 @@ class Handshake:
     config_sha256: str
     scent_fingerprint: str
     mcp_url: str
+    #: Rules 37-38 and 53, declared where the opponent can actually read them.
+    #: Both rode only our `hello` REPLY, which fires when a peer calls us -- so
+    #: when we drive, neither ever left this machine. anrbj666's declaration
+    #: artifact recorded `counted_games_played: 0` for us and `github_commit:
+    #: "unknown"` in all six rows, and read it as a stale build. It was not:
+    #: the fields were absent from the outbound handshake entirely, so a
+    #: restart would have fixed nothing and we would have "fixed" it twice.
+    counted_games_played: int = 0
     repos: dict[str, str] = field(default_factory=dict)
     #: The league's locked-model declaration for the ``scent_model`` family --
     #: a hash of the registered document, never the document itself. Defaults
@@ -78,6 +88,8 @@ class Handshake:
             "scent_fingerprint": self.scent_fingerprint,
             "scent_model_sha256": self.scent_model_sha256,
             "mcp_url": self.mcp_url,
+            "counted_games_played": self.counted_games_played,
+            "github_commit": git_commit(),
             "repos": dict(self.repos),
             "terms": dict(self.terms),
             "nonce": self.nonce,
@@ -209,6 +221,7 @@ class NegotiationService:
             config_sha256=self.config.config_sha256(),
             scent_fingerprint=self.scent_fingerprint(opponent),
             scent_model_sha256=scent_models.locked_sha256(self.config.scent_model(opponent)),
+            counted_games_played=counted_games_played(),
             mcp_url=mcp_url or self.config.public_url or
             f"http://127.0.0.1:{self.config.my_port}/mcp",
             repos=self.config.repos,
