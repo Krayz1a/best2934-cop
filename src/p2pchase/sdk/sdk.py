@@ -148,9 +148,29 @@ class P2PChaseSDK:
         match plays one sub-game per process, so it has to hand them over here
         instead -- otherwise a real league game would leave nothing to replay,
         audit or report.
+
+        Built with :meth:`~p2pchase.services.network_artifacts
+        .NetworkArtifactService.for_opponent` rather than the cached
+        :attr:`network_artifacts` property, which defaults ``counted`` to
+        ``False`` because it has no opponent to look one up by.
+
+        That default cost us the opening sub-game of our first counted series.
+        We flipped `counted` for imreeyal, announced it, and verified twice that
+        the service honoured it -- through ``for_opponent``, which we had wired
+        into the *opponent-driven* path. We drive this pairing, and the driver
+        came through here. So the counted sub-game was written into the
+        friendly tree, on top of a friendly log of the same name, and
+        ``refresh_result`` then assembled one counted sub-game with five
+        friendly ones into a result that looked untouched because both openers
+        happened to be police-survival.
+
+        The quarantine tests were not wrong; they covered the service. Nothing
+        covered how the driver built it.
         """
         step_zero = self.match.step_zero(sub_game)
-        return self.network_artifacts.record_sub_game(
+        service = NetworkArtifactService.for_opponent(self.config, opponent,
+                                                      self.output_dir)
+        return service.record_sub_game(
             game_id, sub_game, self.config.role, opponent, outcome,
             started_at, ended_at, tokens, handshake, step_zero)
 
