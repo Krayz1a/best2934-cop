@@ -130,4 +130,6 @@ class ServedRecorder:
             self.opponent or "unknown", result,
             self.started.get(int(session.sub_game), now_iso()), now_iso(),
             int(getattr(getattr(session, "talk", None), "tokens_used", 0) or 0),
-            declared_sub_games=list(getattr(session, "declared_sub_games", []) or []))
+            declared_sub_games=list(getattr(session, "declared_sub_games", []) or []),
+            declaration_keys=[list(k) for k in
+                              getattr(session, "declaration_keys", []) or []])

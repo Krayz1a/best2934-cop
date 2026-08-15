@@ -72,6 +72,7 @@ def build_log_artifact(
     mutual: dict[str, Any] | None = None,
     steps: int | None = None,
     declared_sub_games: list[int] | None = None,
+    declaration_keys: list[list[str]] | None = None,
 ) -> dict[str, Any]:
     """One sub-game's full disclosed log.
 
@@ -139,6 +140,17 @@ def build_log_artifact(
             # shape that gets argued instead of fixed.
             **({"opponent_declared_sub_games": list(declared_sub_games)}
                if declared_sub_games else {}),
+            # The key names each opening payload carried. Present whenever an
+            # opponent opened at all, INCLUDING when they declared no number --
+            # that is the case the value alone cannot express, because our
+            # extractor renders a missing key as 0 and a declared 0 as 0.
+            #
+            # So an absent `opponent_declared_sub_games` beside a populated
+            # `opponent_declaration_keys` reads: they opened, and no key we
+            # recognise carried a sub-game number. That sentence is what we
+            # could not write for gal-roy1 on 2026-08-16.
+            **({"opponent_declaration_keys": [list(k) for k in declaration_keys]}
+               if declaration_keys else {}),
         },
         "records": records,
         "mutual_agreement": mutual or {

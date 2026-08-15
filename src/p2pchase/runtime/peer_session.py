@@ -56,6 +56,15 @@ class PeerSession:
     #: the two disagreeing is the fact a settlement needs and cannot recover
     #: later. Kept even when it matches, because "they agreed" is evidence too.
     declared_sub_games: list[int] = field(default_factory=list)
+    #: The key names each opening payload actually carried, in arrival order.
+    #:
+    #: Because :attr:`declared_sub_games` records our *parse* and not their
+    #: *arrival*: the extractor reads ``payload.get("sub_game_number", 0)``, so
+    #: a missing key and a declared ``0`` both land as ``0``. On 2026-08-16 the
+    #: gal-roy1 throwaway logged ``[0]`` and we could not say whether they sent
+    #: 0, sent nothing, or sent it under a spelling we do not read -- the exact
+    #: ambiguity the field was added to remove. The keys settle it.
+    declaration_keys: list[list[str]] = field(default_factory=list)
     seed: int = 0
     step: int = 0
     #: Who we are playing, which selects the per-pair terms (scent model, role
