@@ -1,0 +1,75 @@
+{
+  "_schema": "Agreed configuration for one sub-game. Values come from the binding parameter table (Appendix F). Both teams hold byte-identical copies and lock them via config_sha256.",
+  "schema_version": "1.2",
+  "agreed_between": [
+    "best2934",
+    "gal-roy1"
+  ],
+  "board_and_agents": {
+    "grid_size": 7,
+    "num_agents": 2,
+    "thief_start": [
+      3,
+      3
+    ],
+    "cop_start": [
+      0,
+      0
+    ],
+    "axis_origin_corner": "top-left",
+    "axis_start_index": 0
+  },
+  "world": {
+    "map_area": "New York",
+    "hint_max_words": 15
+  },
+  "movement_and_barriers": {
+    "move_set": [
+      "N",
+      "S",
+      "E",
+      "W",
+      "STAY"
+    ],
+    "max_barriers": 14,
+    "max_moves": 35,
+    "survival_threshold": 35
+  },
+  "scoring": {
+    "capture_cop": 20,
+    "capture_thief": 5,
+    "survival_cop": 5,
+    "survival_thief": 10,
+    "tie_score": 2,
+    "technical_loss": 0
+  },
+  "pheromones": {
+    "pheromone_center_intensity": 0.9,
+    "pheromone_decay": 0.1,
+    "pheromone_grid_size": 5,
+    "pheromone_kernel": "book_table",
+    "pheromone_transmit_lag": 1,
+    "_remark": "pheromone_kernel selects which 5x5 emission table both peers use. 'book_table' is the literal Figure 4 table, so two teams reading the figure hash identically. 'gaussian' recomputes it from sigma^2 = 4/3, which reproduces Figure 4 to within 0.01 everywhere except the diagonal (0.43 vs 0.42). pheromone_transmit_lag is how many FULL turns a field is held before the opponent may sample it: 1 transmits the trail through where we were, 0 transmits live and peaks on the cell we are standing on, which hands over the position and makes the belief map, the hints and the deception layer pointless. Both peers must run the same value or each is reading a field the other believes it is not sending."
+  },
+  "network_and_league": {
+    "response_timeout_sec": 30,
+    "watchdog_timeout_sec": 60,
+    "num_sub_games": 6,
+    "diversity_reward": 10,
+    "min_games_to_pass": 2,
+    "max_games_per_team": 10,
+    "token_budget_per_series": 200000
+  },
+  "game_id": "best2934-vs-gal-roy1",
+  "game_uid": "a96c0a73-4cc3-498f-a7cc-19b18b08c783",
+  "sub_game_number": 8,
+  "links": {
+    "_remark": "Logical roles, NOT fixed filenames. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json.",
+    "declaration": "declaration_best2934-vs-gal-roy1.json",
+    "config": "config_best2934-vs-gal-roy1_g<NN>.json",
+    "log": "log_best2934-vs-gal-roy1_g<NN>.json",
+    "result": "result_best2934-vs-gal-roy1.json"
+  },
+  "config_name": "config_best2934-vs-gal-roy1_g08.json",
+  "config_sha256": "7f55c92e5f42ac49955e964690f1ae74874568c3bbd681c0d7e324570161337c"
+}

@@ -176,19 +176,39 @@ class NetworkArtifactService:
         late. Found by the imreeyal friendly on 2026-08-14, which is precisely
         what they insisted the friendly was for.
 
-        Our own directory wins on a duplicate sub-game number. Each sub-game is
-        played from exactly one repository, so a collision means a stale or
-        hand-copied file rather than a real disagreement -- and preferring the
-        local copy at least makes the outcome deterministic and explicable.
+        Logs are keyed on ``(sub_game_number, role)``, NOT on the filename.
+        Keying on the filename was the same bug wearing the other repository's
+        clothes. Against imreeyal the numbering happened to be globally
+        disjoint -- cop 1/3/5, thief 2/4/6 -- so no two files shared a name and
+        the merge worked by luck. Against gal-roy1 *both* repositories numbered
+        from ``g01``, so ``log_..._g01.json`` existed in each, naming two
+        different sub-games; the dict collapsed them and our cop's eight
+        silently overwrote our thief's first eight. The result artifact then
+        claimed we played police in all eight sub-games of a series whose roles
+        must swap -- impossible on its face, and produced without one warning.
+        Found 2026-08-15 while preparing to designate that series counted.
+
+        The role is what makes the key unique, because a sub-game is played
+        from exactly one repository and therefore in exactly one role. A
+        genuine duplicate -- same number AND same role in both directories --
+        is a stale or hand-copied file rather than a real disagreement, and
+        there our own directory still wins, so the outcome stays deterministic.
         """
-        found: dict[str, dict[str, Any]] = {}
+        found: dict[tuple[int, str, str], dict[str, Any]] = {}
         directories = [d for d in (sibling_artifacts_dir(self.counted), self.output_dir) if d]
         for directory in directories:  # ours last, so ours overwrites theirs
             for path in sorted(Path(directory).glob(f"log_{game_id}_g*.json")):
                 payload = json.loads(path.read_text(encoding="utf-8"))
                 payload["_filename"] = path.name
-                found[path.name] = payload
-        return [found[name] for name in sorted(found)]
+                summary = payload.get("summary", {})
+                number = int(summary.get("sub_game_number", 0) or 0)
+                role = str(summary.get("role", ""))
+                # A log with no number and no role is malformed rather than a
+                # sub-game, so it falls back to the filename: merging every
+                # such file into one key would drop data to "fix" a collision,
+                # which is the failure this method exists to prevent.
+                found[(number, role, "" if number and role else path.name)] = payload
+        return [found[key] for key in sorted(found)]
 
     def refresh_result(self, game_id: str, game_uid: str, opponent: str) -> Path:
         """Rebuild `result_<game_id>.json` from every log this match has produced."""

@@ -59,7 +59,22 @@ def test_for_opponent_reads_counted_from_the_pairing(peer_config, tmp_path):
     assert service.counted is bool(expected)
 
 
-def test_a_counted_assembly_cannot_see_friendly_logs(peer_config, tmp_path):
+def _isolate_sibling(monkeypatch, tmp_path):
+    """Point the sibling lookup at the sandbox, not at the real other repo.
+
+    Without this these tests read the developer's actual thief/cop repository.
+    Both passed anyway until 2026-08-15, because `series_logs` keyed its merge
+    on the filename and the real sibling's logs happened to share names with
+    the fixture's -- so the leak was silently overwritten. The moment that key
+    was corrected the leak surfaced as three extra sub-games. A test that
+    depends on what is lying in another directory is not a test.
+    """
+    monkeypatch.setattr(
+        "p2pchase.services.network_artifacts.sibling_artifacts_dir",
+        lambda counted=False: tmp_path / "sibling" / (COUNTED_SUBDIR if counted else ""))
+
+
+def test_a_counted_assembly_cannot_see_friendly_logs(peer_config, tmp_path, monkeypatch):
     """The whole point: same game_id, two statuses, no mixing.
 
     Six friendly logs and one counted log share a game id. The counted
@@ -67,6 +82,7 @@ def test_a_counted_assembly_cannot_see_friendly_logs(peer_config, tmp_path):
     """
     from p2pchase.services.network_artifacts import NetworkArtifactService
 
+    _isolate_sibling(monkeypatch, tmp_path)
     game_id = "best2934-vs-imreeyal"
     for n in range(1, 7):
         _log(tmp_path, game_id, n, "imreeyal")
@@ -78,10 +94,11 @@ def test_a_counted_assembly_cannot_see_friendly_logs(peer_config, tmp_path):
     assert found[0]["summary"]["winner_group"] == "best2934"
 
 
-def test_a_friendly_assembly_cannot_see_counted_logs(peer_config, tmp_path):
+def test_a_friendly_assembly_cannot_see_counted_logs(peer_config, tmp_path, monkeypatch):
     """And the other direction, which is the one that silently inflates a friendly."""
     from p2pchase.services.network_artifacts import NetworkArtifactService
 
+    _isolate_sibling(monkeypatch, tmp_path)
     game_id = "best2934-vs-imreeyal"
     for n in range(1, 7):
         _log(tmp_path, game_id, n, "imreeyal")
