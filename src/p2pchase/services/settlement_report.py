@@ -37,7 +37,9 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from ..reports.history import record_counted_game
 from ..reports.naming import write_json
+from ..shared.paths import artifacts_dir
 from ..shared.peer_config import PeerConfig
 from .reporting_service import DeliveryReceipt, ReportingService
 
@@ -87,6 +89,22 @@ def fire_if_settled(config: PeerConfig, opponent: str, result_path: Path,
     if short:
         LOGGER.info("counted report held: %s", short)
         return None
+
+    # Rule 37's ledger, written BEFORE the send and regardless of it. The
+    # series happened; whether the mail leaves is a separate fact, and a
+    # counted game that failed to post is still a counted game we must declare.
+    #
+    # Nothing wrote this ledger until now. `record_counted_game` existed, was
+    # tested, and had no production caller -- so `counted_games_played` would
+    # have answered 0 forever, however many counted series we played, and our
+    # step-0 declaration to every future opponent would have been false under
+    # rules 37-38. anrbj666 found it on league issue #49 by reading the output
+    # of a check we posted to prove something else.
+    #
+    # The ledger lives at the FRIENDLY artifacts root deliberately: it is a
+    # team-level record, not a per-series artifact, so it must survive a
+    # settled series being archived out of the live tree.
+    record_counted_game(opponent, artifacts_dir())
 
     LOGGER.warning("SERIES SETTLED -- firing the counted report to %s (rule 32)",
                    config.email["recipient"])
