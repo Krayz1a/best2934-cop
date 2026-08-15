@@ -11,9 +11,16 @@ from p2pchase.services.reporting_service import ReportingService
 
 
 def _result(played: int) -> dict:
-    """A result artifact that is internally consistent at any length."""
+    """A result artifact that is internally consistent at any length.
+
+    It carries the ``sub_games`` rows it claims, because the real builder always
+    does and a stub that omits them is not internally consistent -- it is a
+    length with nothing behind it, which the one-series check in
+    ``test_report_is_one_series.py`` refuses on different grounds entirely.
+    """
     return {"game_id": "best2934-vs-imreeyal", "game_uid": "uid-1",
             "num_sub_games": played, "final_result": {"winner_group": None},
+            "sub_games": [{"sub_game_number": n} for n in range(1, played + 1)],
             "mutual_agreement": {"sha256": "abc"}}
 
 

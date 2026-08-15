@@ -29,9 +29,12 @@ from p2pchase.services.reporting_service import DeliveryReceipt
 
 def _result(tmp_path, game_id="best2934-vs-imreeyal", sub_games=6):
     path = tmp_path / f"result_{game_id}.json"
-    path.write_text(json.dumps({"game_id": game_id, "num_sub_games": sub_games,
-                                "final_result": {"winner_group": "best2934"}}),
-                    encoding="utf-8")
+    path.write_text(json.dumps({
+        "game_id": game_id, "num_sub_games": sub_games,
+        # The rows the length claims. The real builder always writes them, and
+        # the one-series check refuses a result whose numbering is not 1..N.
+        "sub_games": [{"sub_game_number": n} for n in range(1, sub_games + 1)],
+        "final_result": {"winner_group": "best2934"}}), encoding="utf-8")
     return path
 
 

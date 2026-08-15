@@ -146,10 +146,47 @@ class ReportingService:
         """
         signed = int(self.config.num_sub_games)
         played = int(result.get("num_sub_games", 0) or 0)
-        if played == signed:
+        if played != signed:
+            return (f"refusing to send an incomplete report: {played} sub-game(s) recorded "
+                    f"against the signed num_sub_games of {signed}")
+        return self._misnumbered(result, signed)
+
+    @staticmethod
+    def _misnumbered(result: dict[str, Any], signed: int) -> str:
+        """Why these rows are not one series, or ``""`` when they are.
+
+        Counting is not enough, and the count check above passed on the shape
+        that proves it. ``series_logs`` globs every ``log_<game_id>_g*.json``
+        ever written, and both ``game_id`` and ``game_uid`` are **pairing**
+        identifiers -- stable across every series played against one opponent.
+        So a second series against the same team assembles on top of the first.
+
+        Measured 2026-08-16, before anything counted was played: the gal-roy1
+        result carried eleven rows spanning 17:20 to 21:00, the afternoon's
+        friendlies welded onto that evening's throwaway, numbered 0..11 with no
+        5 and a duplicate ``started_at`` on 6 and 7.
+
+        Eleven against a signed six is caught by the count. **Six is not.**
+        Three stale logs plus three fresh ones total exactly six, satisfy every
+        self-check inside the artifact, and get filed -- and rule 35 charges
+        *both* teams when the two reports disagree. That is the same
+        consistent-and-wrong shape imreeyal lost a series to, which is why the
+        assertion is explicit here rather than left to how the rows were
+        gathered.
+
+        A series is sub-games 1..N exactly once each, whatever the role
+        convention: the convention decides who is cop in each, never how they
+        are numbered. Roles are deliberately not checked -- a false refusal at
+        settlement is its own outage, and the numbers alone catch the mixture.
+        """
+        numbers = sorted(int(row.get("sub_game_number", 0) or 0)
+                         for row in result.get("sub_games", []))
+        if numbers == list(range(1, signed + 1)):
             return ""
-        return (f"refusing to send an incomplete report: {played} sub-game(s) recorded "
-                f"against the signed num_sub_games of {signed}")
+        return (f"refusing to send a report that is not one series: sub-game numbers "
+                f"{numbers} against the signed 1..{signed}. Stale artifacts from an "
+                f"earlier series against this opponent are the usual cause -- archive "
+                f"them and re-assemble.")
 
     def archive_wire(self, raw: dict[str, str], result: dict[str, Any]) -> Path | None:
         """Write the exact bytes about to be sent, so a settlement can cite them.
