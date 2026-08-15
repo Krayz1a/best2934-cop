@@ -22,7 +22,9 @@
       "_remark": "Agreed in the direct channel and on league issue #48: anrbj666 sorts first, so they are cop on sub-games 1/3/5 and best2934 is cop on 2/4/6. Written out rather than left to the defaults, which are first_half + multiplicative_book_v1: the scent model would have been right by luck and the convention wrong, and first_half vs odd_even disagree on sub-games 2 and 5 -- two thieves on 2, two cops on 5, and two cops chase nobody. Their scent lock doc must hash to 934c220d5bf62acaa3297c6c9d723ea954c220260b02292ca17f6d5daef9f4d9; compared in Stage 1.",
       "tie_rule": "series_add",
       "seal_form": "kit_pipe_v1",
-      "_seal_remark": "Same kit surface as imreeyal (they play the reference-v3 wire); untested by us against them."
+      "_seal_remark": "Same kit surface as imreeyal (they play the reference-v3 wire); untested by us against them.",
+      "forfeit_result": "technical_loss",
+      "_forfeit_remark": "Pinned as a pairing term with anrbj666 on league issue #49, their proposal, accepted 2026-08-15. Both sides already emit `technical_loss` for the rule-46/47 sanction row, so this changes no byte today -- it removes a settlement-day argument. Their point: a forfeit is the worst possible moment to discover a spelling disagreement, because it only appears when something has already gone wrong. Never `timeout`."
     },
     "gal-roy1": {
       "role_convention": "first_half",
