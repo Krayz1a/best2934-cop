@@ -62,3 +62,9 @@ Thumbs.db
 # The submission checklist says to attach the artifacts of every counted game;
 # a rule that quietly excludes them defeats the point of keeping them.
 artifacts/counted/*.json
+
+# League message drafts. They are written from the project root and must not
+# be committed into a public repository -- four of them were, on 2026-08-15,
+# because a `cat >` ran while the shell was inside the repo.
+/*.md
+!README.md

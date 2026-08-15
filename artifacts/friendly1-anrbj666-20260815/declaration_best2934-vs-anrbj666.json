@@ -1,0 +1,61 @@
+{
+  "_schema": "Static declaration for the WHOLE game (the full series of sub-games) between two teams: identity, members, repositories, MCP servers, hardware, model, agreed token cap and timings. Signed and locked before play (book ch5, Step-0).",
+  "schema_version": "1.1",
+  "declaration_type": "pre_game_declaration",
+  "game_id": "best2934-vs-anrbj666",
+  "game_uid": "c82e9a5f-8800-85da-eea6-2b57b4fab4f6",
+  "links": {
+    "_remark": "Logical roles, NOT fixed filenames. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json.",
+    "declaration": "declaration_best2934-vs-anrbj666.json",
+    "config": "config_best2934-vs-anrbj666_g<NN>.json",
+    "log": "log_best2934-vs-anrbj666_g<NN>.json",
+    "result": "result_best2934-vs-anrbj666.json"
+  },
+  "timezone": "Asia/Jerusalem",
+  "game_started_at": "2026-08-15T18:09:18.430575+00:00",
+  "game_ended_at": null,
+  "num_sub_games": 6,
+  "max_tokens_per_game": 200000,
+  "groups": {
+    "group_1": {
+      "group_id": "best2934",
+      "group_name": "best2934",
+      "members": [
+        "Tomer Levy",
+        "Eyal Koloshi",
+        "Alon Issman"
+      ],
+      "repos": {
+        "cop": "https://github.com/Krayz1a/best2934-cop",
+        "thief": "https://github.com/Krayz1a/best2934-thief"
+      },
+      "mcp_servers": {
+        "url": "https://toys-christina-velvet-icq.trycloudflare.com/cop/mcp"
+      },
+      "llm_model": "claude-haiku-4-5",
+      "hardware_spec": {
+        "os": "Linux 7.0.0-29-generic",
+        "cpu_type": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+        "cpu_cores": 8,
+        "cpu_freq_mhz": 4200,
+        "ram_gb": 7.0,
+        "gpu_type": "none (CPU only)",
+        "gpu_cores_or_cuda": "n/a",
+        "vram_gb": 0.0
+      },
+      "signature": "22626f44c1a34d0f4b8f3ec4f8667719078edb873ab2af1bf93077515e296ba5"
+    },
+    "group_2": {
+      "group_id": "unknown",
+      "group_name": "unknown",
+      "members": [],
+      "repos": {},
+      "mcp_servers": {
+        "url": "http://127.0.0.1:8802/mcp"
+      },
+      "llm_model": "unknown",
+      "hardware_spec": {},
+      "signature": "9ab9730bace1c81ea19d38da3c2bfb6ad0a73275f7ac5544cb8c9764ec2d0f27"
+    }
+  }
+}
