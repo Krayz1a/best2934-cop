@@ -292,11 +292,32 @@ file** — never as body text, which would be rejected and score zero (rule 34).
 The recipient is forced at load time and cannot be redirected by editing a
 config file.
 
+**For a counted series you do not run any of that.** Rule 32 makes reporting the
+agent's job, so `services/settlement_report.py` fires the report itself the
+moment the signed number of sub-games is on disk — no human, no flag, no
+terminal. The commands above remain for friendlies and for the manual fallback.
+
+Four guards, because an automatic mailer is the most dangerous object here:
+counted pairings only (the flag is read from the pairing, never passed by a
+caller who could forget it); complete series only, checked against the *signed*
+`num_sub_games`; exactly once, with a receipt on disk as the sentinel, written
+even on failure so nothing silently retries into a rate limit; and it never
+raises, because a mail failure must not take down the match that produced the
+evidence.
+
+That last guard earned itself on its first live firing: the send died on a
+missing dependency, the match was unaffected, the receipt recorded
+`sent: false`, and the report went by hand two minutes later. **If the receipt
+says `sent: false`, send it by hand** — rule 35 voids the match for *both* teams
+on a missing report.
+
 ### Typical workflow
 
 ```
 check-config → rehearsal.py → agree game.json with the opponent → play
-            → verify (own logs) → audit (their logs) → send-report --live
+            → verify (own logs) → audit (their logs)
+            → counted: the report fires itself at the sixth settle
+            → friendly: send-report --live
 ```
 
 ---
