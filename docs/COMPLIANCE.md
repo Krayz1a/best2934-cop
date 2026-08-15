@@ -14,7 +14,13 @@ play**: the mechanism is built and exercised against a loopback opponent; the
 rule is only finally discharged during a real match. **Operator**: needs a
 human, by design or by rule. **External**: depends on another team.
 
-Summary: **45 Met · 4 Met, awaiting play · 4 Operator · 2 External**.
+Summary over 55 rules: **48 Met** · **5 Operator** · **2 External**.
+
+These four numbers are *derived from the table below*, not maintained beside it — a count kept by hand is a claim a later commit can silently falsify, which is the failure this whole document exists to avoid. Recount at any time:
+
+```bash
+grep -oP '^\|\s*\d+\s*\|[^|]*\|\s*\K[^|]+' docs/COMPLIANCE.md | sed 's/ *$//' | sort | uniq -c
+```
 
 ---
 
@@ -73,14 +79,14 @@ Summary: **45 Met · 4 Met, awaiting play · 4 Operator · 2 External**.
 
 | # | Rule | Status | Where |
 |---|---|---|---|
-| 31 | Play the minimum number of games against different teams | External | **Minimum is 2**, confirmed by course staff 2026-08-06; a fixed parameter, already correct as `min_games_to_pass` in `config/<role>/game.json` and `constants.MIN_GAMES_TO_PASS`. The booklet prose leaves the number as an unfilled placeholder, so it was asked rather than derived. Rule 52 caps counted games at one per opponent, so 2 teams is structural. One secured (`gal-roy1`), two approached. [TODO.md](TODO.md) Phase 10 |
-| 32 | Report results automatically by Gmail | Met, awaiting play | `services/reporting_service.py`; dry run is the default until credentials exist |
+| 31 | Play the minimum number of games against different teams | External | **Minimum is 2**, confirmed by course staff 2026-08-06; a fixed parameter, already correct as `min_games_to_pass` in `config/<role>/game.json` and `constants.MIN_GAMES_TO_PASS`. The booklet prose leaves the number as an unfilled placeholder, so it was asked rather than derived. Rule 52 caps counted games at one per opponent, so 2 teams is structural. **One counted game played**: imreeyal, 2026-08-15, 47–47 tie, filed and cross-diffed. That pairing is now spent under rule 52, so the second must come from `gal-roy1`. [TODO.md](TODO.md) Phase 10 |
+| 32 | Report results automatically by Gmail | Met | `services/settlement_report.py` fires the counted report at settlement with no human in the loop, off the choke point both recording paths share. **This row said "Met" while the only caller of `send_result` was the `send-report` CLI command a person runs with `--live`** — automatic in the docstring, operator-armed in fact. imreeyal named it as their precondition for a counted series on 2026-08-15 and we built it rather than promise it. Guards: counted pairings only, complete series only (against the *signed* `num_sub_games`), exactly once (a receipt on disk is the sentinel, written on failure too), and it never raises. Fired live at the 14:20 UTC counted settlement |
 | 33 | The report is standard JSON | Met | `reports/result.py`; `tests/unit/test_reports/test_artifacts.py` |
 | 34 | No free-text final report — JSON attachment only | Met | The body carries a summary and names the attachment as binding; the artifact is the JSON file |
 | 35 | Both teams agree the result and each sends its own report | Met | `mutual_agreement.sha256` over `agreed_summary` — only the facts both peers derive from the same messages, so two honest reports hash identically and a disputed one does not (ADR-018). Two rehearsal peers produce the same digest; `tests/integration/test_ending_agreement.py` |
 | 36 | Comprehensive mutual log audit at the end of every game | Met | `final_reveal` exchanges chains; each peer audits the other's. `tests/integration/test_networked_sub_game.py` |
-| 37 | Declare the true number of games played at the start of each game | Met, awaiting play | `counted_games_played` in the `hello` reply — the interop surface only (`mcp/interop.py`), which is the one an opponent actually calls. Not in the native `hello` and **not** in the declaration artifact; this row previously claimed both, and neither was true. Read from the ledger of games *agreed to count* (rule 52), not from result files on disk: counting those declared two counted games against opponents we had invented while testing |
-| 38 | No false declaration of games played | Operator | A rule about honesty, not a mechanism. The number is read from the artifacts on disk, so there is nothing to remember and nothing to round up |
+| 37 | Declare the true number of games played at the start of each game | Met | `counted_games_played` in the `hello` reply — the interop surface only (`mcp/interop.py`), which is the one an opponent actually calls. Not in the native `hello` and **not** in the declaration artifact; this row previously claimed both, and neither was true. Read from the ledger of games *agreed to count* (rule 52), not from result files on disk: counting those declared two counted games against opponents we had invented while testing. Discharged in a real match on 2026-08-15: declared 0 to imreeyal at step-0, filed 1, and they cross-diffed the standings block against their own |
+| 38 | No false declaration of games played | Operator | A rule about honesty, not a mechanism. The number comes from the ledger of games both sides agreed to count, never from result files on disk — see row 37 for why that distinction is load-bearing. The opponent's column is *their* declaration, recorded rather than derived (rule 37); we add only the series being filed, which is the fix to a defect that reached the lecturer on 2026-08-15 and was superseded by a corrected report |
 | 39 | Never push secrets or credentials to the repository | Met | Verified over the **whole history**, not just the working tree: `git rev-list --all --objects` finds no credential file |
 | 40 | Credentials and secrets are in `.gitignore` | Met | `.gitignore` lines 1–14, with the reason stated in the file |
 | 41 | Tag the submitted version with a documented Git tag | Operator | `v1.0-submission`, annotated, after the last counted game — deliberately not applied early, so the tag marks what was actually submitted |
@@ -111,14 +117,19 @@ Summary: **45 Met · 4 Met, awaiting play · 4 Operator · 2 External**.
 Three of these four need a human; the first needs another team. Listing them
 plainly is more useful than a green table:
 
-1. **No counted games yet** (31, 52, and the play-dependent half of 32, 35, 37).
-   This is the only gap that can still cost the project a passing grade, and no
-   amount of code closes it.
+1. **One counted game of the two needed to pass** (31, 52). imreeyal,
+   2026-08-15, 47–47 tie — both teams filed to the lecturer and cross-diffed the
+   artifacts key by key. Rule 52 spends that pairing, so the second game needs a
+   different team to agree. **This remains the only gap that can still cost the
+   project a passing grade, and no amount of code closes it.**
 2. **The repositories are not tagged** (rule 41). Both are pushed and public;
    the annotated `v1.0-submission` tag waits for the last counted game, so it
    marks the code that actually played rather than the code that was ready.
-3. **Gmail is in dry-run** (32) until the operator creates the OAuth client and
-   runs the consent flow. The send path, the rate limiter and the DoS detector
-   are all built and tested against a stub.
+3. **Gmail is live** (32). The operator created the OAuth client and ran the
+   consent flow on 2026-08-15; the counted report auto-fired at settlement and
+   four reports have been delivered against the real API. Its first live firing
+   failed on a missing dependency in the thief virtualenv — the guards held, the
+   match was unaffected, the receipt recorded `sent: false`, and the report went
+   by hand inside two minutes. Both venvs now carry the extra.
 4. **The Moodle form and the per-member submissions** (43, 44) are clerical and
    must be done by the three members.
