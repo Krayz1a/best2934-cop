@@ -118,6 +118,21 @@ class PeerConfig:
         """Which sub-game ordering we agreed with this opponent."""
         return str(self.pairing(opponent).get("role_convention", roles.DEFAULT_CONVENTION))
 
+    def headline_digest(self, opponent: str) -> str:
+        """Which digest this pairing files as `mutual_agreement.sha256`.
+
+        ``"own"`` is our scope (includes `tie` per row and the sorted group
+        ids); ``"league"`` is the kit's SPEC-6 five-key trim. Both are always
+        published and both name their scope -- this only chooses which one
+        answers to the field two filed reports get machine-diffed on.
+
+        Per-pairing because it has to be: gal-roy1 adopted our definition, and
+        anrbj666 asked for the league form on issue #49 with the right
+        argument -- one field, one meaning. Defaults to ours so a pairing that
+        has agreed nothing keeps what its opponent already verified.
+        """
+        return str(self.pairing(opponent).get("headline_digest", "own"))
+
     def subject_form(self, opponent: str) -> str:
         """Which subject shape this pairing files its reports under.
 

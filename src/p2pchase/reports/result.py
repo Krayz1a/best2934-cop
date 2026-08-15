@@ -135,6 +135,30 @@ def agreed_summary(game_id: str, groups: list[str], sub_games: list[SubGameOutco
     return build_agreed_summary(game_id, groups, sub_games, with_totals=True)
 
 
+OWN_SCOPE = ("agreed_summary: game_id, sorted group_ids, per sub-game "
+             "roles/result/winner/tie/scores, and derived totals")
+LEAGUE_SCOPE = ("league trimmed scope -- game_id, derived aggregate, and the "
+                "five-key per sub-game row (sub_game_number, roles, result, "
+                "winner_group, score); spaced canonical form "
+                "(copthief-league-protocol SPEC section 6)")
+
+
+def _digest_fields(headline: str, summary: dict[str, Any],
+                   league_summary: dict[str, Any]) -> dict[str, Any]:
+    """The two digests, with the pairing's chosen one under ``sha256``.
+
+    Both are always published and both always name their scope. Only which one
+    answers to ``sha256`` changes, because that is the field two filed reports
+    get compared on.
+    """
+    own, league = mutual_agreement_hash(summary), interop_signature(league_summary)
+    if headline == "league":
+        return {"sha256": league, "scope": LEAGUE_SCOPE,
+                "own_form_sha256": own, "own_form_scope": OWN_SCOPE}
+    return {"sha256": own, "scope": OWN_SCOPE,
+            "interop_sha256": league, "interop_scope": LEAGUE_SCOPE}
+
+
 def build_result_artifact(
     game_id: str,
     game_uid: str,
@@ -146,6 +170,7 @@ def build_result_artifact(
     repositories: dict[str, dict[str, str]] | None = None,
     league: dict[str, Any] | None = None,
     standings: dict[str, Any] | None = None,
+    headline_digest: str = "own",
 ) -> dict[str, Any]:
     """Assemble the report both teams send independently.
 
@@ -191,7 +216,25 @@ def build_result_artifact(
         "final_result": template_final_result(final_result, tokens_total_series,
                                               standings),
         "mutual_agreement": {
-            "sha256": mutual_agreement_hash(summary),
+            # WHICH digest is the headline is a per-pairing term, because the
+            # headline is the field a grader machine-diffs between two filed
+            # reports and it must carry ONE number with ONE meaning.
+            #
+            # Ours covers `tie` per row and the sorted group ids; the league's
+            # SPEC-6 scope trims to five keys. Both are correct and they differ,
+            # so a pairing that compares `sha256` to `sha256` across the two
+            # definitions sees two honest implementations appear to disagree --
+            # at settlement, with nothing to point at.
+            #
+            # anrbj666 took our offer of "one field, one meaning" on league
+            # issue #49 and chose the league form. gal-roy1 adopted our own
+            # form and must not be broken to reach a team we have not yet
+            # played, so it stays the default. Whichever is the headline, the
+            # other is published beside it under a named key: two hashes with
+            # no scopes is how a matching pair gets compared against a
+            # mismatching one.
+            **_digest_fields(headline_digest, summary,
+                             interop_summary(game_id, sub_games, sorted(groups))),
             "confirmed": confirmed,
             # The same agreement in the league's cross-team spelling: trimmed
             # scope, spaced serialization. Published beside ours rather than
@@ -200,13 +243,5 @@ def build_result_artifact(
             # played. Each digest names the scope it covers, because two hashes
             # side by side with no scopes is how a matching pair gets compared
             # against a mismatching one.
-            "scope": "agreed_summary: game_id, sorted group_ids, per sub-game "
-                     "roles/result/winner/tie/scores, and derived totals",
-            "interop_sha256": interop_signature(
-                interop_summary(game_id, sub_games, sorted(groups))),
-            "interop_scope": "league trimmed scope -- game_id, derived aggregate, "
-                             "and the five-key per sub-game row (sub_game_number, "
-                             "roles, result, winner_group, score); spaced canonical "
-                             "form (copthief-league-protocol SPEC section 6)",
         },
     }

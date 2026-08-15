@@ -238,7 +238,8 @@ class NetworkArtifactService:
                 # guessed: a number we invent for another team is a false
                 # declaration in *their* column of the lecturer's standings.
                 int(self.config.pairing(opponent).get("opponent_counted_games", 0)),
-                final_result.get("winner_group"), self.output_dir))
+                final_result.get("winner_group"), self.output_dir),
+            headline_digest=self.config.headline_digest(opponent))
         return artifacts.write_json(names.result(), report)
 
     def repositories(self, game_id: str, opponent: str) -> dict[str, dict[str, str]]:
