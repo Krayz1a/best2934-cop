@@ -32,6 +32,29 @@ def _roles(summary: dict[str, Any], mine: str, theirs: str) -> dict[str, str]:
     return {mine: my_role, theirs: other}
 
 
+def template_audit(audit: dict) -> dict[str, bool]:
+    """The course template's two-field audit row, from our six-field diagnostic.
+
+    Our logs carry `passed`, `verified_steps`, `failed_steps`, `forged_steps`,
+    `withheld_steps` and `unsolicited_steps` -- useful when a wire goes wrong,
+    and not the shape the grader reads. Appendix F's row is
+    ``{"log_verified": ..., "tampered": ...}``.
+
+    imreeyal raised it as the same category as `raw_score` and `tie_rule`,
+    which we dropped from the artifact on exactly this argument: the counted
+    report goes to the marker, and template-shaped is the only safe shape
+    there. Diagnostics stay in the logs, where they belong and where any
+    opponent can still audit them; the artifact carries the two fields.
+
+    `tampered` is true when the opponent's disclosed records did not verify --
+    forged or withheld steps -- rather than whenever the audit merely failed,
+    because a failure with no such step is our own bookkeeping and not an
+    accusation against them.
+    """
+    tampered = bool(audit.get("forged_steps") or audit.get("withheld_steps"))
+    return {"log_verified": bool(audit.get("passed", False)), "tampered": tampered}
+
+
 def assemble_series(
     logs: list[dict[str, Any]],
     mine: str,
@@ -80,7 +103,7 @@ def assemble_series(
             tokens={mine: my_tokens},
             score=score,
             log_files={mine: log.get("_filename", "")},
-            audit=dict(summary.get("audit", {})),
+            audit=template_audit(summary.get("audit", {})),
             steps=int(summary.get("steps", 0) or 0),
         ))
 

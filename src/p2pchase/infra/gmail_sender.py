@@ -22,6 +22,8 @@ The interactive consent flow is deliberately NOT run automatically -- see
 from __future__ import annotations
 
 import base64
+import email
+import hashlib
 import json
 import logging
 import os
@@ -39,6 +41,30 @@ SCOPES: tuple[str, ...] = ("https://www.googleapis.com/auth/gmail.send",)
 
 class GmailNotConfiguredError(RuntimeError):
     """Raised when credentials are absent -- a setup problem, not a bug."""
+
+
+class UnarmoredMessageError(RuntimeError):
+    """Raised when a part would ship with no Content-Transfer-Encoding."""
+
+
+def armor_problems(raw_message: dict[str, str]) -> list[str]:
+    """Content types in the composed wire that declare no transfer encoding.
+
+    Parses the message back out of the exact bytes bound for the API rather
+    than inspecting the object we built, because those are the only bytes that
+    can be wrong by the time it matters.
+
+    We fixed the missing encoding in :func:`build_message`, added three tests,
+    watched them pass, and re-flew the report. imreeyal read the raw `.eml` and
+    the second flight's body was byte-identical to the first: still unarmored,
+    still soft-wrapped at the same ten points. The composer was right and the
+    message that left was not, and every check we owned was on the composer.
+    Their words for it: pin the check to what actually goes through the API.
+    """
+    message = email.message_from_bytes(base64.urlsafe_b64decode(raw_message["raw"]))
+    return [part.get_content_type() for part in message.walk()
+            if not part.get_content_type().startswith("multipart/")
+            and not part.get("Content-Transfer-Encoding")]
 
 
 def credentials_path() -> Path:
@@ -171,6 +197,18 @@ def send_raw(raw_message: dict[str, str]) -> dict[str, Any]:
 
     Always called through the Gatekeeper (guidelines §5.1) -- never directly.
     """
+    problems = armor_problems(raw_message)
+    if problems:
+        raise UnarmoredMessageError(
+            f"refusing to send: {', '.join(problems)} carry no Content-Transfer-Encoding. "
+            f"SMTP soft-wraps any line past ~72 columns, so the delivered body would stop "
+            f"matching its own attachment -- same length, different bytes, invisible to "
+            f"every local check."
+        )
+    wire = base64.urlsafe_b64decode(raw_message["raw"])
+    LOGGER.info("sending %d wire bytes, sha256 %s", len(wire),
+                hashlib.sha256(wire).hexdigest())
+
     from googleapiclient.discovery import build  # pragma: no cover - network path
 
     service = build("gmail", "v1", credentials=load_credentials(), cache_discovery=False)

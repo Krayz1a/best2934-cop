@@ -17,14 +17,18 @@ be built, digested and compared with the opponent before anyone sends anything.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ..infra import gmail_sender
 from ..infra.gatekeeper import ApiGatekeeper, build_gatekeeper
 from ..reports.naming import opponent_in_game_id
+from ..shared.paths import artifacts_dir
 from ..shared.peer_config import PeerConfig
 from . import friendly_recipient
 
@@ -138,6 +142,32 @@ class ReportingService:
         return (f"refusing to send an incomplete report: {played} sub-game(s) recorded "
                 f"against the signed num_sub_games of {signed}")
 
+    def archive_wire(self, raw: dict[str, str], result: dict[str, Any]) -> Path | None:
+        """Write the exact bytes about to be sent, so a settlement can cite them.
+
+        imreeyal settled our first two flights from the raw `.eml` they
+        received while we could only quote what our composer produced. Those
+        disagreed -- the fix was in the composer and not in the message that
+        left -- and we had no record of our own to check, so their reading was
+        the only evidence either team had.
+
+        This writes the same object handed to ``send_raw``, at the moment it is
+        handed over. It is a receipt, not a copy of the report: `.eml` files
+        stay out of git because they carry the opponents' addresses in the
+        headers, and both repositories are public.
+        """
+        try:
+            wire = base64.urlsafe_b64decode(raw["raw"])
+            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+            path = artifacts_dir() / f"sent_{result.get('game_id', 'game')}_{stamp}.eml"
+            path.write_bytes(wire)
+        except (OSError, ValueError) as error:  # never block a send on bookkeeping
+            LOGGER.warning("could not archive the sent wire: %s", error)
+            return None
+        LOGGER.info("wire archived to %s (%d bytes, sha256 %s)", path, len(wire),
+                    hashlib.sha256(wire).hexdigest())
+        return path
+
     def send_result(self, result: dict[str, Any], dry_run: bool = False,
                     to: str = "") -> DeliveryReceipt:
         """Send one result report. ``dry_run`` composes without delivering.
@@ -173,6 +203,7 @@ class ReportingService:
             LOGGER.info("report composed but NOT sent (%s): %s", reason, subject)
             return DeliveryReceipt(False, recipient, subject, attachment_name, reason=reason)
 
+        self.archive_wire(raw, result)
         try:
             response = self.gatekeeper.execute(
                 gmail_sender.send_raw, raw, gate_label="gmail.send"

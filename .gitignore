@@ -20,6 +20,9 @@ anthropic.json
 logs/*.json
 logs/*.log
 artifacts/*.json
+# Sent-mail receipts: they carry opponents' addresses, and both repos are public.
+artifacts/*.eml
+artifacts/**/*.eml
 !artifacts/.gitkeep
 !logs/.gitkeep
 
