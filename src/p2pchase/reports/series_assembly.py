@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .. import constants
+from ..domain.roles import DEFAULT_CONVENTION, cop_group, normalise_role
 from ..domain.scoring import SERIES_ADD, ScoreTable, SeriesTally
 from .result import SubGameOutcome
 
@@ -55,6 +57,47 @@ def template_audit(audit: dict) -> dict[str, bool]:
     return {"log_verified": bool(audit.get("passed", False)), "tampered": tampered}
 
 
+def canonical_indices(logs: list[dict[str, Any]], mine: str, theirs: str,
+                      convention: str) -> list[int]:
+    """The series position of each log, derived from the agreed role convention.
+
+    Returns the recorded numbers untouched whenever they are already a complete
+    1..N -- which is the normal case and one this must never disturb. It only
+    derives when they are not a series at all.
+
+    They were not, against gal-roy1. Our cop and thief repositories each
+    numbered their own sub-games from 1, so a six-sub-game series carried the
+    indices 1, 1, 2, 2, 3, 3. The totals were right, because sums do not care
+    about labels; but `mutual_agreement` scope covers the per-sub-game rows, so
+    two teams could agree on 75-35 and still fail a row-by-row join. Agreeing
+    on the score while disagreeing about the game is the ambiguity rule 35
+    feeds on.
+
+    The position is *derived*, not invented: :func:`~p2pchase.domain.roles
+    .cop_group` already says which team cops in which sub-game under the
+    pairing's declared convention, so our cop-side logs take the slots where we
+    cop and our thief-side logs take the rest, each in recorded order. Both
+    peers reach the same answer from the two group ids and the convention
+    alone, with nothing to exchange -- the same property that makes the role
+    assignment safe in the first place.
+    """
+    recorded = [int(log.get("summary", {}).get("sub_game_number", 0) or 0)
+                for log in logs]
+    if sorted(recorded) == list(range(1, len(logs) + 1)):
+        return recorded
+
+    total = len(logs)
+    cop_slots = [n for n in range(1, total + 1)
+                 if cop_group(mine, theirs, n, total, convention) == mine]
+    thief_slots = [n for n in range(1, total + 1) if n not in cop_slots]
+    slots = {constants.ROLE_COP: iter(cop_slots), constants.ROLE_THIEF: iter(thief_slots)}
+    derived = []
+    for log in logs:
+        role = normalise_role(str(log.get("summary", {}).get("role", "")))
+        derived.append(next(slots.get(role, iter(())), 0))
+    return derived
+
+
 def assemble_series(
     logs: list[dict[str, Any]],
     mine: str,
@@ -62,6 +105,7 @@ def assemble_series(
     table: ScoreTable,
     commit_hash: str = "",
     tie_rule: str = SERIES_ADD,
+    convention: str = DEFAULT_CONVENTION,
 ) -> tuple[list[SubGameOutcome], dict[str, Any], dict[str, int]]:
     """Turn per-sub-game logs into outcomes, a final result and token totals.
 
@@ -81,10 +125,15 @@ def assemble_series(
     at settlement against an opponent who had done nothing wrong.
     """
     tally = SeriesTally(mine, theirs, tie_score=table.tie_score, tie_rule=tie_rule)
+    positions = canonical_indices(logs, mine, theirs, convention)
     outcomes: list[SubGameOutcome] = []
     tokens = {mine: 0, theirs: 0}
 
-    for log in sorted(logs, key=lambda entry: entry["summary"]["sub_game_number"]):
+    # Ordered by the DERIVED position, not the recorded one: sorting by a
+    # number we are about to replace would pair each log with another
+    # log's slot, and against gal-roy1 the recorded numbers repeat.
+    for position, log in sorted(zip(positions, logs, strict=True),
+                                key=lambda pair: pair[0]):
         summary = log["summary"]
         roles = _roles(summary, mine, theirs)
         outcome = str(summary["result"])
@@ -93,7 +142,7 @@ def assemble_series(
         tokens[mine] += my_tokens
         winner_role = summary.get("winner_role")
         outcomes.append(SubGameOutcome(
-            sub_game_number=int(summary["sub_game_number"]),
+            sub_game_number=position,
             roles=roles,
             started_at=str(summary.get("started_at", "")),
             ended_at=str(summary.get("ended_at", "")),

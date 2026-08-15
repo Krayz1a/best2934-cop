@@ -72,8 +72,13 @@ def test_the_network_service_passes_the_pairing_rule_not_a_default(monkeypatch, 
 
     seen: dict[str, str] = {}
 
-    def _spy(logs, mine, theirs, table, commit_hash="", tie_rule=scoring.SERIES_ADD):
+    def _spy(logs, mine, theirs, table, commit_hash="", tie_rule=scoring.SERIES_ADD,
+             convention="first_half"):
         seen["tie_rule"] = tie_rule
+        # The role convention rides the same call site and was added later, so
+        # it is asserted here too: a term that silently falls back to a default
+        # is the exact bug this test was written for, once per term.
+        seen["convention"] = convention
         return [], {}, {}
 
     monkeypatch.setattr(network_artifacts, "assemble_series", _spy)

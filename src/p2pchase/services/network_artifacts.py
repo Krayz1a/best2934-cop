@@ -216,9 +216,9 @@ class NetworkArtifactService:
         logs = self.series_logs(game_id)
 
         mine = self.config.group_id
-        outcomes, final_result, tokens = assemble_series(logs, mine, opponent, self.table,
-                                                         git_commit(),
-                                                         self.config.tie_rule(opponent))
+        outcomes, final_result, tokens = assemble_series(
+            logs, mine, opponent, self.table, git_commit(),
+            self.config.tie_rule(opponent), self.config.role_convention(opponent))
         counted, _sign_off = self.config.counted_series(opponent)
         report = artifacts.build_result_artifact(
             game_id, game_uid, [mine, opponent], outcomes, final_result, tokens,
