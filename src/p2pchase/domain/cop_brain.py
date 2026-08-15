@@ -46,13 +46,45 @@ class CopBrain(BrainBase):
     #: Weight on keeping our own escape routes open when distances tie.
     MOBILITY_WEIGHT = 0.01
 
+    @staticmethod
+    def _target_cell(state: OwnState) -> Coord | None:
+        """The fitted deposit when we have one, otherwise the belief peak.
+
+        Overridden here and not on ``BrainBase`` because the thief calls the
+        same helper to decide where to *flee from*, and a thief that flees the
+        cop's best estimate of the thief is a thief fleeing itself.
+
+        The posterior is not wrong -- it was measured converging to distance 1
+        by step 31 -- it is *late*, and 31 is past the point where a 35-step cap
+        leaves room to convert. The fit reads the same field and names the cell
+        outright. Where both exist the fit wins, because an exact answer beats a
+        distribution over the same evidence.
+
+        It is one full turn stale by agreement, so this is deliberately the
+        cell they *were* on: a chaser walking at that cell caught every one of
+        eight recovered trajectories by step 19, which is the whole reason to
+        prefer it. ``None`` stays "no reading" and falls through to the belief.
+        """
+        if state.opponent_deposit is not None:
+            return state.opponent_deposit
+        return state.belief.most_likely()
+
     def _decide_move(self, state: OwnState) -> Decision:
         target = self._target_cell(state)
         if target is None:
             return Decision(move=self._pick_move(state), rationale="no-belief")
 
         distance = self._distance(state, state.position, target)
-        barrier = self._choose_barrier(state, target, distance)
+        # A barrier costs the whole turn, and the thief spends that turn moving.
+        # That trade is worth it against a cloud -- sealing space is how you
+        # make an unknown thief findable. Against a cell we have actually
+        # FITTED it is a certain step swapped for a speculative one, and the
+        # replay says so plainly: chasing with no barriers at all caught 8 of 8
+        # recovered trajectories, while the barrier branch burned turns 8, 9
+        # and 10 and sealed (4, 5) -- the cell between the cop and the thief --
+        # walling off its own approach.
+        barrier = (None if state.opponent_deposit is not None
+                   else self._choose_barrier(state, target, distance))
         if barrier is not None:
             return Decision(
                 move="STAY",
@@ -74,11 +106,30 @@ class CopBrain(BrainBase):
         )
 
     def _pick_move(self, state: OwnState) -> str:
-        """Greedy descent on belief-weighted distance, with a tie-break.
+        """Greedy descent on distance to the thief, with a tie-break.
 
         Ties break toward the move that keeps the most board reachable for us --
         being the one who gets boxed in is a real risk for a player who has
         spent the match building walls.
+
+        **Which distance is the whole game.** Against a fitted cell it is the
+        distance to that cell; with no fit it stays the belief-weighted
+        expectation, which is the honest quantity when the posterior is all we
+        have.
+
+        Measured 2026-08-16, replaying the real brain against real recovered
+        trajectories: with the expectation alone the cop walked five steps and
+        then STAYED on (3, 3) for the remaining 28 while the thief circled at
+        distance 2 to 3. That is not a bug in the scoring, it is the scoring
+        working: a saturated book-model field leaves the posterior near-uniform
+        (entropy 2.2-2.9 on the wire), every move scores alike, and the mobility
+        term settles it on the centre of a 7x7 board -- the cell with the most
+        board reachable from it. Sitting in the middle is correct under total
+        ignorance and ruinous when the field names the thief outright.
+
+        ``_target_cell`` was not enough on its own: it feeds the barrier choice
+        and the rationale, and movement never read it. Both arms of the
+        experiment caught 0 of 8 until this line changed.
         """
         candidates = self._candidates(state)
         if not candidates:
@@ -86,10 +137,12 @@ class CopBrain(BrainBase):
 
         idle_penalty = self._tuned("idle_penalty", self.IDLE_PENALTY)
         mobility_weight = self._tuned("mobility_weight", self.MOBILITY_WEIGHT)
+        fitted = state.opponent_deposit
 
         scored = []
         for move, cell in candidates:
-            distance = self._expected_distance(state, cell)
+            distance = (float(self._distance(state, cell, fitted)) if fitted
+                        else self._expected_distance(state, cell))
             mobility = state.board.reachable_area(cell, limit=40)
             penalty = idle_penalty if move == "STAY" else 0.0
             scored.append((distance + penalty - mobility_weight * mobility, move))

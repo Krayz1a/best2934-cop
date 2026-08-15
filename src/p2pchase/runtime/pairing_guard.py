@@ -127,7 +127,8 @@ def adopt(session: Any, payload: dict[str, Any] | None) -> str:
     # one model's rings while declaring another's lock. Safe here only because
     # nothing is sealed yet and the board is carried across unchanged.
     session.state = build_own_state(session.config.shared, session.role,
-                                    session.state.board, model)
+                                    session.state.board, model,
+                                    strategy=session.config.strategy)
     LOGGER.info("now playing %r on scent_model=%s seal_form=%s role_convention=%s",
                 theirs, model, session.config.seal_form(theirs),
                 session.config.role_convention(theirs))

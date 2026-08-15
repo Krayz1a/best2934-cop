@@ -89,8 +89,11 @@ class PeerSession:
 
         shared = self.config.shared
         self.opponent = self.opponent or opponent_in_game_id(self.game_id, self.config.group_id)
+        # Last argument is `strategy`: OUR setup.json, not the agreed config --
+        # the same source `load_brain` reads on the next line. `shared` carries
+        # no strategy block at all, so a flag looked up there is never on.
         self.state = build_own_state(shared, self.role, build_board(shared),
-                                     self.config.scent_model(self.opponent))
+                                     self.config.scent_model(self.opponent), self.config.strategy)
         self.brain: BrainBase = load_brain(self.role, self.config.strategy, shared)
         self.talk = build_talk_engine(self.config.trash_talk, self.config.llm)
         self._rng = random.Random(self.seed)

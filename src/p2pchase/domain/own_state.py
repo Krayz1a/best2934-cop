@@ -51,6 +51,23 @@ class OwnState:
     #: physical evidence we have about the opponent's heading.
     trail_centre: tuple[float, float] | None = None
     trail_drift: str | None = None
+    #: The per-pair scent lock, kept because the two registered models want
+    #: opposite readings of the same field: the reference's decays to a single
+    #: ring set whose peak IS the thief, while the book's accumulates into a
+    #: saturated trail whose peak is the visited path.
+    scent_model: str = constants.SCENT_MULTIPLICATIVE
+    #: Whether to fit the deposit centre out of the book-model trail. Off by
+    #: default: it changes what the cop chases, and that is a decision to take
+    #: on wire evidence rather than by landing the code.
+    track_deposit: bool = False
+    #: The opponent's exact cell as of the field we last sampled -- one full
+    #: turn stale by agreement, never their current cell. ``None`` is "no
+    #: reading", which is not the same as "they did not move".
+    opponent_deposit: Coord | None = None
+    #: The previous raw payload, kept because the fit runs on the transmitted
+    #: fields as they arrived and not on our merged, decayed ScentMap. That is
+    #: what was measured, so that is what is compared.
+    last_opponent_field: dict[str, float] = field(default_factory=dict)
     #: The heading the opponent's latest sentence asserted, held until we have
     #: sampled the trail and can actually cross-examine it.
     pending_claim: str | None = None
@@ -133,10 +150,34 @@ class OwnState:
         against whichever turn we last happened to ask, which silently turns a
         one-turn measurement into a multi-turn one.
         """
+        self._fit_deposit(payload)
         self.opponent_scent.load(payload, merge=merge)
         centre = self.opponent_scent.centroid()
         self.trail_drift = displacement_heading(self.trail_centre, centre)
         self.trail_centre = centre
+
+    def _fit_deposit(self, payload: dict[str, float]) -> None:
+        """Recover the cell this field was deposited from, under the book model.
+
+        Only the book's model, because only it accumulates: its trail saturates
+        at the 0.9 ceiling and its peak names the path rather than the thief.
+        The reference's model decays to one unique maximum that already IS the
+        answer, so fitting a kernel to it would be work to learn what the peak
+        says for free.
+
+        Run before ``load``, on the raw payloads as they arrived rather than on
+        the merged and decayed ScentMap -- that pairing is what was measured at
+        0 violations and residual 0.0, and the merge is not part of it.
+        """
+        if not self.track_deposit or self.scent_model != constants.SCENT_MULTIPLICATIVE:
+            return
+        from .smell import BOOK_FIGURE_KERNEL
+        from .trail_inversion import deposit_centre
+
+        if self.last_opponent_field:
+            self.opponent_deposit = deposit_centre(
+                self.last_opponent_field, payload, BOOK_FIGURE_KERNEL)
+        self.last_opponent_field = dict(payload)
 
     def end_of_full_turn(self) -> None:
         """Decay every trail once both agents have moved (book ch4.3)."""
@@ -212,7 +253,8 @@ class OwnState:
 
 
 def build_own_state(config: dict, role: str, board: Board,
-                    scent_model: str = constants.SCENT_MULTIPLICATIVE) -> OwnState:
+                    scent_model: str = constants.SCENT_MULTIPLICATIVE,
+                    strategy: dict | None = None) -> OwnState:
     """Assemble a peer's starting local truth from the agreed config.
 
     ``scent_model`` is the per-pair lock declared at the handshake. It has to
@@ -244,6 +286,12 @@ def build_own_state(config: dict, role: str, board: Board,
         broadcast=LaggedTrail(lag=lag),
         max_moves=int(mb.get("max_moves", constants.MAX_MOVES)),
         survival_threshold=int(mb.get("survival_threshold", constants.SURVIVAL_THRESHOLD)),
+        scent_model=scent_model,
+        # From `strategy`, which is OUR setup.json, and never from `config`,
+        # which is the config AGREED with the opponent. Reading it off the
+        # shared block made the flag unreachable in production -- game.json has
+        # no strategy key at all -- while every test that injected one passed.
+        track_deposit=bool((strategy or {}).get("track_deposit", False)),
     )
     state.my_scent.emit(state.position)
     # Seed the delay line with the opening emission, so a sample taken before

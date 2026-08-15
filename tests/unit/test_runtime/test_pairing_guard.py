@@ -60,7 +60,7 @@ def test_a_caller_who_disagrees_repoints_the_session(monkeypatch):
     """The exact failure: a door opened for imreeyal, dialled by gal-roy1."""
     built = {}
     monkeypatch.setattr(pairing_guard, "build_own_state",
-                        lambda *a: built.setdefault("state", SimpleNamespace(board=a[2])))
+                        lambda *a, **k: built.setdefault("state", SimpleNamespace(board=a[2])))
     session = _session("imreeyal", "best2934-vs-imreeyal")
     assert pairing_guard.adopt(session, {"group_id": "gal-roy1"}) == ""
     assert session.opponent == "gal-roy1"
@@ -69,7 +69,7 @@ def test_a_caller_who_disagrees_repoints_the_session(monkeypatch):
 def test_the_repointed_session_seals_in_the_right_form(monkeypatch):
     """The consequence that actually cost the game."""
     monkeypatch.setattr(pairing_guard, "build_own_state",
-                        lambda *a: SimpleNamespace(board=a[2]))
+                        lambda *a, **k: SimpleNamespace(board=a[2]))
     session = _session("imreeyal", "best2934-vs-imreeyal")
     assert session.config.seal_form(session.opponent) == kit_seal.PIPE
     pairing_guard.adopt(session, {"group_id": "gal-roy1"})
@@ -132,7 +132,7 @@ def test_a_finished_sub_game_is_retired_rather_than_defended(monkeypatch):
     was continuing is what made our standing door a one-sub-game door.
     """
     monkeypatch.setattr(pairing_guard, "build_own_state",
-                        lambda *a: SimpleNamespace(board=a[2]))
+                        lambda *a, **k: SimpleNamespace(board=a[2]))
     adapter = _Adapter(_session("", "local-rehearsal", records=[{}] * 35),
                        finished="SURVIVAL")
     assert pairing_guard.at_the_door(adapter, {"group_id": "gal-roy1"}) == ""
@@ -156,7 +156,7 @@ def test_the_reset_happens_before_the_pairing_is_judged(monkeypatch):
     the guard was handed state the next line would have discarded.
     """
     monkeypatch.setattr(pairing_guard, "build_own_state",
-                        lambda *a: SimpleNamespace(board=a[2]))
+                        lambda *a, **k: SimpleNamespace(board=a[2]))
     seen: list[int] = []
     adapter = _Adapter(_session("", "local-rehearsal", records=[{}] * 35),
                        finished="CAPTURE")
@@ -190,7 +190,7 @@ def test_the_same_opponent_returning_for_a_new_sub_game_is_left_alone(monkeypatc
     is the pairing, and for an unchanged pairing there is no job.
     """
     monkeypatch.setattr(pairing_guard, "build_own_state",
-                        lambda *a: SimpleNamespace(board=a[2]))
+                        lambda *a, **k: SimpleNamespace(board=a[2]))
     adapter = _Adapter(_session("imreeyal", "best2934-vs-imreeyal", records=[{}] * 35),
                        finished="SURVIVAL")
     assert pairing_guard.at_the_door(adapter, {"group_id": "imreeyal"}) == ""
@@ -229,7 +229,7 @@ def test_a_restart_keeps_the_pairing_the_caller_taught_us(monkeypatch):
     the same class of fault that made thirteen gal-roy1 records unauditable.
     """
     monkeypatch.setattr(pairing_guard, "build_own_state",
-                        lambda *a: SimpleNamespace(board=a[2]))
+                        lambda *a, **k: SimpleNamespace(board=a[2]))
     fresh = _session("", "local-rehearsal")
     assert pairing_guard.adopt(fresh, {"group_id": "gal-roy1"}) == ""
     assert fresh.opponent == "gal-roy1"
