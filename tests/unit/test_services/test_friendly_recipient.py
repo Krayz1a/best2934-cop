@@ -37,10 +37,17 @@ def test_no_override_keeps_the_league_address():
     assert recipient == config.email["recipient"]
 
 
+#: A pairing that is uncounted in the real config. These tests are about the
+#: redirect itself, so they must not be pinned to whichever opponent happens to
+#: be unarmed today -- `imreeyal` was armed on 2026-08-15 and took three of
+#: them down with it.
+UNCOUNTED = "gal-roy1"
+
+
 def test_a_friendly_goes_only_where_it_is_told():
     """Replaces, never adds. A friendly reaching the lecturer is a false submission."""
     config = _config()
-    recipient, refusal = friendly_recipient.resolve(config, "imreeyal", THEIRS)
+    recipient, refusal = friendly_recipient.resolve(config, UNCOUNTED, THEIRS)
     assert refusal == ""
     assert recipient == THEIRS
     assert config.email["recipient"] not in recipient
@@ -48,7 +55,7 @@ def test_a_friendly_goes_only_where_it_is_told():
 
 def test_several_addresses_are_accepted():
     recipient, _ = friendly_recipient.resolve(
-        _config(), "imreeyal", f" {THEIRS} , us@example.com ")
+        _config(), UNCOUNTED, f" {THEIRS} , us@example.com ")
     assert recipient == f"{THEIRS}, us@example.com"
 
 
@@ -80,8 +87,35 @@ def test_the_refusal_quotes_the_sign_off_so_it_can_be_checked(monkeypatch):
 
 
 @pytest.mark.parametrize("opponent", ["imreeyal", "gal-roy1", "nobody"])
-def test_every_current_pairing_is_still_uncounted_so_friendlies_are_allowed(opponent):
-    """If this fails, a pairing was armed and the override stopped working there."""
-    recipient, refusal = friendly_recipient.resolve(_config(), opponent, THEIRS)
-    assert refusal == ""
-    assert recipient == THEIRS
+def test_the_override_tracks_each_pairing_s_real_counted_flag(opponent):
+    """Read the shipped config and hold the invariant, not a snapshot of it.
+
+    This began life as ``test_every_current_pairing_is_still_uncounted_so_
+    friendlies_are_allowed`` -- a tripwire for a pairing being armed without
+    anyone noticing. On 2026-08-15 imreeyal was armed on purpose, for our first
+    counted series, and the tripwire fired exactly as designed.
+
+    Asserting the *fact* again under a new name would just move the tripwire to
+    the next flip. So it now asserts the property the fact was standing in for:
+    an armed pairing refuses the redirect, an unarmed one allows it, whichever
+    is which today.
+    """
+    config = _config()
+    counted, _sign_off = config.counted_series(opponent)
+    recipient, refusal = friendly_recipient.resolve(config, opponent, THEIRS)
+
+    if counted:
+        assert recipient == ""
+        assert "COUNTED" in refusal
+    else:
+        assert refusal == ""
+        assert recipient == THEIRS
+
+
+def test_at_least_one_pairing_is_armed_now_that_a_counted_series_is_scheduled():
+    """The counted flip is load-bearing: if it silently reverted, we would file
+    a counted series into the friendly tree and mail nobody."""
+    config = _config()
+    armed = [o for o in ("imreeyal", "gal-roy1") if config.counted_series(o)[0]]
+
+    assert "imreeyal" in armed
