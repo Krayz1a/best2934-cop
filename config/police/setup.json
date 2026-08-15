@@ -24,7 +24,9 @@
       "seal_form": "kit_pipe_v1",
       "_seal_remark": "Same kit surface as imreeyal (they play the reference-v3 wire); untested by us against them.",
       "forfeit_result": "technical_loss",
-      "_forfeit_remark": "Pinned as a pairing term with anrbj666 on league issue #49, their proposal, accepted 2026-08-15. Both sides already emit `technical_loss` for the rule-46/47 sanction row, so this changes no byte today -- it removes a settlement-day argument. Their point: a forfeit is the worst possible moment to discover a spelling disagreement, because it only appears when something has already gone wrong. Never `timeout`."
+      "_forfeit_remark": "Pinned as a pairing term with anrbj666 on league issue #49, their proposal, accepted 2026-08-15. Both sides already emit `technical_loss` for the rule-46/47 sanction row, so this changes no byte today -- it removes a settlement-day argument. Their point: a forfeit is the worst possible moment to discover a spelling disagreement, because it only appears when something has already gone wrong. Never `timeout`.",
+      "opponent_counted_games": 2,
+      "_opponent_counted_games_remark": "What anrbj666 declared to us directly on league issue #49, 2026-08-15: two counted series, imreeyal (2026-08-04) and vibecode (2026-08-08), both filed and settled. Recorded rather than derived -- rule 37 makes each team declare its own, and their issue title said 'one banked', so inferring from it would have put a wrong number in their column. A counted series between us therefore reads games_played_including_this {best2934: 2, anrbj666: 3}."
     },
     "gal-roy1": {
       "role_convention": "first_half",
