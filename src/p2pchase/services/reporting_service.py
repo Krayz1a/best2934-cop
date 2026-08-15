@@ -67,8 +67,29 @@ class ReportingService:
         self.gatekeeper = gatekeeper or build_gatekeeper(config.rate_limits, "gmail")
 
     # ------------------------------------------------------------- composing
-    def subject(self, result: dict[str, Any]) -> str:
-        """Subject line carrying the identifiers a human sorts a mailbox by."""
+    def subject(self, result: dict[str, Any], recipient: str = "") -> str:
+        """Subject line, in the form the *reader* of this mail expects.
+
+        Two readers, two conventions, and the difference is not cosmetic.
+
+        The course address is `rmisegal+uoh26finalgame@gmail.com` -- a plus-tag,
+        which exists to be filtered on. `[UOH26 Final Game]` was built to match
+        it and stays for anything addressed there.
+
+        An **opponent** sorts by the league's convention instead, and imreeyal
+        settled which one that is from the book rather than from preference: no
+        subject is mandated anywhere, the sole occurrence being the illustrative
+        `send_report(...)` listing in Appendix A, which the book's own binding
+        model calls illustrative. So it is convention, and the convention with
+        precedent -- five counted series filed under it, plus najamjad's written
+        adoption -- is the reference form. One series should file under one
+        subject shape from both teams, and a counted settlement is the wrong
+        place to discover that it did not.
+        """
+        if recipient and recipient != self.config.email["recipient"]:
+            winner = result.get("final_result", {}).get("winner_group") or "tie"
+            return (f"Police-Thief series result: winner {winner} "
+                    f"(reported by {self.config.role})")
         return (
             f"[UOH26 Final Game] {result.get('game_id', 'unknown')} — "
             f"{self.config.group_id} result report"
@@ -78,12 +99,13 @@ class ReportingService:
                 recipient: str = "") -> tuple[dict[str, str], str]:
         """Build the raw message and the attachment filename."""
         attachment_name = f"result_{result.get('game_id', 'game')}.json"
+        destination = recipient or self.config.email["recipient"]
         raw = gmail_sender.build_message(
-            subject=self.subject(result),
+            subject=self.subject(result, destination),
             attachment_name=attachment_name,
             attachment=result,
             sender=gmail_sender.sender_address(),
-            recipient=recipient or self.config.email["recipient"],
+            recipient=destination,
         )
         return raw, attachment_name
 
@@ -124,14 +146,21 @@ class ReportingService:
         lecturer; a counted series refuses it. See
         :mod:`p2pchase.services.friendly_recipient`.
         """
-        subject = self.subject(result)
         attachment_name = f"result_{result.get('game_id', 'game')}.json"
         opponent = opponent_in_game_id(str(result.get("game_id", "")),
                                        self.config.group_id)
         recipient, refusal = friendly_recipient.resolve(self.config, opponent, to)
         if refusal:
             LOGGER.error("%s", refusal)
-            return DeliveryReceipt(False, "", subject, attachment_name, reason=refusal)
+            return DeliveryReceipt(False, "", self.subject(result), attachment_name,
+                                   reason=refusal)
+        # The subject depends on who is reading it, so it cannot be computed
+        # before `resolve` has said who that is. It was, and the effect was a
+        # receipt that named one subject while `compose` put a different one in
+        # the message -- the mail correct, the record of it wrong. A dry run
+        # printed the wrong answer with complete confidence, which is the only
+        # thing a dry run exists to prevent.
+        subject = self.subject(result, recipient)
         raw, attachment_name = self.compose(result, recipient)
 
         short = self.incompleteness(result)
