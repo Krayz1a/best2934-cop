@@ -51,6 +51,11 @@ class PeerSession:
     role: str
     game_id: str
     sub_game: int = 1
+    #: Every distinct ``sub_game_number`` an opponent has declared to this
+    #: session, in arrival order. Ours is :attr:`sub_game`; this is theirs, and
+    #: the two disagreeing is the fact a settlement needs and cannot recover
+    #: later. Kept even when it matches, because "they agreed" is evidence too.
+    declared_sub_games: list[int] = field(default_factory=list)
     seed: int = 0
     step: int = 0
     #: Who we are playing, which selects the per-pair terms (scent model, role

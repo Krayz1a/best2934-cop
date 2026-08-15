@@ -222,6 +222,19 @@ class InteropAdapter:
         loop = self._turns
         played = loop is not None and (loop.round > 0 or loop.finished)
         number = int(payload.get("sub_game_number", 0) or 0)
+        # Record what ARRIVED, always, before deciding anything with it.
+        #
+        # gal-roy1 asked us to paste the `sub_game_number` their driver sent on
+        # three declarations. We could not: our logs kept our own session's
+        # number and nothing about theirs, so "they sent 4 and we mis-stored
+        # it" and "they sent nothing and we counted our own" were
+        # indistinguishable from our artifacts. A disagreement that cannot be
+        # attributed is one both teams argue about instead of fixing.
+        #
+        # Their observed value goes in the log beside ours, so the next time
+        # this is asked it is answerable from an artifact rather than from a
+        # docstring -- which is what we were reduced to quoting.
+        session.declared_sub_games[:] = dict.fromkeys([*session.declared_sub_games, number])
         if not played and (not number or number == session.sub_game):
             return
 

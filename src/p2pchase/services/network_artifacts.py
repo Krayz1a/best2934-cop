@@ -118,7 +118,8 @@ class NetworkArtifactService:
     def record_sub_game(self, game_id: str, sub_game: int, role: str, opponent: str,
                         outcome: Any, started_at: str, ended_at: str, tokens: int,
                         handshake: dict[str, Any] | None = None,
-                        step_zero: dict[str, Any] | None = None) -> list[Path]:
+                        step_zero: dict[str, Any] | None = None,
+                        declared_sub_games: list[int] | None = None) -> list[Path]:
         """Write one sub-game's config and log, then refresh the series result."""
         names = artifacts.ArtifactSet(game_id=game_id, directory=self.output_dir)
         game_uid, declaration = self.ensure_declaration(names, game_id, handshake or {},
@@ -136,6 +137,7 @@ class NetworkArtifactService:
             outcome.outcome, self.table.winner_role(outcome.outcome), records,
             started_at, ended_at, tokens, dict(outcome.opponent_audit),
             steps=int(getattr(outcome, "steps", 0) or 0),
+            declared_sub_games=declared_sub_games,
         )
         written.append(artifacts.write_json(names.log(sub_game), log))
         result_path = self.refresh_result(game_id, game_uid, opponent)

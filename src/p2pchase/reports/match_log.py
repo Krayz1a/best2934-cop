@@ -71,6 +71,7 @@ def build_log_artifact(
     audit: dict[str, Any],
     mutual: dict[str, Any] | None = None,
     steps: int | None = None,
+    declared_sub_games: list[int] | None = None,
 ) -> dict[str, Any]:
     """One sub-game's full disclosed log.
 
@@ -126,6 +127,18 @@ def build_log_artifact(
             "duration_seconds": _duration_seconds(started_at, ended_at),
             "tokens_total": tokens_total,
             "audit": audit,
+            # What the OPPONENT declared this sub-game to be, in arrival order,
+            # beside the number we assigned it above. Omitted when they never
+            # declared one, which is itself the answer to a later question.
+            #
+            # gal-roy1 asked us to paste the sub_game_number their driver sent
+            # on three declarations and we could not: we kept ours and nothing
+            # of theirs, so "they sent 4 and we mis-stored it" was
+            # indistinguishable from "they sent nothing and we counted our own"
+            # -- a disagreement neither team could attribute, which is the
+            # shape that gets argued instead of fixed.
+            **({"opponent_declared_sub_games": list(declared_sub_games)}
+               if declared_sub_games else {}),
         },
         "records": records,
         "mutual_agreement": mutual or {
