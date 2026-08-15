@@ -1,7 +1,7 @@
 # Submission answer sheet
 
 **Template** `uoh-rl07-final-project-2026.docx` · **Deadline** 2026-08-12 23:59
-(no extensions) · **Last updated** 2026-08-06
+(no extensions) · **Last updated** 2026-08-15
 
 This is the working copy of the Word form. Every field the codebase can answer is
 answered here; everything else is marked **[OPERATOR]** with what it needs. Fill
@@ -15,7 +15,7 @@ submission per member**, not one for the group.
 | Template field | Answer |
 |---|---|
 | Group ID code (8 characters, English, no spaces) | `best2934` |
-| Recommendation for self-scoring for the group | **85** — see §4. Revise to **90** if two counted games are complete at export, or **75** if the games table is still `0`. Agree it between all three members before typing it |
+| Recommendation for self-scoring for the group | **85** — see §4. **One counted game is complete** (imreeyal, 2026-08-15), so 85 is the row we are on. Revise to **90** only if a *second* counted game against a different group is complete at export — not if one is merely scheduled. Agree it between all three members before typing it |
 | Cop repository url | `https://github.com/Krayz1a/best2934-cop` |
 | Thief repository url | `https://github.com/Krayz1a/best2934-thief` |
 | AI Agent email address that sent the results to the lecturer | `eyalkol2@gmail.com` — **authorised and verified by a live send** on 2026-08-07, see [GMAIL_SETUP.md](GMAIL_SETUP.md) §0. Results go **to** `rmisegal+uoh26finalgame@gmail.com`; this field is the address they arrive **from** |
@@ -67,23 +67,48 @@ third student block, or the timing, as an irregularity rather than a permission.
 
 | Template field | Answer today |
 |---|---|
-| Legal number of games your agent emailed the instructor about | **0** |
-| Maximum number of points accumulated | **0** |
-| Games won / lost / drawn | 0 / 0 / 0 |
-| Bonus eligibility | Not yet — the bonus needs counted games |
-| Opponents with a working protocol | **2** (`gal-roy1`; `imreeyal` agreed and conformance-verified, not yet played) |
-| Counted games played | **0** — read from the ledger, not from the artifacts (rule 52) |
+| Legal number of games your agent emailed the instructor about | **1** |
+| Maximum number of points accumulated | **47** (in the counted series) |
+| Games won / lost / drawn | 0 / 0 / **1** |
+| Bonus eligibility | Diversity reward not earned — it is paid for a *victory* over a new opponent, and the series was a tie |
+| Opponents with a working protocol | **2** (`imreeyal` — played counted; `gal-roy1` — played, friendly) |
+| Counted games played | **1** of the 2 needed to pass — read from the ledger, not from the artifacts (rule 52) |
 
-Two complete sub-games have been played against `gal-roy1` over the public
-internet, both won by our cop by barrier capture at rounds 14 and 16, with the
-mutual audit passing clean in both directions. **Neither was counted**, and
-neither is claimed here: rule 37 declares the number of *counted* games, and
+### The counted series: best2934 vs imreeyal, 2026-08-15
+
+```
+six sub-games, all six survival -- neither cop captured, in either direction
+total_score      best2934 47  ·  imreeyal 47
+sub_games_won    3 · 3        winner_group null      series_tie true
+mutual_agreement dca08155c7858f3fdbf25ff528aac09c37227d4bf9e79bede7f0c38085e3d90d
+filed            Gmail 1a005e554612c750, superseding 1a005d476b4d5da0
+```
+
+Both teams filed to the lecturer independently and then cross-diffed the two
+artifacts key by key on league issue #45: **identical on every shared field**,
+including the per-sub-game rows, the audits and the standings block. imreeyal
+recorded the verdict as `SETTLED`.
+
+The superseding report is worth a sentence, because filing twice looks worse
+than it is. Our first report carried `games_played_including_this
+{best2934: 1, imreeyal: 5}` — we added the series to our own column and emitted
+the opponent's declared count untouched, while the field is named *including
+this*. **We found and disclosed it ourselves**, imreeyal ruled that the team
+whose block was wrong re-files, and the corrected artifact carries a
+`_supersedes` field naming the message it replaces. No game, score, winner,
+audit or digest changed: `mutual_agreement.sha256` is identical in both.
+
+### The friendly against gal-roy1
+
+Six sub-games, settled 75–35 to us, audited both ways. **Not counted**, and not
+claimed here: rule 37 declares the number of *counted* games, and
 `counted_games_played()` reads the ledger of games both sides agreed to count —
 not the artifacts on disk. Counting a warm-up would be a false declaration under
 rule 38, which disqualifies the group that makes it.
 
 **This is the one section no amount of engineering can fill.** It needs
-opponents, and nothing in the codebase can produce one.
+opponents, and nothing in the codebase can produce one. One is now banked; the
+second needs a second team to say yes.
 
 **The minimum is 2, confirmed by the course staff on 2026-08-06.** The booklet
 prose leaves it as an unfilled placeholder — `לפחות [ מינימום משחקים למעבר ] מול
@@ -106,11 +131,20 @@ What *is* unambiguous in the rules, and what it costs us:
 
 Those two together mean one opponent can never satisfy the requirement — a
 second counted game against the same team does not count twice. With the
-minimum at 2, we need **exactly one more team** than we have. We currently have
-one, `gal-roy1`, with whom the protocol works end to end. `imreeyal` have now
-agreed terms with us — roles, scent model, consensus signature and endpoints —
-and a friendly window is being scheduled; `anrbj666` and `uoh-sqak` play the
-same published forms, so the conformance work done for imreeyal carries to them.
+minimum at 2, **one counted game is banked and exactly one more team must say
+yes.**
+
+`imreeyal` is spent under rule 52. That leaves `gal-roy1`, with whom the
+protocol works end to end and a six-sub-game friendly is already settled and
+audited both ways; they have been offered either designating that series or
+playing a fresh one, and the choice is theirs. `anrbj666` published terms and an
+open offer but have not answered six messages across two days; `uoh-sqak` play
+the same published forms, so the conformance work carries to them if they
+appear.
+
+**The honest position: the pass threshold is not met until a second team
+agrees, and no amount of further engineering changes that.** It is recorded here
+rather than smoothed over, because §3 is the section a reader checks first.
 
 The "List of teams you played against" table wants, per game: date, start time,
 end time, opponent team name, your score, their score, their declared number of
@@ -157,8 +191,13 @@ Beyond the gates, and each backed by data in `results/`:
 | If, at export | Recommend | Why |
 |---|---|---|
 | Two counted games, two different groups | **90** | Every gate met with margin, the protocol proven against an independent implementation, and §3 answerable |
-| **At least one counted game** | **85** ← *the default* | The build stands on its own and the league requirement is genuinely under way rather than untried |
+| **At least one counted game** | **85** ← *where we are today (1 of 2)* | The build stands on its own and the league requirement is genuinely under way rather than untried |
 | §3 is still `0` | **75** | A threshold requirement is unmet. Claiming a high number over an empty games table invites the reader to check, and they will |
+
+**As of 2026-08-15 the middle row is the true one: one counted game, filed and
+cross-diffed with the opponent.** Move to 90 only if a second counted game
+against a different group is complete at export — not if one is merely
+scheduled.
 
 **Why 85 and not 90.** The engineering case is strong enough for 90 on its own
 terms — every gate exceeded rather than met, an independent implementation's
@@ -206,7 +245,10 @@ empty game table will read as one that was not checked.
       2026-08-06: it is **2**, fixed and non-negotiable
 - [ ] Play counted games against **2 different teams** (rule 52 caps counted
       games at one per opponent, so 2 teams is structural, not optional).
-      `gal-roy1` secured; `imreeyal` terms agreed and window being scheduled
+      **1 of 2 done**: `imreeyal`, 2026-08-15, 47–47 tie, filed and cross-diffed
+      — that pairing is now spent. The second must come from `gal-roy1`, who
+      have been offered both a designation of the settled friendly and a fresh
+      series; `anrbj666` have not answered six messages
 - [ ] Annotated tag on both: `git tag -a v1.0-submission -m "…" && git push
       origin v1.0-submission` (rule 41) — after the last counted game
 - [ ] Copy the six personal-data values from `best2934-ex01.pdf` into the
