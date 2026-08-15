@@ -29,6 +29,7 @@ from ..reports.series_assembly import assemble_series
 from ..reports.standings import standings_block
 from ..shared.paths import artifacts_dir, sibling_artifacts_dir
 from ..shared.peer_config import PeerConfig
+from . import settlement_report
 
 LOGGER = logging.getLogger(__name__)
 
@@ -137,7 +138,13 @@ class NetworkArtifactService:
             steps=int(getattr(outcome, "steps", 0) or 0),
         )
         written.append(artifacts.write_json(names.log(sub_game), log))
-        written.append(self.refresh_result(game_id, game_uid, opponent))
+        result_path = self.refresh_result(game_id, game_uid, opponent)
+        written.append(result_path)
+        # Rule 32: the agent reports, not the operator. Fires only for a
+        # counted pairing, only once the signed number of sub-games is on disk,
+        # and only once -- see :mod:`.settlement_report`.
+        settlement_report.fire_if_settled(self.config, opponent, result_path,
+                                          self.counted)
         LOGGER.info("sub-game %d artifacts written under %s", sub_game, self.output_dir)
         return written
 

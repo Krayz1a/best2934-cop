@@ -90,7 +90,16 @@ class ReportingService:
         subject shape from both teams, and a counted settlement is the wrong
         place to discover that it did not.
         """
-        if recipient and recipient != self.config.email["recipient"]:
+        opponent = opponent_in_game_id(str(result.get("game_id", "")),
+                                       self.config.group_id)
+        # A pairing may agree the reference form for the LECTURER's copy too.
+        # imreeyal asked for it before their counted series and the reasoning
+        # is theirs: one series must file under one subject shape in the
+        # marker's inbox, and our tag would have put the two halves of one
+        # counted match under two headings.
+        agreed_reference = opponent and self.config.subject_form(opponent) == "reference"
+        redirected = bool(recipient) and recipient != self.config.email["recipient"]
+        if redirected or agreed_reference:
             winner = result.get("final_result", {}).get("winner_group") or "tie"
             return (f"Police-Thief series result: winner {winner} "
                     f"(reported by {self.config.role})")

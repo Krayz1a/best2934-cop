@@ -118,6 +118,23 @@ class PeerConfig:
         """Which sub-game ordering we agreed with this opponent."""
         return str(self.pairing(opponent).get("role_convention", roles.DEFAULT_CONVENTION))
 
+    def subject_form(self, opponent: str) -> str:
+        """Which subject shape this pairing files its reports under.
+
+        ``"bracket"`` is our own tag, built to match the course address's
+        ``+uoh26finalgame`` plus-tag so it can be filtered on. ``"reference"``
+        is the league's form, which imreeyal have five counted series filed
+        under.
+
+        It is a per-pairing term rather than a constant because the thing that
+        matters is that ONE series files under ONE shape from BOTH teams. Two
+        teams filing one counted match under two subjects is a settlement the
+        marker has to reconcile by hand, and a counted settlement is the wrong
+        place to discover it. Defaults to our tag, so a pairing that has agreed
+        nothing keeps the behaviour that filters correctly.
+        """
+        return str(self.pairing(opponent).get("subject_form", "bracket"))
+
     def scent_model(self, opponent: str) -> str:
         """Which registered scent model we agreed with this opponent."""
         return str(self.pairing(opponent).get("scent_model", scent_models.DEFAULT_MODEL))
