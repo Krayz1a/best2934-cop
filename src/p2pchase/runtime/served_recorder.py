@@ -120,7 +120,12 @@ class ServedRecorder:
         from ..services.network_artifacts import NetworkArtifactService
 
         result = PeerOutcome(outcome, int(steps), records=list(session.records))
-        return NetworkArtifactService(self.config).record_sub_game(
+        # Built from the pairing, so a counted series served to us lands in the
+        # counted directory without anyone passing a flag. This is the path an
+        # *opponent* drives, which is exactly where a forgotten argument would
+        # not be noticed until settlement.
+        return NetworkArtifactService.for_opponent(
+            self.config, self.opponent or "unknown").record_sub_game(
             self.game_id(), int(session.sub_game), session.role,
             self.opponent or "unknown", result,
             self.started.get(int(session.sub_game), now_iso()), now_iso(),

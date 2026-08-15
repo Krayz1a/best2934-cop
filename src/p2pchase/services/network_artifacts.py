@@ -42,10 +42,25 @@ class NetworkArtifactService:
     Setup:  ``output_dir`` defaults to ``artifacts/``.
     """
 
-    def __init__(self, config: PeerConfig, output_dir: Path | None = None) -> None:
+    def __init__(self, config: PeerConfig, output_dir: Path | None = None,
+                 counted: bool = False) -> None:
         self.config = config
-        self.output_dir = Path(output_dir) if output_dir else artifacts_dir()
+        self.counted = counted
+        self.output_dir = Path(output_dir) if output_dir else artifacts_dir(counted)
         self.table = build_score_table(config.shared)
+
+    @classmethod
+    def for_opponent(cls, config: PeerConfig, opponent: str,
+                     output_dir: Path | None = None) -> NetworkArtifactService:
+        """Build the service with the directory this pairing's status requires.
+
+        The counted flag is read from the pairing rather than passed in, so a
+        caller cannot write a counted series into the friendly directory by
+        forgetting an argument. That is the whole point of the separation:
+        see :func:`~p2pchase.shared.paths.artifacts_dir`.
+        """
+        counted, _sign_off = config.counted_series(opponent)
+        return cls(config, output_dir, counted=bool(counted))
 
     # ------------------------------------------------------------- identity
     def _identity(self, handshake: dict[str, Any]) -> artifacts.GroupIdentity:
@@ -167,7 +182,7 @@ class NetworkArtifactService:
         local copy at least makes the outcome deterministic and explicable.
         """
         found: dict[str, dict[str, Any]] = {}
-        directories = [d for d in (sibling_artifacts_dir(), self.output_dir) if d]
+        directories = [d for d in (sibling_artifacts_dir(self.counted), self.output_dir) if d]
         for directory in directories:  # ours last, so ours overwrites theirs
             for path in sorted(Path(directory).glob(f"log_{game_id}_g*.json")):
                 payload = json.loads(path.read_text(encoding="utf-8"))
