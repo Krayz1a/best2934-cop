@@ -1,0 +1,91 @@
+{
+  "_schema": "Summary and final result for the WHOLE game (all sub-games) between two teams: per-sub-game scores and the aggregate outcome used to build the league standings. Both teams must agree on this result and each sends its own copy to the lecturer (book ch9).",
+  "schema_version": "1.1",
+  "report_type": "final_game_result",
+  "game_id": "best2934-vs-imreeyal",
+  "game_uid": "0d98626a-7369-b854-e473-3df1898d45f1",
+  "links": {
+    "_remark": "Logical roles, NOT fixed filenames. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json.",
+    "declaration": "declaration_best2934-vs-imreeyal.json",
+    "config": "config_best2934-vs-imreeyal_g<NN>.json",
+    "log": "log_best2934-vs-imreeyal_g<NN>.json",
+    "result": "result_best2934-vs-imreeyal.json",
+    "github": {
+      "best2934": {
+        "cop": "https://github.com/Krayz1a/best2934-cop",
+        "thief": "https://github.com/Krayz1a/best2934-thief"
+      },
+      "imreeyal": {}
+    }
+  },
+  "timezone": "Asia/Jerusalem",
+  "groups": [
+    "best2934",
+    "imreeyal"
+  ],
+  "num_sub_games": 1,
+  "sub_games": [
+    {
+      "sub_game_number": 1,
+      "roles": {
+        "best2934": "police",
+        "imreeyal": "thief"
+      },
+      "started_at": "2026-08-15T14:00:16.817261+00:00",
+      "ended_at": "2026-08-15T14:00:59.376583+00:00",
+      "result": "survival",
+      "winner_group": "imreeyal",
+      "tie": false,
+      "github_commit": {
+        "best2934": "6e3817652eb6b98dd900b36209f36e8b3d011bc1-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "imreeyal": 10
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g01.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    }
+  ],
+  "final_result": {
+    "total_score": {
+      "best2934": 5,
+      "imreeyal": 10
+    },
+    "sub_games_won": {
+      "best2934": 0,
+      "imreeyal": 1
+    },
+    "ties": 0,
+    "winner_group": "imreeyal",
+    "series_tie": false,
+    "tokens_total_series": {
+      "best2934": 0,
+      "imreeyal": 0
+    },
+    "games_played_including_this": {
+      "best2934": 1,
+      "imreeyal": 5
+    },
+    "first_meeting_between_groups": true,
+    "diversity_reward_applied": {
+      "best2934": false,
+      "imreeyal": true
+    }
+  },
+  "mutual_agreement": {
+    "sha256": "7617aa6f9fed227e9219ea3121f89ff71912446f0e9cdd3e4430a87b8eda5b2a",
+    "confirmed": false,
+    "scope": "agreed_summary: game_id, sorted group_ids, per sub-game roles/result/winner/tie/scores, and derived totals",
+    "interop_sha256": "c7f7e8c26fed784aa702a8eca15f4f6993ad332d5eea77dfabf6fff23a790315",
+    "interop_scope": "league trimmed scope -- game_id, derived aggregate, and the five-key per sub-game row (sub_game_number, roles, result, winner_group, score); spaced canonical form (copthief-league-protocol SPEC section 6)"
+  }
+}

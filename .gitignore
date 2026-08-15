@@ -52,8 +52,13 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
-# The counted-series tree: same reason as artifacts/*.json, but the glob above
-# is non-recursive so a subdirectory slips through. An untracked directory here
-# also makes every github_commit stamp read "-dirty" during a counted series.
-artifacts/counted/
-artifacts/outside_declared_series/
+# The LIVE counted tree, same reason as artifacts/*.json: regenerated per
+# sub-game, and an untracked file here stamps every github_commit in the report
+# "-dirty" during a counted series.
+#
+# Deliberately `*.json` and not the directory. Ignoring `artifacts/counted/`
+# outright would also hide the ARCHIVED counted series underneath it -- and a
+# settled counted game is the single most evidential thing either repo holds.
+# The submission checklist says to attach the artifacts of every counted game;
+# a rule that quietly excludes them defeats the point of keeping them.
+artifacts/counted/*.json

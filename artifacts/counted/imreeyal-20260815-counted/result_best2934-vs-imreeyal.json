@@ -1,0 +1,237 @@
+{
+  "_schema": "Summary and final result for the WHOLE game (all sub-games) between two teams: per-sub-game scores and the aggregate outcome used to build the league standings. Both teams must agree on this result and each sends its own copy to the lecturer (book ch9).",
+  "_supersedes": "CORRECTED REPORT. This supersedes the report filed for this same game_id in Gmail message 1a005d476b4d5da0 (2026-08-15 14:30 UTC). One field changed: games_played_including_this recorded the opponent's column un-incremented -- {best2934: 1, imreeyal: 5} -- while the field is named 'including this' and imreeyal correctly filed {imreeyal: 6, best2934: 1}. No game, score, winner, audit or digest changed: mutual_agreement.sha256 is identical in both reports, because the standings block sits outside the agreement scope. Disclosed by best2934 on league issue #45 before either team's cross-diff found it; imreeyal ruled that the team whose block was wrong re-files and theirs stands as filed.",
+  "schema_version": "1.1",
+  "report_type": "final_game_result",
+  "game_id": "best2934-vs-imreeyal",
+  "game_uid": "0d98626a-7369-b854-e473-3df1898d45f1",
+  "links": {
+    "_remark": "Logical roles, NOT fixed filenames. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json.",
+    "declaration": "declaration_best2934-vs-imreeyal.json",
+    "config": "config_best2934-vs-imreeyal_g<NN>.json",
+    "log": "log_best2934-vs-imreeyal_g<NN>.json",
+    "result": "result_best2934-vs-imreeyal.json",
+    "github": {
+      "best2934": {
+        "cop": "https://github.com/Krayz1a/best2934-cop",
+        "thief": "https://github.com/Krayz1a/best2934-thief"
+      },
+      "imreeyal": {}
+    }
+  },
+  "timezone": "Asia/Jerusalem",
+  "groups": [
+    "best2934",
+    "imreeyal"
+  ],
+  "num_sub_games": 6,
+  "sub_games": [
+    {
+      "sub_game_number": 1,
+      "roles": {
+        "best2934": "police",
+        "imreeyal": "thief"
+      },
+      "started_at": "2026-08-15T14:20:42.309481+00:00",
+      "ended_at": "2026-08-15T14:21:27.854415+00:00",
+      "result": "survival",
+      "winner_group": "imreeyal",
+      "tie": false,
+      "github_commit": {
+        "best2934": "6e3817652eb6b98dd900b36209f36e8b3d011bc1-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "imreeyal": 10
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g01.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 2,
+      "roles": {
+        "best2934": "thief",
+        "imreeyal": "police"
+      },
+      "started_at": "2026-08-15T14:22:01.382963+00:00",
+      "ended_at": "2026-08-15T14:22:47.997828+00:00",
+      "result": "survival",
+      "winner_group": "best2934",
+      "tie": false,
+      "github_commit": {
+        "best2934": "6e3817652eb6b98dd900b36209f36e8b3d011bc1-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 10,
+        "imreeyal": 5
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g02.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 3,
+      "roles": {
+        "best2934": "police",
+        "imreeyal": "thief"
+      },
+      "started_at": "2026-08-15T14:23:18.990999+00:00",
+      "ended_at": "2026-08-15T14:24:05.499688+00:00",
+      "result": "survival",
+      "winner_group": "imreeyal",
+      "tie": false,
+      "github_commit": {
+        "best2934": "6e3817652eb6b98dd900b36209f36e8b3d011bc1-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "imreeyal": 10
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g03.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 4,
+      "roles": {
+        "best2934": "thief",
+        "imreeyal": "police"
+      },
+      "started_at": "2026-08-15T14:24:38.170279+00:00",
+      "ended_at": "2026-08-15T14:25:24.818710+00:00",
+      "result": "survival",
+      "winner_group": "best2934",
+      "tie": false,
+      "github_commit": {
+        "best2934": "6e3817652eb6b98dd900b36209f36e8b3d011bc1-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 10,
+        "imreeyal": 5
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g04.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 5,
+      "roles": {
+        "best2934": "police",
+        "imreeyal": "thief"
+      },
+      "started_at": "2026-08-15T14:25:55.825614+00:00",
+      "ended_at": "2026-08-15T14:26:40.328767+00:00",
+      "result": "survival",
+      "winner_group": "imreeyal",
+      "tie": false,
+      "github_commit": {
+        "best2934": "6e3817652eb6b98dd900b36209f36e8b3d011bc1-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "imreeyal": 10
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g05.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 6,
+      "roles": {
+        "best2934": "thief",
+        "imreeyal": "police"
+      },
+      "started_at": "2026-08-15T14:27:13.791837+00:00",
+      "ended_at": "2026-08-15T14:27:58.652311+00:00",
+      "result": "survival",
+      "winner_group": "best2934",
+      "tie": false,
+      "github_commit": {
+        "best2934": "6e3817652eb6b98dd900b36209f36e8b3d011bc1-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 10,
+        "imreeyal": 5
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g06.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    }
+  ],
+  "final_result": {
+    "total_score": {
+      "best2934": 47,
+      "imreeyal": 47
+    },
+    "sub_games_won": {
+      "best2934": 3,
+      "imreeyal": 3
+    },
+    "ties": 0,
+    "winner_group": null,
+    "series_tie": true,
+    "tokens_total_series": {
+      "best2934": 0,
+      "imreeyal": 0
+    },
+    "games_played_including_this": {
+      "best2934": 1,
+      "imreeyal": 6
+    },
+    "first_meeting_between_groups": true,
+    "diversity_reward_applied": {
+      "best2934": false,
+      "imreeyal": false
+    }
+  },
+  "mutual_agreement": {
+    "sha256": "dca08155c7858f3fdbf25ff528aac09c37227d4bf9e79bede7f0c38085e3d90d",
+    "confirmed": false,
+    "scope": "agreed_summary: game_id, sorted group_ids, per sub-game roles/result/winner/tie/scores, and derived totals",
+    "interop_sha256": "448002dad4983f066c61afd4dc7757a8b77711b73d8755a468c78be900c4711b",
+    "interop_scope": "league trimmed scope -- game_id, derived aggregate, and the five-key per sub-game row (sub_game_number, roles, result, winner_group, score); spaced canonical form (copthief-league-protocol SPEC section 6)"
+  }
+}
