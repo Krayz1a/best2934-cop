@@ -80,6 +80,45 @@ def test_all_three_agree_and_still_parse_to_the_original(tmp_path):
     assert json.loads(body.decode("utf-8")) == payload
 
 
+def test_both_parts_declare_a_transfer_encoding(tmp_path):
+    """Byte equality at compose time is worthless if the body drifts in flight.
+
+    A part with no Content-Transfer-Encoding ships as plain text, and SMTP
+    soft-wraps any line past ~72 columns -- our `_schema` and `_remark` prose --
+    turning spaces into newlines. The length does not change, so a length check
+    passes and so does a local byte comparison; only the *received* message
+    differs. imreeyal caught exactly this on the raw `.eml` after our own
+    pre-send check reported all three parts equal.
+    """
+    _, payload = _artifact(tmp_path)
+    raw = gmail_sender.build_message("s", "result.json", payload, recipient="a@b.c")
+    message = email.message_from_bytes(base64.urlsafe_b64decode(raw["raw"]))
+    encodings = {
+        part.get_content_type(): part.get("Content-Transfer-Encoding")
+        for part in message.walk()
+        if part.get_content_type() != "multipart/mixed"
+    }
+    assert encodings["text/plain"] == "base64"
+    assert encodings["application/json"] == "base64"
+
+
+def test_no_wire_line_is_long_enough_to_be_soft_wrapped(tmp_path):
+    """The property the encoding buys, asserted directly rather than implied."""
+    payload = {"_remark": "x " * 400, "game_id": "best2934-vs-imreeyal"}
+    raw = gmail_sender.build_message("s", "result.json", payload, recipient="a@b.c")
+    wire = base64.urlsafe_b64decode(raw["raw"])
+    assert max(len(line) for line in wire.split(b"\n")) < 998
+
+
+def test_a_long_single_line_payload_still_round_trips(tmp_path):
+    """The regression itself: prose past the wrap column must survive intact."""
+    payload = {"_remark": "long prose " * 120, "game_id": "g"}
+    raw = gmail_sender.build_message("s", "result.json", payload, recipient="a@b.c")
+    body, attachment = _parts(raw)
+    assert body == attachment
+    assert json.loads(body.decode("utf-8")) == payload
+
+
 def test_non_ascii_survives_as_utf8_rather_than_escapes(tmp_path):
     """``ensure_ascii=False`` on disk and in the mail, or the bytes diverge.
 

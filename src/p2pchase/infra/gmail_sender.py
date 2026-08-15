@@ -89,7 +89,20 @@ def build_message(subject: str, attachment_name: str,
     # composed message, before the first send, because imreeyal asked us to
     # settle the mail's composition before its first flight rather than after.
     payload = (json.dumps(attachment, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
-    message.set_content(payload.decode("utf-8"))
+    # `cte="base64"` is what keeps the body intact IN FLIGHT, and it is not
+    # optional. Without an explicit transfer encoding the part ships as plain
+    # text and SMTP soft-wraps any line past ~72 columns -- our `_schema` and
+    # `_remark` prose -- turning spaces into newlines. Ten bytes changed,
+    # length identical, so both a length check and a local byte comparison pass
+    # while the delivered body no longer matches its own attachment.
+    #
+    # imreeyal caught this on the received `.eml` (2026-08-15) after our local
+    # check said all three were equal. Their point stands: the counted case is
+    # two teams mailing one lecturer, and "both bodies differ from both
+    # attachments" is precisely the shape rule 35 feeds on. The attachment was
+    # never at risk -- `add_attachment` base64s it already, which is why only
+    # the body drifted.
+    message.set_content(payload.decode("utf-8"), cte="base64")
     message.add_attachment(payload, maintype="application", subtype="json",
                            filename=attachment_name)
     return {"raw": base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")}
