@@ -1,0 +1,260 @@
+{
+  "_schema": "Summary and final result for the WHOLE game (all sub-games) between two teams: per-sub-game scores and the aggregate outcome used to build the league standings. Both teams must agree on this result and each sends its own copy to the lecturer (book ch9).",
+  "schema_version": "1.1",
+  "report_type": "final_game_result",
+  "game_id": "best2934-vs-imreeyal",
+  "game_uid": "0d98626a-7369-b854-e473-3df1898d45f1",
+  "links": {
+    "_remark": "Logical roles, NOT fixed filenames. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json.",
+    "declaration": "declaration_best2934-vs-imreeyal.json",
+    "config": "config_best2934-vs-imreeyal_g<NN>.json",
+    "log": "log_best2934-vs-imreeyal_g<NN>.json",
+    "result": "result_best2934-vs-imreeyal.json",
+    "github": {
+      "best2934": {
+        "cop": "https://github.com/Krayz1a/best2934-cop",
+        "thief": "https://github.com/Krayz1a/best2934-thief"
+      },
+      "imreeyal": {}
+    }
+  },
+  "timezone": "Asia/Jerusalem",
+  "groups": [
+    "best2934",
+    "imreeyal"
+  ],
+  "num_sub_games": 6,
+  "sub_games": [
+    {
+      "sub_game_number": 1,
+      "roles": {
+        "best2934": "police",
+        "imreeyal": "thief"
+      },
+      "started_at": "2026-08-14T12:20:52.705444+00:00",
+      "ended_at": "2026-08-14T12:21:26.408613+00:00",
+      "result": "survival",
+      "winner_group": "imreeyal",
+      "tie": false,
+      "github_commit": {
+        "best2934": "ba751773d089363b4e9107a79943933ee4df3397-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "imreeyal": 10
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g01.json"
+      },
+      "audit": {
+        "passed": true,
+        "verified_steps": 36,
+        "failed_steps": [],
+        "forged_steps": [],
+        "withheld_steps": [],
+        "unsolicited_steps": []
+      }
+    },
+    {
+      "sub_game_number": 2,
+      "roles": {
+        "best2934": "thief",
+        "imreeyal": "police"
+      },
+      "started_at": "2026-08-14T12:21:55.199127+00:00",
+      "ended_at": "2026-08-14T12:22:20.709244+00:00",
+      "result": "survival",
+      "winner_group": "best2934",
+      "tie": false,
+      "github_commit": {
+        "best2934": "ba751773d089363b4e9107a79943933ee4df3397-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 10,
+        "imreeyal": 5
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g02.json"
+      },
+      "audit": {
+        "passed": true,
+        "verified_steps": 36,
+        "failed_steps": [],
+        "forged_steps": [],
+        "withheld_steps": [],
+        "unsolicited_steps": []
+      }
+    },
+    {
+      "sub_game_number": 3,
+      "roles": {
+        "best2934": "police",
+        "imreeyal": "thief"
+      },
+      "started_at": "2026-08-14T12:22:40.939878+00:00",
+      "ended_at": "2026-08-14T12:23:08.461656+00:00",
+      "result": "survival",
+      "winner_group": "imreeyal",
+      "tie": false,
+      "github_commit": {
+        "best2934": "ba751773d089363b4e9107a79943933ee4df3397-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "imreeyal": 10
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g03.json"
+      },
+      "audit": {
+        "passed": true,
+        "verified_steps": 36,
+        "failed_steps": [],
+        "forged_steps": [],
+        "withheld_steps": [],
+        "unsolicited_steps": []
+      }
+    },
+    {
+      "sub_game_number": 4,
+      "roles": {
+        "best2934": "thief",
+        "imreeyal": "police"
+      },
+      "started_at": "2026-08-14T12:23:27.383436+00:00",
+      "ended_at": "2026-08-14T12:23:51.157946+00:00",
+      "result": "survival",
+      "winner_group": "best2934",
+      "tie": false,
+      "github_commit": {
+        "best2934": "ba751773d089363b4e9107a79943933ee4df3397-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 10,
+        "imreeyal": 5
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g04.json"
+      },
+      "audit": {
+        "passed": true,
+        "verified_steps": 36,
+        "failed_steps": [],
+        "forged_steps": [],
+        "withheld_steps": [],
+        "unsolicited_steps": []
+      }
+    },
+    {
+      "sub_game_number": 5,
+      "roles": {
+        "best2934": "police",
+        "imreeyal": "thief"
+      },
+      "started_at": "2026-08-14T12:24:11.276789+00:00",
+      "ended_at": "2026-08-14T12:24:33.733096+00:00",
+      "result": "survival",
+      "winner_group": "imreeyal",
+      "tie": false,
+      "github_commit": {
+        "best2934": "ba751773d089363b4e9107a79943933ee4df3397-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "imreeyal": 10
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g05.json"
+      },
+      "audit": {
+        "passed": true,
+        "verified_steps": 36,
+        "failed_steps": [],
+        "forged_steps": [],
+        "withheld_steps": [],
+        "unsolicited_steps": []
+      }
+    },
+    {
+      "sub_game_number": 6,
+      "roles": {
+        "best2934": "thief",
+        "imreeyal": "police"
+      },
+      "started_at": "2026-08-14T12:25:05.843397+00:00",
+      "ended_at": "2026-08-14T12:25:34.579828+00:00",
+      "result": "survival",
+      "winner_group": "best2934",
+      "tie": false,
+      "github_commit": {
+        "best2934": "ba751773d089363b4e9107a79943933ee4df3397-dirty"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 10,
+        "imreeyal": 5
+      },
+      "log_files": {
+        "best2934": "log_best2934-vs-imreeyal_g06.json"
+      },
+      "audit": {
+        "passed": true,
+        "verified_steps": 36,
+        "failed_steps": [],
+        "forged_steps": [],
+        "withheld_steps": [],
+        "unsolicited_steps": []
+      }
+    }
+  ],
+  "final_result": {
+    "total_score": {
+      "best2934": 47,
+      "imreeyal": 47
+    },
+    "sub_games_won": {
+      "best2934": 3,
+      "imreeyal": 3
+    },
+    "ties": 0,
+    "winner_group": null,
+    "series_tie": true,
+    "tokens_total_series": {
+      "best2934": 0,
+      "imreeyal": 0
+    },
+    "games_played_including_this": {
+      "best2934": 0,
+      "imreeyal": 5
+    },
+    "first_meeting_between_groups": true,
+    "diversity_reward_applied": {
+      "best2934": false,
+      "imreeyal": false
+    }
+  },
+  "mutual_agreement": {
+    "sha256": "dca08155c7858f3fdbf25ff528aac09c37227d4bf9e79bede7f0c38085e3d90d",
+    "confirmed": false,
+    "scope": "agreed_summary: game_id, sorted group_ids, per sub-game roles/result/winner/tie/scores, and derived totals",
+    "interop_sha256": "448002dad4983f066c61afd4dc7757a8b77711b73d8755a468c78be900c4711b",
+    "interop_scope": "league trimmed scope -- game_id, derived aggregate, and the five-key per sub-game row (sub_game_number, roles, result, winner_group, score); spaced canonical form (copthief-league-protocol SPEC section 6)"
+  }
+}

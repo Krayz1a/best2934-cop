@@ -78,7 +78,17 @@ def build_message(subject: str, attachment_name: str,
     # turns any unexplained difference into a voided sub-game for both teams.
     # Serializing separately for the body would be exactly that bug, so the body
     # is not built at all -- it *is* the attachment.
-    payload = json.dumps(attachment, indent=2, ensure_ascii=False).encode("utf-8")
+    # The trailing newline is load-bearing, and it is not decoration.
+    # `set_content` appends one when the text lacks it; `add_attachment` does
+    # not. So serializing without it produced a body one byte LONGER than the
+    # attachment -- silently breaking the very invariant the comment above
+    # claims, in the one place no test looked. Adding it here means all three
+    # artifacts agree: body == attachment == the file `write_json` puts on disk
+    # (which ends `handle.write("\n")` for the same reason).
+    # Found 2026-08-15 by byte-comparing a real result artifact against a real
+    # composed message, before the first send, because imreeyal asked us to
+    # settle the mail's composition before its first flight rather than after.
+    payload = (json.dumps(attachment, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
     message.set_content(payload.decode("utf-8"))
     message.add_attachment(payload, maintype="application", subtype="json",
                            filename=attachment_name)
