@@ -37,11 +37,14 @@ def test_no_override_keeps_the_league_address():
     assert recipient == config.email["recipient"]
 
 
-#: A pairing that is uncounted in the real config. These tests are about the
-#: redirect itself, so they must not be pinned to whichever opponent happens to
-#: be unarmed today -- `imreeyal` was armed on 2026-08-15 and took three of
-#: them down with it.
-UNCOUNTED = "gal-roy1"
+#: A pairing that is uncounted and cannot stop being one. These tests are about
+#: the redirect itself, so pinning them to a real opponent makes them fail on
+#: the morning that opponent is armed -- `imreeyal` was armed on 2026-08-15 and
+#: took three of them down, then `gal-roy1` was armed on 2026-08-16 and took
+#: two more. Naming the next unarmed opponent just queues up the third outage,
+#: so this names nobody: `counted_series` returns False for an opponent absent
+#: from the table, by the deliberate rule that absent is uncounted.
+UNCOUNTED = "nobody-we-have-ever-played"
 
 
 def test_a_friendly_goes_only_where_it_is_told():

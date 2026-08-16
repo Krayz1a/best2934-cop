@@ -16,6 +16,8 @@ Deception is handled here too, and deliberately rationed -- see
 
 from __future__ import annotations
 
+import math
+
 from .. import constants
 from ..strategy.hint_decoder import opposite
 from .brains import BrainBase, Decision
@@ -45,8 +47,39 @@ class ThiefBrain(BrainBase):
     #: Ways out at or below which a cell is a trap worth refusing while any
     #: alternative exists. Two is the corner count on an unwalled board.
     EXIT_MIN_SAFE = 2
+    #: Fraction of the board's entropy ceiling above which the posterior is
+    #: noise rather than information.
+    BLIND_ENTROPY = 0.85
+    #: What one step of distance from the believed cop is worth once blind.
+    BLIND_DISTANCE_SCALE = 0.25
+    #: Weight on ways-out while blind, standing in for the distance it replaces.
+    BLIND_EXIT_WEIGHT = 2.0
+    #: How much more than one step of distance standing still has to cost.
+    IDLE_MARGIN = 0.5
+    #: How many of our own recent cells to hold against revisiting them.
+    RECENT_MEMORY = 6
+    #: Cost of stepping back onto one of them, per visit in memory.
+    RECENT_PENALTY = 1.6
+
+    def __init__(self, config: dict | None = None, tuning: dict | None = None) -> None:
+        super().__init__(config, tuning)
+        self._recent: list[tuple[int, int]] = []
+
+    def _remember(self, cell: tuple[int, int]) -> None:
+        """Record where we are standing, keeping only the last few cells.
+
+        Killing the freeze alone is not enough: a greedy score with no memory
+        stops standing still and starts pacing instead, between two adjacent
+        cells, for the rest of the sub-game. Under the same one-turn lag that
+        narrows a pursuer's search from one cell to two, which is an
+        improvement worth almost nothing. This is what makes the difference
+        between not-parked and actually unpredictable.
+        """
+        self._recent.append(cell)
+        del self._recent[: -self.RECENT_MEMORY]
 
     def _decide_move(self, state: OwnState) -> Decision:
+        self._remember(state.position)
         move = self._pick_move(state)
         remaining = max(0, state.survival_threshold - state.step)
         intent = self._choose_intent(state)
@@ -109,24 +142,72 @@ class ThiefBrain(BrainBase):
         """
         return self._exits(state, cell) <= self._tuned("exit_min_safe", self.EXIT_MIN_SAFE)
 
+    def _roams(self) -> bool:
+        """Whether the anti-parking policy is armed, from ``setup.json``."""
+        return bool(self._tuned("roam_when_blind", 0.0))
+
+    def _blind(self, state: OwnState) -> bool:
+        """Has the posterior decayed to noise?
+
+        A thief has no measurement channel at all. The cop emits no scent, and
+        since I-5 its move arrives sealed, so ``apply_opponent_move`` only ever
+        calls ``predict()`` -- the belief diffuses and is never updated. Left
+        alone it walks to within 2% of the uniform ceiling by the survival
+        threshold, at which point the distance term is measuring nothing.
+
+        Measured against the whole board rather than the belief's own support:
+        early on that support is still growing, so a support-relative ratio
+        reads 0.96 at step 1, when the belief is at its sharpest.
+        """
+        cells = state.board.geometry.grid_size ** 2 - len(state.board.barriers)
+        ceiling = math.log2(cells) if cells > 1 else 0.0
+        return ceiling > 0 and state.belief.entropy() >= self.BLIND_ENTROPY * ceiling
+
+    def _idle_cost(self, weight: float) -> float:
+        """What standing still costs, against what one step of distance buys.
+
+        Unarmed this is the shipped constant. Armed it can never be less than a
+        step of distance is worth, and that inequality is the whole bug: idle
+        was 1.0 against a distance weight of 1.2, so on the far wall every move
+        lost 1.2 and staying lost 1.0. STAY won by construction, at every
+        entropy and for the rest of the sub-game. Our thief stood on one cell
+        for 30 of 35 steps in every networked sub-game we have played, against
+        three separate opponents, and finished each one pinned to an edge.
+
+        The cost is not only passivity. Under ``pheromone_transmit_lag: 1`` the
+        field we transmit is one turn stale, but a thief that did not move is in
+        the cell that field names -- so staying converts a stale trail into a
+        live one, and the book model's trail is exactly invertible.
+        """
+        idle = self._tuned("idle_penalty", self.IDLE_PENALTY)
+        return max(idle, weight + self.IDLE_MARGIN) if self._roams() else idle
+
     def _score(self, state: OwnState, move: str, cell: tuple[int, int],
                endgame: bool) -> float:
         """Utility of one candidate move. Higher is better."""
         distance = self._expected_distance(state, cell)
         area = state.board.reachable_area(cell, limit=60)
+        blind = self._roams() and self._blind(state)
 
+        weight = 2.0 if endgame else self._tuned("distance_weight", self.DISTANCE_WEIGHT)
+        if blind:
+            weight *= self.BLIND_DISTANCE_SCALE
         if endgame:
-            score = distance * 2.0 + 0.05 * area
+            score = weight * distance + 0.05 * area
         else:
-            score = (
-                self._tuned("distance_weight", self.DISTANCE_WEIGHT) * distance
-                + self._tuned("area_weight", self.AREA_WEIGHT) * (area * 0.25)
-            )
+            score = (weight * distance
+                     + self._tuned("area_weight", self.AREA_WEIGHT) * (area * 0.25))
+        if blind:
+            # Ways out, not squares reachable: on an open board every cell
+            # reaches the same 49, so `area` cannot tell a wall from the middle.
+            score += self.BLIND_EXIT_WEIGHT * self._exits(state, cell)
+        if self._roams():
+            score -= self.RECENT_PENALTY * self._recent.count(cell)
         peak = self._target_cell(state)
         if peak is not None and state.board.manhattan(cell, peak) <= 1:
             score -= self._tuned("adjacency_penalty", self.ADJACENCY_PENALTY)
         if move == "STAY":
-            score -= self._tuned("idle_penalty", self.IDLE_PENALTY)
+            score -= self._idle_cost(weight)
         return score
 
     def _survivable(self, state: OwnState,
