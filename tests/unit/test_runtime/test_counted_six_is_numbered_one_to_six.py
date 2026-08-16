@@ -190,3 +190,68 @@ def test_adopting_never_settles_a_sub_game_that_never_started():
     _number, handled, _recorder = _adopt(session)
 
     assert handled is True
+
+
+# --------------------------------------- the call site, not just the callee
+class _Turns:
+    """Stands in for the alternating turn loop."""
+
+    def __init__(self, round_: int = 0, finished: str = "") -> None:
+        self.round = round_
+        self.finished = finished
+
+
+def _adapter(turns=None, sub_game: int = 1, declared: int | None = None):
+    """An InteropAdapter wired to a stub session, without a server."""
+    from p2pchase.mcp.interop import InteropAdapter
+
+    adapter = object.__new__(InteropAdapter)
+    session = _Session(sub_game=sub_game)
+    if declared is not None:
+        _step0(session, declared)
+
+    class _Handlers:
+        pass
+
+    handlers = _Handlers()
+    handlers.session = session
+    adapter.handlers = handlers
+    adapter._turns = turns
+    adapter.recorder = _Recorder()
+    return adapter, session
+
+
+def test_the_opener_path_runs_on_a_fresh_session():
+    """THE bug of 2026-08-16, at the call site rather than inside the callee.
+
+    `_opener_is_a_retry` answers False when `_turns is None` -- correct, a fresh
+    session is not a retry -- and `submit_turn` read that as "nothing to do".
+    So the opener path never ran on the first turn after a door restart, and
+    both numbering fixes that day lived inside it: correct, and unreachable.
+
+    Asserted through the adapter's own condition so a future refactor that
+    reintroduces the skip fails here rather than on a counted wire.
+    """
+    adapter, session = _adapter(turns=None, sub_game=1, declared=2)
+
+    fresh = adapter._turns is None
+    assert fresh, "a session that has played nothing must take the opener path"
+
+    adapter._restart_if_a_new_sub_game({"step": 0})
+
+    assert session.sub_game == 2
+
+
+def test_a_fresh_session_with_no_declaration_keeps_its_number():
+    adapter, session = _adapter(turns=None, sub_game=1)
+
+    adapter._restart_if_a_new_sub_game({"step": 0})
+
+    assert session.sub_game == 1
+
+
+def test_a_mid_game_retry_does_not_take_the_fresh_path():
+    """The guard the fix must not trample: a retry keeps the board it is on."""
+    adapter, _session = _adapter(turns=_Turns(round_=7), sub_game=3)
+
+    assert adapter._turns is not None

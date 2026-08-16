@@ -279,7 +279,20 @@ class InteropAdapter:
         cop that never moved.
         """
         step = int(payload.get("step", 0) or 0)
-        if step <= 1 and self._opener_is_a_retry(step, str(payload.get("commit") or "")):
+        # `self._turns is None` is a session that has played nothing at all, so
+        # the opener path is safe there: `adopt_or_open` takes its stay/adopt
+        # branch and never settles a board that does not exist.
+        #
+        # It has to be asked separately because `_opener_is_a_retry` answers
+        # False for a fresh session -- correct, it is not a retry -- and the
+        # call site read that as "nothing to do". So the opener path never ran
+        # on the first turn after a door restart, and BOTH of 2026-08-16's
+        # numbering fixes lived inside it: correct, and unreachable in the only
+        # case that was failing. Doors restarted at 16:44, gal-roy1 declared 2,
+        # we wrote 1, twice, and each fix was verified against a call that the
+        # failing path never made.
+        if step <= 1 and (self._turns is None
+                          or self._opener_is_a_retry(step, str(payload.get("commit") or ""))):
             self._restart_if_a_new_sub_game(payload)
         session = self.handlers.session
         if session is None:
