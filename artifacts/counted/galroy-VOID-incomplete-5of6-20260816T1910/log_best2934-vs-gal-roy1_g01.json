@@ -1,0 +1,585 @@
+{
+  "_schema": "Per-sub-game match log consumed by the Replay Viewer for cryptographic verification: commit/reveal records, moves, hints, nonces and hashes.",
+  "schema_version": "1.1",
+  "game_id": "best2934-vs-gal-roy1",
+  "game_uid": "83b221e5-03e6-8775-645b-3bb311f6cbc8",
+  "links": {
+    "_remark": "Logical roles, NOT fixed filenames. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json.",
+    "declaration": "declaration_best2934-vs-gal-roy1.json",
+    "config": "config_best2934-vs-gal-roy1_g<NN>.json",
+    "log": "log_best2934-vs-gal-roy1_g<NN>.json",
+    "result": "result_best2934-vs-gal-roy1.json"
+  },
+  "summary": {
+    "sub_game_number": 1,
+    "group_id": "best2934",
+    "role": "police",
+    "opponent_group_id": "gal-roy1",
+    "result": "survival",
+    "winner_role": "thief",
+    "steps": 36,
+    "timezone": "Asia/Jerusalem",
+    "started_at": "2026-08-16T19:10:40.948950+00:00",
+    "ended_at": "2026-08-16T19:11:55.024131+00:00",
+    "duration_seconds": 74.1,
+    "tokens_total": 0,
+    "audit": {},
+    "opponent_declaration_keys": [
+      [
+        "commit",
+        "hint",
+        "nil",
+        "scent_grid",
+        "sender",
+        "step"
+      ]
+    ]
+  },
+  "records": [
+    {
+      "payload": {
+        "step": 1,
+        "role": "COP",
+        "state": [
+          0,
+          1
+        ],
+        "move": "MOVE:E",
+        "intent": "truth",
+        "hint": "Sweeping east from Chinatown. The net is closing."
+      },
+      "nonce": "d5a8c904dac8ca93c19f8c97c94ea55a",
+      "commit": "9043e7d23c7193b367733574893361c455930f1b40f45b90928034063554f50b"
+    },
+    {
+      "payload": {
+        "step": 2,
+        "role": "COP",
+        "state": [
+          1,
+          1
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "I know you passed Chinatown. Moving south."
+      },
+      "nonce": "552f0f8647478ac9e0bf39c9c3c827db",
+      "commit": "4972aca655a3e42664491c6ed36516d4fa3b79d091bd5cd2ea65e7ba3bfa8d28"
+    },
+    {
+      "payload": {
+        "step": 3,
+        "role": "COP",
+        "state": [
+          1,
+          1
+        ],
+        "move": "BARRIER:0,1",
+        "intent": "truth",
+        "hint": "I know you passed Times Square. Moving nowhere."
+      },
+      "nonce": "ed0010967be00f9ea5f9d0b1f7e38527",
+      "commit": "cecbb814dc8447854668dda9aa23e2bb3b6df8d93dae8252d0d229dacc36f2f8"
+    },
+    {
+      "payload": {
+        "step": 4,
+        "role": "COP",
+        "state": [
+          1,
+          2
+        ],
+        "move": "MOVE:E",
+        "intent": "truth",
+        "hint": "Sealing the way past Harlem. Nowhere left to go east."
+      },
+      "nonce": "0f7931016036aa7375b75bda3d92e07b",
+      "commit": "1dbbbad0bd2b8a96f4804f84350d7392669db8fafd3a5e11bab3db444e907968"
+    },
+    {
+      "payload": {
+        "step": 5,
+        "role": "COP",
+        "state": [
+          1,
+          3
+        ],
+        "move": "MOVE:E",
+        "intent": "truth",
+        "hint": "I know you passed Queens. Moving east."
+      },
+      "nonce": "d83887ff87b8a2013735b05e79704ead",
+      "commit": "25ecd64c38d95416d7e032b05fad166b3f8d020fe27b004b6b1046bd67c7d221"
+    },
+    {
+      "payload": {
+        "step": 6,
+        "role": "COP",
+        "state": [
+          2,
+          3
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "Sweeping south from the Bowery. The net is closing."
+      },
+      "nonce": "0c98c48c12fffa142d53d8da1e47f39f",
+      "commit": "f30eaa5d515e791d03aef2c4fa1e1261bbdf799a3381a42a9afa3ce7a2b88828"
+    },
+    {
+      "payload": {
+        "step": 7,
+        "role": "COP",
+        "state": [
+          3,
+          3
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "I know you passed Chinatown. Moving south."
+      },
+      "nonce": "04207b1f2a5d9dc7aac3a99b5eb7ab81",
+      "commit": "0a8d2acd66314a516bfb7014ebdc03f3864fe76c0762064d43bed5cb12fca673"
+    },
+    {
+      "payload": {
+        "step": 8,
+        "role": "COP",
+        "state": [
+          4,
+          3
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "I know you passed Harlem. Moving south."
+      },
+      "nonce": "1b4911aa836d43791237430ea650e1b9",
+      "commit": "8eaa2940169f206950c0da19e7875b779e78165a8a9c5e03bf5f9ca81d9be8f4"
+    },
+    {
+      "payload": {
+        "step": 9,
+        "role": "COP",
+        "state": [
+          5,
+          3
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "Sealing the way past the Bowery. Nowhere left to go south."
+      },
+      "nonce": "4ee7476b80ea6dd4e8ddf6439ceb3ffe",
+      "commit": "c577cd3c7407d9735d043d8afdbeeb5b13abd40cedbf05e5712da1f7f7e2bfdd"
+    },
+    {
+      "payload": {
+        "step": 10,
+        "role": "COP",
+        "state": [
+          5,
+          2
+        ],
+        "move": "MOVE:W",
+        "intent": "truth",
+        "hint": "Sweeping west from the East River. The net is closing."
+      },
+      "nonce": "debdc26e681300d157d94b2be7c19d35",
+      "commit": "707ae4fe1d9f9b0ed21be7d38a52dc3a2a2ca55cb81ed0b6d2558b5b1aa297a4"
+    },
+    {
+      "payload": {
+        "step": 11,
+        "role": "COP",
+        "state": [
+          5,
+          1
+        ],
+        "move": "MOVE:W",
+        "intent": "truth",
+        "hint": "Sweeping west from the Bronx. The net is closing."
+      },
+      "nonce": "5de79d9fd00dd5440761b2c0ee54c865",
+      "commit": "9441118e81abdd6b7fdd01a40cda00914725659769f3291b1a6c79550c85c8d0"
+    },
+    {
+      "payload": {
+        "step": 12,
+        "role": "COP",
+        "state": [
+          5,
+          0
+        ],
+        "move": "MOVE:W",
+        "intent": "truth",
+        "hint": "Sealing the way past Wall Street. Nowhere left to go west."
+      },
+      "nonce": "5424b02769eda37ec738e6752d52c25c",
+      "commit": "001ad1c047d3fb15c144c4bcc6813ccb7dbdab48acedc8c25c6c7655dae68e6d"
+    },
+    {
+      "payload": {
+        "step": 13,
+        "role": "COP",
+        "state": [
+          6,
+          0
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "Sweeping south from Queens. The net is closing."
+      },
+      "nonce": "5b229fdf0a6b449a3b566de280039828",
+      "commit": "9f03a991b787518dad2051615f242b0fdf6f0ded7cc1b94f08729171196a0e70"
+    },
+    {
+      "payload": {
+        "step": 14,
+        "role": "COP",
+        "state": [
+          5,
+          0
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "Sweeping north from Brooklyn Bridge. The net is closing."
+      },
+      "nonce": "5300d3d1503446c062e214b584534b98",
+      "commit": "1a178cbf2fac654b6c3b3f53f29131dae86f9a43199543c0f9f28046c95f0703"
+    },
+    {
+      "payload": {
+        "step": 15,
+        "role": "COP",
+        "state": [
+          5,
+          1
+        ],
+        "move": "MOVE:E",
+        "intent": "truth",
+        "hint": "I know you passed Harlem. Moving east."
+      },
+      "nonce": "ad77f1a5eec554ec28d6ea6d26ee16b8",
+      "commit": "ec5df687455715f801fb783efc881596b66c059854cf1f293283e2fa7d7f396e"
+    },
+    {
+      "payload": {
+        "step": 16,
+        "role": "COP",
+        "state": [
+          5,
+          2
+        ],
+        "move": "MOVE:E",
+        "intent": "truth",
+        "hint": "Sweeping east from Brooklyn Bridge. The net is closing."
+      },
+      "nonce": "676432318298aad9ef534928287d2321",
+      "commit": "8f1dd8d6636c5fd149e3e17b879becf31af7e6e2d7f0fc1f2fdb599b37650675"
+    },
+    {
+      "payload": {
+        "step": 17,
+        "role": "COP",
+        "state": [
+          5,
+          3
+        ],
+        "move": "MOVE:E",
+        "intent": "truth",
+        "hint": "Sealing the way past Central Park. Nowhere left to go east."
+      },
+      "nonce": "edc4557e3e27158e55fe26214c0f71b0",
+      "commit": "ca19bd96f9e7ef2ec4d3321a237037642f8dabea323f48af31eb0f69a86ea622"
+    },
+    {
+      "payload": {
+        "step": 18,
+        "role": "COP",
+        "state": [
+          4,
+          3
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "Sweeping north from the Bronx. The net is closing."
+      },
+      "nonce": "0271d186608f1a02833e8c6b32231d0c",
+      "commit": "20f6661789a4432ac8f1cfced9dd72d58820637905b838f76f1d323589c9836b"
+    },
+    {
+      "payload": {
+        "step": 19,
+        "role": "COP",
+        "state": [
+          3,
+          3
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "I know you passed Harlem. Moving north."
+      },
+      "nonce": "0541e29bcc1f9f8a768a1e77f5db1b92",
+      "commit": "693f3661a0b60e6bb26e83ecba4199d09af1f109652ff5198033d6f8887efe06"
+    },
+    {
+      "payload": {
+        "step": 20,
+        "role": "COP",
+        "state": [
+          3,
+          4
+        ],
+        "move": "MOVE:E",
+        "intent": "truth",
+        "hint": "Sealing the way past Queens. Nowhere left to go east."
+      },
+      "nonce": "d84273e0361e0ea01e8f8639b92f367a",
+      "commit": "9ca5e8ef450830027ee53efaa4fb82b7612be79b5b980175dca38b95bc1cf690"
+    },
+    {
+      "payload": {
+        "step": 21,
+        "role": "COP",
+        "state": [
+          3,
+          5
+        ],
+        "move": "MOVE:E",
+        "intent": "truth",
+        "hint": "I know you passed Grand Central. Moving east."
+      },
+      "nonce": "84cf46ee87824b9a5265df1c82ef3d2f",
+      "commit": "67284678ab14048357f8ba179481a62d5dd3280e8752282228d2c4c4f72e25ce"
+    },
+    {
+      "payload": {
+        "step": 22,
+        "role": "COP",
+        "state": [
+          4,
+          5
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "Sealing the way past the Bronx. Nowhere left to go south."
+      },
+      "nonce": "6a39d85fc0ba70c53ef9752eb9213816",
+      "commit": "b38e3fc3980636322e102e47dcf9ab58578eb2000bf2b60596b71cb36e291a3a"
+    },
+    {
+      "payload": {
+        "step": 23,
+        "role": "COP",
+        "state": [
+          5,
+          5
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "Sweeping south from Brooklyn Bridge. The net is closing."
+      },
+      "nonce": "636f5f6f6ae249f8fb4f17d4fb6e67b4",
+      "commit": "5b18b0464845c4604b58d32c48f5930fb72301adadd250e9fde473a4294810b5"
+    },
+    {
+      "payload": {
+        "step": 24,
+        "role": "COP",
+        "state": [
+          6,
+          5
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "Sealing the way past Harlem. Nowhere left to go south."
+      },
+      "nonce": "0d1c653fe0a5459377d95618b1d6654a",
+      "commit": "376c3aebd6c8dddd1f6279ed875a08e94fee0a8e1126519c3f294db62b073644"
+    },
+    {
+      "payload": {
+        "step": 25,
+        "role": "COP",
+        "state": [
+          6,
+          4
+        ],
+        "move": "MOVE:W",
+        "intent": "truth",
+        "hint": "Sealing the way past Central Park. Nowhere left to go west."
+      },
+      "nonce": "bc6f5366e8c9b3274a4f176833c109b6",
+      "commit": "d70be3fd6830d33c4d60bfdaa7c7fe2a23d9745127bed9b77a04aa9a47a04cd1"
+    },
+    {
+      "payload": {
+        "step": 26,
+        "role": "COP",
+        "state": [
+          6,
+          3
+        ],
+        "move": "MOVE:W",
+        "intent": "truth",
+        "hint": "Sweeping west from Grand Central. The net is closing."
+      },
+      "nonce": "fcbf2edf83b66b9343ecc73931151a6a",
+      "commit": "60826db9a421dbe8c70d2456799e89c8613dca7a98a23b814ba3142f5fce4c9c"
+    },
+    {
+      "payload": {
+        "step": 27,
+        "role": "COP",
+        "state": [
+          5,
+          3
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "Sweeping north from Central Park. The net is closing."
+      },
+      "nonce": "fb623b804ed0127220e0d3eb74b6bbff",
+      "commit": "2360dcde1979aa2a1e71d7f46e3214565f702ba1809212a18e83e765a3ac538a"
+    },
+    {
+      "payload": {
+        "step": 28,
+        "role": "COP",
+        "state": [
+          4,
+          3
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "Sealing the way past Coney Island. Nowhere left to go north."
+      },
+      "nonce": "e4e3649f4d0d5a9357b0d42f5d10608a",
+      "commit": "0b73bf23fd8c47dd72a901afb71349484a8e4a7c8c4a83ab988518be72853005"
+    },
+    {
+      "payload": {
+        "step": 29,
+        "role": "COP",
+        "state": [
+          3,
+          3
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "I know you passed the East River. Moving north."
+      },
+      "nonce": "7a19eb07bcfa275dac97eb6eca5ebe5a",
+      "commit": "b0e8c51141551366b263786fb774dc503396188fcd3ea18e2bf133f985b408b8"
+    },
+    {
+      "payload": {
+        "step": 30,
+        "role": "COP",
+        "state": [
+          2,
+          3
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "I know you passed the Bowery. Moving north."
+      },
+      "nonce": "144499428d8ad71360783601e3591921",
+      "commit": "458e3a9174205cb70e2dae142a91e9852b49208fe75908b17918a4feb4ddc7ff"
+    },
+    {
+      "payload": {
+        "step": 31,
+        "role": "COP",
+        "state": [
+          1,
+          3
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "Sealing the way past Queens. Nowhere left to go north."
+      },
+      "nonce": "19758988ab1d36233dacba54198ff20d",
+      "commit": "d6f66db5f798bb712755a6e4e888ae33b258c382335f20b4403843bdb0681bc8"
+    },
+    {
+      "payload": {
+        "step": 32,
+        "role": "COP",
+        "state": [
+          0,
+          3
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "Sealing the way past Central Park. Nowhere left to go north."
+      },
+      "nonce": "86b7eb7f79cafc151df660434881f892",
+      "commit": "640a777342f75690bf5546c103f783c2240d25af50d1f43bf97b070b3e048c9b"
+    },
+    {
+      "payload": {
+        "step": 33,
+        "role": "COP",
+        "state": [
+          0,
+          4
+        ],
+        "move": "MOVE:E",
+        "intent": "truth",
+        "hint": "Sweeping east from the East River. The net is closing."
+      },
+      "nonce": "d44b46d56857976a7c54bace03da523b",
+      "commit": "6e70b210d96bbc249c1b18142e3071a7393af381e02c45f25200ef0ac58e37c1"
+    },
+    {
+      "payload": {
+        "step": 34,
+        "role": "COP",
+        "state": [
+          0,
+          3
+        ],
+        "move": "MOVE:W",
+        "intent": "truth",
+        "hint": "Sealing the way past Chinatown. Nowhere left to go west."
+      },
+      "nonce": "9543089fbb3648897421ada11af08183",
+      "commit": "2a9aaf4a6f2b8abb6042da4f4e819a4c5c9abc51210900197f12d493c505e1d0"
+    },
+    {
+      "payload": {
+        "step": 35,
+        "role": "COP",
+        "state": [
+          1,
+          3
+        ],
+        "move": "MOVE:S",
+        "intent": "truth",
+        "hint": "I know you passed the East River. Moving south."
+      },
+      "nonce": "d23c6bef2965e420c011cea257d3ebc0",
+      "commit": "75e038110201fd2a0937c97bfa515bfc4cb2e6ce14095f0f0cc4d7034ed172a9"
+    },
+    {
+      "payload": {
+        "step": 36,
+        "role": "COP",
+        "state": [
+          0,
+          3
+        ],
+        "move": "MOVE:N",
+        "intent": "truth",
+        "hint": "I know you passed the Bronx. Moving north."
+      },
+      "nonce": "977742a48166756c54429d41acf8774b",
+      "commit": "3cf82cac427bffd8fb56fcf321a107cb65a15d573e61860e258fcfb9d168c2c1"
+    }
+  ],
+  "mutual_agreement": {
+    "opponent_group_id": "gal-roy1",
+    "sha256": "",
+    "confirmed": false
+  }
+}
