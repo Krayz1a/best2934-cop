@@ -60,11 +60,23 @@ class ServedRecorder:
         self.enabled = enabled
         #: Who actually called, learned from their messages rather than a flag.
         self.opponent = ""
-        self.started: dict[int, str] = {}
+        #: Which run of the six we are on. Bumped when a sub-game we have
+        #: already filed opens again, because that can only mean a new series.
+        self.series = 0
+        self.started: dict[tuple[int, int], str] = {}
         #: Sub-games already on disk. A peer may call ``agree_result`` more than
         #: once for one sub-game, and rewriting the artifacts on the second call
         #: would stamp a fresh ``ended_at`` onto a game that ended earlier.
-        self.recorded: set[tuple[str, int]] = set()
+        #:
+        #: Keyed by series as well as number, and that is not decoration. On
+        #: 16/08 a serve process took gal-roy1's uncounted sub-game 2 pre-flight
+        #: at 22:04, then the counted six at 22:10. Sub-game 2 of the counted
+        #: series hit this set, returned silently, and wrote nothing: five rows
+        #: of six, an unreportable series, and no error anywhere. Archiving the
+        #: artifacts off disk beforehand did not help -- the memory of them was
+        #: what refused. A pre-flight must never be able to swallow the game it
+        #: was run to protect.
+        self.recorded: set[tuple[str, int, int]] = set()
 
     # ------------------------------------------------------------- listening
     def note_caller(self, payload: dict[str, Any] | None) -> None:
@@ -80,8 +92,16 @@ class ServedRecorder:
             self.opponent = group
 
     def opened(self, sub_game: int) -> None:
-        """Stamp when a sub-game started, once, so the report spans the real game."""
-        self.started.setdefault(int(sub_game), now_iso())
+        """Stamp when a sub-game started, once, so the report spans the real game.
+
+        Opening a number we have already filed starts a new series. Nothing else
+        can produce that: within one series each number is played once, and a
+        retried opener re-enters a sub-game that has not settled yet, so it is
+        not in ``recorded`` and does not bump anything.
+        """
+        if (self.opponent, self.series, int(sub_game)) in self.recorded:
+            self.series += 1
+        self.started.setdefault((self.series, int(sub_game)), now_iso())
 
     # ---------------------------------------------------------------- writing
     def game_id(self) -> str:
@@ -101,7 +121,7 @@ class ServedRecorder:
         """
         if not self.enabled or session is None or not outcome:
             return []
-        key = (self.opponent, int(session.sub_game))
+        key = (self.opponent, self.series, int(session.sub_game))
         if key in self.recorded:
             return []
         self.recorded.add(key)
@@ -128,7 +148,7 @@ class ServedRecorder:
             self.config, self.opponent or "unknown").record_sub_game(
             self.game_id(), int(session.sub_game), session.role,
             self.opponent or "unknown", result,
-            self.started.get(int(session.sub_game), now_iso()), now_iso(),
+            self.started.get((self.series, int(session.sub_game)), now_iso()), now_iso(),
             int(getattr(getattr(session, "talk", None), "tokens_used", 0) or 0),
             declared_sub_games=list(getattr(session, "declared_sub_games", []) or []),
             declaration_keys=[list(k) for k in

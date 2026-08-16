@@ -169,4 +169,75 @@ def test_agreeing_a_result_writes_the_report(peer_config, tmp_path, monkeypatch)
     adapter.hello({"group_id": "gal-roy1"})
     adapter.turns(session).finished = "capture"
     adapter.agree_result({"outcome": "CAPTURE"})
-    assert ("gal-roy1", 1) in adapter.recorder.recorded
+    assert ("gal-roy1", 0, 1) in adapter.recorder.recorded
+
+
+# ------------------------------------------------- a pre-flight must not eat
+# the game it protects
+def test_a_repeat_of_a_filed_sub_game_starts_a_new_series(recorder, peer_config,
+                                                          tmp_path, monkeypatch):
+    """THE 16/08 BUG, reproduced end to end.
+
+    A serve process took gal-roy1's uncounted sub-game 2 alignment throwaway at
+    22:04, then their counted six from 22:10. Sub-game 2 of the counted series
+    matched ``(opponent, 2)`` in ``recorded``, returned silently and wrote
+    nothing -- five rows of six, an unreportable series, no error anywhere.
+
+    The throwaway existed to protect the counted six. Keying only on the number
+    let it swallow the sub-game it was run to protect, and archiving the files
+    off disk beforehand did not help: the refusal was in memory.
+    """
+    monkeypatch.setenv("P2PCHASE_ROOT", str(tmp_path))
+    recorder.note_caller({"group_id": "gal-roy1"})
+
+    throwaway = PeerSession(peer_config, "police", "g", sub_game=2)
+    recorder.opened(2)
+    assert recorder.settle(throwaway, "survival", 36)
+
+    for number in (1, 2, 3):
+        counted = PeerSession(peer_config, "police", "g", sub_game=number)
+        recorder.opened(number)
+        assert recorder.settle(counted, "survival", 36), (
+            f"counted sub-game {number} wrote nothing")
+    assert recorder.series == 1
+
+
+def test_one_sub_game_still_writes_only_once_within_a_series(recorder, session,
+                                                             tmp_path, monkeypatch):
+    """The guard the series key must not weaken. ``settle`` fires from
+    ``agree_result`` AND from the next opener, and a peer may agree twice;
+    rewriting stamps a fresh ``ended_at`` on a game that ended earlier."""
+    monkeypatch.setenv("P2PCHASE_ROOT", str(tmp_path))
+    recorder.note_caller({"group_id": "gal-roy1"})
+    recorder.opened(1)
+    assert recorder.settle(session, "capture", 12)
+    assert recorder.settle(session, "capture", 12) == []
+    assert recorder.series == 0
+
+
+def test_a_retried_opener_does_not_bump_the_series(recorder, session,
+                                                   tmp_path, monkeypatch):
+    """A retry re-enters a sub-game that has not settled, so it is not in
+    ``recorded``. Bumping there would file the retry beside the original
+    instead of over it."""
+    monkeypatch.setenv("P2PCHASE_ROOT", str(tmp_path))
+    recorder.note_caller({"group_id": "gal-roy1"})
+    recorder.opened(1)
+    recorder.opened(1)
+    assert recorder.series == 0
+    assert recorder.settle(session, "capture", 12)
+
+
+def test_the_second_series_stamps_its_own_start_time(recorder, peer_config,
+                                                     tmp_path, monkeypatch):
+    """``started`` was keyed by number alone too, so a re-run would have
+    inherited the throwaway's ``started_at`` and reported a sub-game as having
+    begun minutes before it did."""
+    monkeypatch.setenv("P2PCHASE_ROOT", str(tmp_path))
+    recorder.note_caller({"group_id": "gal-roy1"})
+    recorder.opened(2)
+    recorder.settle(PeerSession(peer_config, "police", "g", sub_game=2), "survival", 36)
+    recorder.started[(0, 2)] = "1999-01-01T00:00:00+00:00"
+
+    recorder.opened(2)
+    assert recorder.started[(1, 2)] != recorder.started[(0, 2)]
