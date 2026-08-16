@@ -30,7 +30,7 @@ import logging
 from typing import Any
 
 from ..runtime import pairing_guard
-from ..runtime.declaration_trace import note_declaration, opening_sub_game
+from ..runtime.declaration_trace import adopt_or_open, note_declaration
 from . import contracts
 from .handlers import PeerHandlers
 
@@ -222,13 +222,11 @@ class InteropAdapter:
             return
         loop = self._turns
         played = loop is not None and (loop.round > 0 or loop.finished)
-        number = int(payload.get("sub_game_number", 0) or 0)
-        # Record what ARRIVED, always, before deciding anything with it. Both
-        # the keys and the number, and separately -- see `declaration_trace`
-        # for why the number alone could not attribute the gal-roy1
-        # disagreement it was added to attribute.
+        # Record what ARRIVED before deciding anything with it, and BEFORE the
+        # opening is computed -- `adopt_or_open` reads the trace this writes.
         note_declaration(session, payload)
-        if not played and (not number or number == session.sub_game):
+        opening, handled = adopt_or_open(payload, session, played, self.recorder)
+        if handled:
             return
 
         # The one we are leaving is finished, and this is the last moment its
@@ -236,12 +234,8 @@ class InteropAdapter:
         # series is cut short after it -- would otherwise leave no report at all.
         self.recorder.settle(session, str(getattr(loop, "finished", "") or ""),
                              int(getattr(loop, "round", 0) or 0))
-        # Their number when they send one, then the one they declared at step 0,
-        # and only then our own counter. Reusing the current number is what
-        # labelled three consecutive gal-roy1 sub-games "3" while they numbered
-        # them 1, 2, 3 (rule 35); falling through to the counter is what would
-        # have labelled tomorrow's counted six 2..7. See `opening_sub_game`.
-        opening = opening_sub_game(payload, session, played)
+        # `opening` came from `adopt_or_open` above: their number on the turn,
+        # then the one they declared at step 0, and only then our own counter.
         LOGGER.info("an opening turn starts sub-game %s; clean session (was sub-game %s, "
                     "%d records)", opening, session.sub_game, len(session.records))
         self.handlers.session = PeerSession(session.config, session.role,

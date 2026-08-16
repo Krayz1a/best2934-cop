@@ -109,3 +109,84 @@ def test_the_most_recent_declaration_wins_over_an_older_one():
     _step0(session, 5)
 
     assert opening_sub_game(OPENING, session, played=True) == 5
+
+
+# ------------------------------------------------- the live counted failure
+class _Recorder:
+    def __init__(self) -> None:
+        self.opened_with: list[int] = []
+
+    def opened(self, sub_game: int) -> None:
+        self.opened_with.append(sub_game)
+
+
+def _adopt(session: _Session, played: bool = False):
+    from p2pchase.runtime.declaration_trace import adopt_or_open
+
+    recorder = _Recorder()
+    number, handled = adopt_or_open(OPENING, session, played, recorder)
+    return number, handled, recorder
+
+
+def test_a_fresh_session_adopts_the_number_they_declared_at_step_zero():
+    """THE case that broke the counted six of 2026-08-16, live, mid-series.
+
+    Doors restart, so the session begins at 1 with nothing played. gal-roy1
+    declare 2 at step 0 and send no number on the opening turn. Before this,
+    the guard asked whether the TURN carried a number, read 0, took the early
+    return, and kept the counter's 1 -- so the log said g01 while their
+    declaration said 2.
+    """
+    session = _Session(sub_game=1)
+    _step0(session, 2)
+
+    number, handled, recorder = _adopt(session)
+
+    assert number == 2
+    assert handled is True
+    assert session.sub_game == 2
+    assert recorder.opened_with == [2]
+
+
+def test_the_other_door_adopts_four_not_one():
+    """The same restart produced a second row also labelled g01, from a 4."""
+    session = _Session(sub_game=1)
+    _step0(session, 4)
+
+    number, _handled, _recorder = _adopt(session)
+
+    assert number == 4
+    assert session.sub_game == 4
+
+
+def test_a_fresh_session_on_the_number_it_holds_stays_put():
+    """No spurious adopt, and nothing recorded as opened."""
+    session = _Session(sub_game=1)
+    _step0(session, 1)
+
+    number, handled, recorder = _adopt(session)
+
+    assert (number, handled) == (1, True)
+    assert recorder.opened_with == []
+
+
+def test_a_played_session_hands_back_to_the_settle_path():
+    """Turns played means the caller must settle and open a fresh session."""
+    session = _Session(sub_game=2)
+    _step0(session, 3)
+
+    number, handled, recorder = _adopt(session, played=True)
+
+    assert (number, handled) == (3, False)
+    assert session.sub_game == 2
+    assert recorder.opened_with == []
+
+
+def test_adopting_never_settles_a_sub_game_that_never_started():
+    """The reason adopt exists: settling here would file a row for no game."""
+    session = _Session(sub_game=1)
+    _step0(session, 5)
+
+    _number, handled, _recorder = _adopt(session)
+
+    assert handled is True

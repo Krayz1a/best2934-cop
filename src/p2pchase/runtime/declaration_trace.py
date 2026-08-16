@@ -99,6 +99,49 @@ def opening_sub_game(payload: dict[str, Any], session: Any, played: bool) -> int
     return number or (declared[-1] if declared else session.sub_game + (1 if played else 0))
 
 
+def adopt_or_open(payload: dict[str, Any], session: Any, played: bool,
+                  recorder: Any = None) -> tuple[int, bool]:
+    """Decide what an opening turn means: ``(number, handled)``.
+
+    ``handled`` is True when the caller should stop here -- either this is the
+    current sub-game's own first turn, or the session has been moved onto the
+    declared number in place. False means turns were played, so the caller must
+    settle the finished sub-game and open a fresh session on ``number``.
+
+    Three cases, and the middle one is the one that was missing:
+
+    ``stay``
+        Nothing played and the opening number is the one we already hold. This
+        *is* that sub-game's first turn.
+    ``adopt``
+        Nothing played and the number differs. Take it in place. There is no
+        previous sub-game to settle -- ours never started -- so settling here
+        would file a row for a game that did not happen.
+    ``settle``
+        Turns have been played, so the sub-game we are on is over and the new
+        number opens the next one.
+
+    The guard this replaces asked whether the *turn* carried a number.
+    gal-roy1's driver declares at ``declare_step0`` and omits it from the
+    opening turn, so a fresh session read 0, took the early return and kept its
+    counter's 1 whatever had been declared. On 2026-08-16 that put two rows both
+    labelled ``g01`` into a counted series while their declarations said 2 and
+    4 -- :func:`opening_sub_game` had the right answer the whole time and was
+    never reached.
+    """
+    number = opening_sub_game(payload, session, played)
+    if played:
+        return number, False
+    if number != int(session.sub_game):
+        # Adopt in place. There is no previous sub-game to settle -- ours never
+        # started -- so settling here would file a row for a game that did not
+        # happen.
+        session.sub_game = number
+        if recorder is not None:
+            recorder.opened(number)
+    return number, True
+
+
 def step0_role_check(payload: dict[str, Any], session: Any,
                      config: Any) -> tuple[int, str, str]:
     """The sub-game the caller declared, their role, and why it is unplayable.
