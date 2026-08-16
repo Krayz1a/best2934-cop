@@ -75,6 +75,12 @@ class PeerSession:
     records: list[dict[str, Any]] = field(default_factory=list)
     opponent_commitments: dict[int, str] = field(default_factory=dict)
     opponent_records: list[dict[str, Any]] = field(default_factory=list)
+    #: Why step 0 was refused, and the reason every later call in this sub-game
+    #: is refused too. Empty means no clash outstanding. Sticky on purpose: a
+    #: refusal that only refuses the one call it was raised on is how a sub-game
+    #: we had already declined went on to play thirty-five turns and seal a
+    #: complete artifact (2026-08-16, gal-roy1).
+    role_clash: str = ""
     lies_told: int = 0
     honest_hints: int = 0
     #: Set when we answered a cop's capture claim truthfully in the affirmative.
@@ -116,15 +122,13 @@ class PeerSession:
         """
         self.step = step
         decision = self.brain.decide(self.state)
-        hint = self.talk.compose(
-            TalkRequest(
-                role=self.role, step=step, intent=decision.intent,
-                heading=heading_word(decision.spoken_heading),
-                landmark=pick_landmark(self._map_area, self._rng),
-                max_words=self._max_words,
-                steps_remaining=self.state.survival_threshold - self.state.step,
-            )
-        )
+        hint = self.talk.compose(TalkRequest(
+            role=self.role, step=step, intent=decision.intent,
+            heading=heading_word(decision.spoken_heading),
+            landmark=pick_landmark(self._map_area, self._rng),
+            max_words=self._max_words,
+            steps_remaining=self.state.survival_threshold - self.state.step,
+        ))
         intent = StepIntent(
             step=step, role=self.role, sub_game_number=self.sub_game,
             move=decision.move, hint=hint, intent=decision.intent,

@@ -44,3 +44,61 @@ def note_declaration(session: Any, payload: dict[str, Any]) -> None:
         number = int(payload.get("sub_game_number", 0) or 0)
         session.declared_sub_games[:] = dict.fromkeys(
             [*session.declared_sub_games, number])
+
+
+def declared_sub_game(payload: dict[str, Any], session: Any) -> int:
+    """The number to judge this sub-game's roles against: THEIRS, not ours.
+
+    The step-0 role check used ``session.sub_game`` -- our own local counter --
+    and never read what the caller declared. On 2026-08-16 gal-roy1 dialled a
+    correct sub-game 4 (``first_half`` makes us the thief there, and thief is
+    what we were serving) while our counter still read 1, which makes us the
+    cop. The guard compared their role against *our* number, invented a clash
+    that did not exist, and refused a dial that was right.
+
+    So it was validating a fiction: it could only agree with the opponent when
+    our counter happened to track their series, which is the one thing a local
+    counter cannot be assumed to do. The declared number is the shared fact.
+
+    Falling back to the counter when they declare nothing preserves the old
+    behaviour for peers that send no number, which is the only case where ours
+    is the best answer available.
+    """
+    return int(payload.get("sub_game_number", 0) or 0) or int(session.sub_game)
+
+
+def step0_role_check(payload: dict[str, Any], session: Any,
+                     config: Any) -> tuple[int, str, str]:
+    """The sub-game the caller declared, their role, and why it is unplayable.
+
+    Returns ``(number, clash, their_role)``; ``clash`` is empty when sound.
+    The check is judged against ``number`` -- see :func:`declared_sub_game` for
+    why our own counter is the wrong yardstick and what it cost.
+
+    A peer that declares no role at all is accepted, because we cannot check
+    what nobody stated.
+    """
+    from ..domain import roles
+
+    theirs = roles.normalise_role(str(payload.get("role", "")))
+    opponent = str(payload.get("group_id", "") or payload.get("group_name", "")
+                   or session.opponent)
+    number = declared_sub_game(payload, session)
+    clash = roles.role_clash(session.role, theirs, session.group_id, opponent, number,
+                             config.num_sub_games, config.role_convention(opponent))
+    return number, str(clash or ""), theirs
+
+
+def outstanding_clash(session: Any) -> str:
+    """Why every call in this sub-game is refused, or ``""`` if none is.
+
+    ``declare_step0`` detected a role clash, logged it, returned an error -- and
+    the sub-game then played all thirty-five turns, because each later
+    ``submit_turn`` was judged on its own merits. That produced a complete,
+    plausible, sealed artifact for a sub-game we had already declined.
+
+    A refusal that refuses only the call it was raised on is worse than no check
+    at all: it writes an ERROR line nobody reads and leaves evidence that looks
+    exactly like consent.
+    """
+    return str(getattr(session, "role_clash", "") or "")

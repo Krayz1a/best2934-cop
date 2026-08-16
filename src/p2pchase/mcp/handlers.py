@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ..domain import roles
+from ..runtime import declaration_trace
 from ..runtime.peer_session import PeerSession
 from ..services.negotiation_service import NegotiationService
 from ..shared.peer_config import PeerConfig
@@ -55,10 +55,19 @@ class PeerHandlers:
         return self.session
 
     def _check_game(self, payload: dict[str, Any]) -> str:
-        """Reject a message aimed at a different game or sub-game."""
+        """Reject a message aimed at a different game or sub-game.
+
+        Also the enforcement point for a refused step 0: see
+        :func:`~p2pchase.runtime.declaration_trace.outstanding_clash` for why a
+        clash has to be sticky rather than refusing only the call it was raised
+        on. A corrected step 0 clears it.
+        """
         session = self.session
         if session is None:
             return "no sub-game is in progress"
+        clash = declaration_trace.outstanding_clash(session)
+        if clash:
+            return f"step 0 was refused and nothing has cleared it -- {clash}"
         game_id = str(payload.get("game_id", ""))
         if game_id and game_id != session.game_id:
             return f"game_id mismatch: this peer is playing {session.game_id!r}, not {game_id!r}"
@@ -150,19 +159,16 @@ class PeerHandlers:
         session = self._require_session()
         if session is None:
             return contracts.error("no sub-game is in progress")
-        theirs = roles.normalise_role(str(payload.get("role", "")))
-        opponent = str(payload.get("group_id", "") or payload.get("group_name", "")
-                       or session.opponent)
-        clash = roles.role_clash(session.role, theirs, session.group_id, opponent,
-                                 session.sub_game, self.config.num_sub_games,
-                                 self.config.role_convention(opponent))
+        number, clash, theirs = declaration_trace.step0_role_check(
+            payload, session, self.config)
+        session.role_clash = clash
         if clash:
-            LOGGER.error("refusing step 0: %s", clash)
+            LOGGER.error("refusing step 0 for sub-game %s: %s", number, clash)
             return contracts.error(f"role clash: {clash}", responder_role=session.role,
-                                   caller_role=theirs, sub_game=session.sub_game)
+                                   caller_role=theirs, sub_game=number)
         session.opponent_records.append(dict(payload))
         return contracts.ok(step=0, responder_role=session.role, caller_role=theirs,
-                            role_checked=bool(theirs))
+                            role_checked=bool(theirs), sub_game=number)
 
     def commit_step(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Receive a sealed step. The hash alone reveals nothing."""

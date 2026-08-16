@@ -242,13 +242,23 @@ class InteropAdapter:
         opening = number or session.sub_game + (1 if played else 0)
         LOGGER.info("an opening turn starts sub-game %s; clean session (was sub-game %s, "
                     "%d records)", opening, session.sub_game, len(session.records))
-        self.handlers.session = PeerSession(
-            session.config, session.role, session.game_id,
-            sub_game=opening, seed=session.seed)
+        self.handlers.session = PeerSession(session.config, session.role,
+            session.game_id, sub_game=opening, seed=session.seed)
         # The fresh session re-derives its opponent from the game id, which is
         # the very assertion the caller outranked. Carry the pairing we learned
         # across, or the next sub-game seals in the default form (ADR-024).
         pairing_guard.adopt(self.handlers.session, {"group_id": session.opponent})
+        # And carry the declaration trace, which is ABOUT the payload that
+        # opened this new sub-game and so belongs to it, not to the one being
+        # retired. `note_declaration` above wrote it onto the outgoing session
+        # seconds before this line replaced that session wholesale, so the trace
+        # was recorded faithfully and then dropped on the floor every time.
+        #
+        # That is why, on 2026-08-16, both fields were absent from the log and
+        # we could not answer gal-roy1's "what did our driver declare" -- and
+        # then quoted our own counter at them as if it were their number. The
+        # instrumentation existed and ran; only the last hop was missing.
+        note_declaration(self.handlers.session, payload)
         self._turns = None
         self.recorder.opened(opening)
 
