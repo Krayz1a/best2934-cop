@@ -159,8 +159,8 @@ class PeerHandlers:
         session = self._require_session()
         if session is None:
             return contracts.error("no sub-game is in progress")
-        number, clash, theirs = declaration_trace.step0_role_check(
-            payload, session, self.config)
+        declaration_trace.note_declaration(session, payload)
+        number, clash, theirs = declaration_trace.step0_role_check(payload, session, self.config)
         session.role_clash = clash
         if clash:
             LOGGER.error("refusing step 0 for sub-game %s: %s", number, clash)

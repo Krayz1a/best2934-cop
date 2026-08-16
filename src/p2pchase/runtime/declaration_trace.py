@@ -35,15 +35,22 @@ def note_declaration(session: Any, payload: dict[str, Any]) -> None:
     we recognise carried a sub-game number" -- a sentence about them, which is
     the sentence a settlement needs and the one ``[0]`` could not express.
 
-    Numbers are de-duplicated because a retry re-sends the same one and the
-    fact worth keeping is *which* numbers were claimed, not how often. Keys are
-    not, because two openings are two events even when they look alike.
+    Numbers stay distinct because a retry re-sends the same one and the fact
+    worth keeping is *which* numbers were claimed, not how often. A repeat moves
+    to the END rather than being dropped where it first appeared, so the last
+    entry is always the most recently declared number -- which is what
+    :func:`opening_sub_game` reads. Keeping first-seen order instead looked
+    tidier and was wrong: a six-sub-game series that revisits a number would
+    have opened on a declaration several sub-games stale.
+
+    Keys are not de-duplicated, because two openings are two events even when
+    they look alike.
     """
     session.declaration_keys.append(sorted(map(str, payload)))
     if "sub_game_number" in payload:
         number = int(payload.get("sub_game_number", 0) or 0)
-        session.declared_sub_games[:] = dict.fromkeys(
-            [*session.declared_sub_games, number])
+        session.declared_sub_games[:] = [
+            n for n in session.declared_sub_games if n != number] + [number]
 
 
 def declared_sub_game(payload: dict[str, Any], session: Any) -> int:
@@ -65,6 +72,31 @@ def declared_sub_game(payload: dict[str, Any], session: Any) -> int:
     is the best answer available.
     """
     return int(payload.get("sub_game_number", 0) or 0) or int(session.sub_game)
+
+
+def opening_sub_game(payload: dict[str, Any], session: Any, played: bool) -> int:
+    """Which sub-game an opening turn starts. Theirs first, ours only as a last resort.
+
+    Precedence, and each step exists because the one after it got something wrong:
+
+    1. the number on the opening turn itself, when the peer sends one;
+    2. the last number they declared at step 0, which arrives *before* the
+       opening turn and is the shared fact this whole module exists to keep;
+    3. our own counter, incremented -- a guess, and only when they have told us
+       nothing at all.
+
+    gal-roy1's driver declares the number at ``declare_step0`` and omits it from
+    the opening ``submit_turn``, so before (2) existed we fell straight through
+    to (3). That is Finding 2, and left alone it would have voided tomorrow's
+    counted series rather than merely mislabelling a throwaway: their agreed
+    order is one alignment throwaway and then the six, in a single process, so
+    the counter would have labelled the six **2..7** while our own shape guard
+    demands exactly 1..6 once each. A refusal at settlement, on the game that
+    counts, from a disagreement neither team would have seen coming.
+    """
+    number = int(payload.get("sub_game_number", 0) or 0)
+    declared = [n for n in getattr(session, "declared_sub_games", []) if n]
+    return number or (declared[-1] if declared else session.sub_game + (1 if played else 0))
 
 
 def step0_role_check(payload: dict[str, Any], session: Any,

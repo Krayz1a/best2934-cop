@@ -30,7 +30,7 @@ import logging
 from typing import Any
 
 from ..runtime import pairing_guard
-from ..runtime.declaration_trace import note_declaration
+from ..runtime.declaration_trace import note_declaration, opening_sub_game
 from . import contracts
 from .handlers import PeerHandlers
 
@@ -236,10 +236,12 @@ class InteropAdapter:
         # series is cut short after it -- would otherwise leave no report at all.
         self.recorder.settle(session, str(getattr(loop, "finished", "") or ""),
                              int(getattr(loop, "round", 0) or 0))
-        # Their number when they send one, otherwise the next in our own series.
-        # Reusing the current number is what labelled three consecutive gal-roy1
-        # sub-games "3" while they numbered them 1, 2, 3 (rule 35).
-        opening = number or session.sub_game + (1 if played else 0)
+        # Their number when they send one, then the one they declared at step 0,
+        # and only then our own counter. Reusing the current number is what
+        # labelled three consecutive gal-roy1 sub-games "3" while they numbered
+        # them 1, 2, 3 (rule 35); falling through to the counter is what would
+        # have labelled tomorrow's counted six 2..7. See `opening_sub_game`.
+        opening = opening_sub_game(payload, session, played)
         LOGGER.info("an opening turn starts sub-game %s; clean session (was sub-game %s, "
                     "%d records)", opening, session.sub_game, len(session.records))
         self.handlers.session = PeerSession(session.config, session.role,
