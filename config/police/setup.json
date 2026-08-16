@@ -35,10 +35,11 @@
       "scent_model": "multiplicative_book_v1",
       "_remark": "Pinned by them in CONNECT.md section 6 and played end to end twice.",
       "tie_rule": "series_add",
-      "counted": false,
-      "counted_sign_off": "best2934 operator sign-off, 2026-08-14, recorded by the operator in session and transcribed here verbatim: a counted series is authorised against imreeyal and against gal-roy1, one each (rule 52). It is CONDITIONAL and `counted` stays false until the condition is met: imreeyal after a friendly that settles clean end to end including the mail, gal-roy1 after they re-check sub-games 4/5/6 against rule 47 and we re-settle that series on whatever their barrier records say -- including as a loss. Flipping `counted` to true is the operator's act, not the agent's; the sign-off above is the authority for it, not a substitute.",
+      "counted": true,
+      "counted_sign_off": "best2934 operator sign-off, 2026-08-16, recorded by the operator in session and transcribed here verbatim: \"im okay with you flipping the counted bit to 1\". This is the operator's own act authorising the flip for gal-roy1 and it is what moved `counted` from false to true; it supersedes the conditional wording of the 2026-08-14 sign-off preserved below, which is retained as the record of what the authority was before today. Rule 52 still holds: ONE counted series against gal-roy1, the six sub-games agreed for 12:00 UTC 2026-08-16.",
       "opponent_counted_games": 0,
-      "_opponent_counted_games_remark": "gal-roy1 DECLARED 0 to us on 2026-08-15 on league issue #48, in those words: \"We've played no counted games to date -- this series with you would be our first.\" Recorded from what they said, never inferred (rule 37 makes each team declare its own). It was 0 before as an honest placeholder for unknown; it is now 0 as their claim."
+      "_opponent_counted_games_remark": "gal-roy1 DECLARED 0 to us on 2026-08-15 on league issue #48, in those words: \"We've played no counted games to date -- this series with you would be our first.\" Recorded from what they said, never inferred (rule 37 makes each team declare its own). It was 0 before as an honest placeholder for unknown; it is now 0 as their claim.",
+      "counted_sign_off_prior": "best2934 operator sign-off, 2026-08-14, recorded by the operator in session and transcribed here verbatim: a counted series is authorised against imreeyal and against gal-roy1, one each (rule 52). It is CONDITIONAL and `counted` stays false until the condition is met: imreeyal after a friendly that settles clean end to end including the mail, gal-roy1 after they re-check sub-games 4/5/6 against rule 47 and we re-settle that series on whatever their barrier records say -- including as a loss. Flipping `counted` to true is the operator's act, not the agent's; the sign-off above is the authority for it, not a substitute."
     },
     "imreeyal": {
       "role_convention": "odd_even",
