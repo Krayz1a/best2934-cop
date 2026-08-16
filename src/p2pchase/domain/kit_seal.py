@@ -53,6 +53,16 @@ PIPE = "kit_pipe_v1"
 DEFAULT_FORM = MERGED
 FORMS = (MERGED, PIPE)
 
+#: The construction each name stands for, written out so a peer never has to
+#: infer it from the name. gal-roy1 call MERGED ``nonce_in_payload``; we call it
+#: ``merged_nonce_v1``. Two teams can implement identical arithmetic and still
+#: not recognise it in each other's vocabulary, which is how a counted audit
+#: ends up resting on a guess that happened to be right.
+FORMULAE = {
+    MERGED: "sha256(canonical_json({**payload, 'nonce': nonce}))",
+    PIPE: "sha256(canonical_json(payload) + '|' + nonce)",
+}
+
 
 def seal(payload: dict[str, Any], nonce: str, form: str = DEFAULT_FORM) -> str:
     """The commitment for ``payload`` under the named construction.
