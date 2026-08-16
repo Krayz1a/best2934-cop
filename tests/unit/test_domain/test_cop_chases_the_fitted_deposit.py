@@ -172,3 +172,50 @@ def test_barriers_survive_when_there_is_no_fix(shared_config):
 
     assert state.opponent_deposit is None
     assert CopBrain({})._choose_barrier(state, (4, 4), 2) is not None
+
+
+# --------------------------------------------------- barriers when the chase
+# has stopped closing (2026-08-16)
+def _cop(stall_turns: int = 3) -> CopBrain:
+    return CopBrain({}, {"track_deposit": True, "barrier_stall_turns": stall_turns})
+
+
+def test_a_closing_chase_is_never_called_stalled():
+    """While the distance keeps falling, chasing is working and a barrier is a
+    certain step traded for a speculative one. That trade stays refused."""
+    brain = _cop()
+
+    assert [brain._chase_has_stalled(d) for d in (6, 5, 4, 3, 2, 1)] == [False] * 6
+
+
+def test_three_turns_without_closing_calls_it_stalled():
+    """THE 16/08 SHAPE. Against gal-roy1 our distance to the fitted cell sat at
+    1 for nine steps across two counted sub-games and reached 0 on neither.
+    Two agents moving one cell per turn cannot close, so a chase that is not
+    already gaining will not start."""
+    brain = _cop()
+    verdicts = [brain._chase_has_stalled(d) for d in (4, 3, 1, 1, 1, 1)]
+
+    # 4, 3 and the first 1 each set a new best, so the count of turns that
+    # failed to improve starts only at the second 1: it reaches three on the
+    # last reading, not the one before it.
+    assert verdicts == [False, False, False, False, False, True]
+
+
+def test_closing_again_clears_the_stall():
+    """A stall is a property of the last few turns, not a latch. Getting closer
+    means pursuit is working again and the quota should go back in reserve."""
+    brain = _cop()
+    for d in (3, 3, 3, 3):
+        brain._chase_has_stalled(d)
+
+    assert brain._chase_has_stalled(2) is False
+    assert brain._chase_has_stalled(2) is False
+
+
+def test_zero_turns_restores_the_old_unconditional_behaviour():
+    """The escape hatch. If barriers turn out to cost more than they win, this
+    puts the cop back exactly where it was without a code change."""
+    brain = _cop(stall_turns=0)
+
+    assert [brain._chase_has_stalled(1) for _ in range(8)] == [False] * 8

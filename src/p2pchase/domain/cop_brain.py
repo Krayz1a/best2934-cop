@@ -41,10 +41,35 @@ class CopBrain(BrainBase):
     BARRIER_MIN_GAIN = 1
     #: Keep this many barriers in reserve for the final squeeze.
     BARRIER_ENDGAME_RESERVE = 3
+    #: Turns without getting closer before we call the chase stalled and let
+    #: barriers back in. 0 disables the check and restores pure pursuit.
+    BARRIER_STALL_TURNS = 3
     #: Standing still is rarely right for a pursuer under a move ceiling.
     IDLE_PENALTY = 0.35
     #: Weight on keeping our own escape routes open when distances tie.
     MOBILITY_WEIGHT = 0.01
+
+    def __init__(self, config: dict | None = None, tuning: dict | None = None) -> None:
+        super().__init__(config, tuning)
+        self._closest: int | None = None
+        self._stalled = 0
+
+    def _chase_has_stalled(self, distance: int) -> bool:
+        """Record this turn's distance and say whether we have stopped closing.
+
+        Two agents that both move one cell per turn cannot close, so a chase
+        that is not already gaining will not start. Measured against gal-roy1
+        on 2026-08-16: across the two counted sub-games we were police, our
+        distance to the fitted cell reached 1 on nine separate steps and 0 on
+        none, while we moved toward that cell on 27 of 33 steps. The tracking
+        was never wrong; pursuit alone simply has no finisher.
+        """
+        turns = int(self._tuned("barrier_stall_turns", self.BARRIER_STALL_TURNS))
+        if self._closest is None or distance < self._closest:
+            self._closest, self._stalled = distance, 0
+        else:
+            self._stalled += 1
+        return turns > 0 and self._stalled >= turns
 
     @staticmethod
     def _target_cell(state: OwnState) -> Coord | None:
@@ -83,7 +108,17 @@ class CopBrain(BrainBase):
         # recovered trajectories, while the barrier branch burned turns 8, 9
         # and 10 and sealed (4, 5) -- the cell between the cop and the thief --
         # walling off its own approach.
-        barrier = (None if state.opponent_deposit is not None
+        #
+        # That replay expired. Those eight trajectories came from gal-roy1's
+        # THIEF BEFORE THEY FIXED ITS FREEZE -- it ran to a corner and stopped,
+        # and pure pursuit beats a thief that stops. They fixed it, exactly as
+        # we fixed ours, and on 2026-08-16 the same chase took 0 captures in
+        # two counted sub-games while sitting at distance 1 nine times. So the
+        # trade is only worth taking WHILE THE CHASE IS ACTUALLY CLOSING; once
+        # it has stopped closing, a speculative turn beats a certain nothing.
+        # `barrier_stall_turns: 0` restores the old unconditional behaviour.
+        stalled = self._chase_has_stalled(distance)
+        barrier = (None if state.opponent_deposit is not None and not stalled
                    else self._choose_barrier(state, target, distance))
         if barrier is not None:
             return Decision(
