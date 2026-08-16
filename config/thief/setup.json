@@ -61,7 +61,7 @@
   },
   "network": {
     "my_port": 8802,
-    "public_url": "https://measurements-make-fitness-marked.trycloudflare.com/thief/mcp",
+    "public_url": "https://mainland-paying-infants-pure.trycloudflare.com/thief/mcp",
     "opponent_url": "http://127.0.0.1:8801/mcp",
     "turn_timeout_seconds": 30,
     "_remark": "public_url is this role's path behind the shared front door (tools/frontdoor.py). Both roles are served at once from one reserved ngrok domain, so nothing is repointed between sub-games -- required by the odd/even role convention, where the role flips at every sub-game rather than once at half time.",

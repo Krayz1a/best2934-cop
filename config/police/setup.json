@@ -62,7 +62,7 @@
   "network": {
     "_remark": "public_url is this role's path behind the shared front door (tools/frontdoor.py). Both roles are served at once from one reserved ngrok domain, so nothing is repointed between sub-games -- required by the odd/even role convention, where the role flips at every sub-game rather than once at half time.",
     "my_port": 8801,
-    "public_url": "https://measurements-make-fitness-marked.trycloudflare.com/cop/mcp",
+    "public_url": "https://mainland-paying-infants-pure.trycloudflare.com/cop/mcp",
     "opponent_url": "http://127.0.0.1:8802/mcp",
     "turn_timeout_seconds": 30,
     "_public_url_remark": "Refreshed 2026-08-16. This had gone FOUR quick-tunnel hostnames stale (toys-christina-velvet-icq, dead/NXDOMAIN) while every liveness check stayed green, because door_watch.sh rewrites poll_league.sh and .door_url and never touched this file. It is not cosmetic: public_url is written into the declaration and network artifacts and offered in the negotiation handshake, so a counted series would have filed a dead endpoint, and a peer that re-resolved us from it would get NXDOMAIN -- rule 6, charging BOTH teams. door_watch.sh now rewrites this key too."
