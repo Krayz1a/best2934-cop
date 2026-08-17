@@ -29,7 +29,6 @@ import json
 import os
 import socket
 import subprocess
-import sys
 import threading
 import time
 from pathlib import Path
@@ -132,6 +131,42 @@ def check_audit(inboxes: Inboxes) -> list[str]:
             f"{payload.get('sub_game_number')}, role {payload.get('role')!r}"]
 
 
+#: Physics we run that NEITHER the 14 hashed terms NOR the scent fingerprint
+#: covers, mapped to the value the reference emits. A key here is a key nobody
+#: agreed: the handshake cannot catch it, so it can only be caught on our own
+#: machine, before a build reaches an opponent.
+#:
+#: `pheromone_transmit_lag` is the reason this exists. We ran 1 for a week while
+#: our own comment claimed it was "agreed and frozen by config_sha256" -- but
+#: anrbj666 compare `terms`, and the lag is in neither. It stayed invisible
+#: while our thief was frozen, because a stationary emitter publishes its live
+#: cell under any lag, and surfaced only when the thief started walking and
+#: their physics gate refused 34 frames of 35. Three days and a series to find
+#: something that is one assertion to hold.
+UNHASHED_PHYSICS = {"pheromone_transmit_lag": 0}
+
+
+def check_contract() -> list[str]:
+    """Every physics value we run is either agreed or at the reference default."""
+    from p2pchase.runtime.reference_handshake import signed_agreement
+    from p2pchase.sdk.sdk import P2PChaseSDK
+
+    sdk = P2PChaseSDK.for_role(role="thief")
+    terms = signed_agreement(sdk.negotiation, "rehearsal-peer")["terms"]
+    problems = []
+    for key, reference in UNHASHED_PHYSICS.items():
+        if key in terms:
+            continue  # covered by the handshake; the opponent can refuse it
+        ours = sdk.config.shared.get("pheromones", {}).get(key, reference)
+        if ours != reference:
+            problems.append(
+                f"FAIL  {key}={ours!r} is in no agreed term and is not the "
+                f"reference default {reference!r} -- nobody agreed to this")
+    return problems or [
+        f"ok    contract: {len(terms)} agreed terms, and every unhashed "
+        f"physics key at the reference default"]
+
+
 def main() -> int:
     peer_port, our_port = free_port(), free_port()
     print(f"standing a reference-v3 peer on 127.0.0.1:{peer_port}, "
@@ -140,7 +175,7 @@ def main() -> int:
     code = drive(peer_port, our_port)
     print(f"the driver exited {code} (a stall against a silent peer is expected)")
 
-    results = check_agreement(inboxes) + check_audit(inboxes)
+    results = check_contract() + check_agreement(inboxes) + check_audit(inboxes)
     print("\n".join(results))
     print(f"\ninbox counts: agreements={len(inboxes.agreements)} "
           f"turns={len(inboxes.turns)} audits={len(inboxes.audits)} "
