@@ -15,7 +15,7 @@ submission per member**, not one for the group.
 | Template field | Answer |
 |---|---|
 | Group ID code (8 characters, English, no spaces) | `best2934` |
-| Recommendation for self-scoring for the group | **90** — see §4. **Both counted games are complete**: imreeyal 2026-08-15 (47–47 tie) and `gal-roy1` 2026-08-16 (lost 15–30). Two counted games against two different groups is the top row. Agree it between all three members before typing it |
+| Recommendation for self-scoring for the group | **85** — see §4. The games table supports 90 (two counted games, two different groups: imreeyal 2026-08-15 47–47 tie, `gal-roy1` 2026-08-16 lost 15–30) and the operator chose to claim 85 on 2026-08-18. Marking ourselves down needs no justification; `fill_submission.py` still refuses to print more than the table supports |
 | Cop repository url | `https://github.com/Krayz1a/best2934-cop` |
 | Thief repository url | `https://github.com/Krayz1a/best2934-thief` |
 | AI Agent email address that sent the results to the lecturer | `eyalkol2@gmail.com` — **authorised and verified by a live send** on 2026-08-07, see [GMAIL_SETUP.md](GMAIL_SETUP.md) §0. Results go **to** `rmisegal+uoh26finalgame@gmail.com`; this field is the address they arrive **from** |
@@ -190,21 +190,23 @@ Beyond the gates, and each backed by data in `results/`:
 
 | If, at export | Recommend | Why |
 |---|---|---|
-| Two counted games, two different groups | **90** ← *where we are today (2 of 2)* | Every gate met with margin, the protocol proven against three independent implementations, and §3 answerable |
-| At least one counted game | **85** | The build stands on its own and the league requirement is genuinely under way rather than untried |
+| Two counted games, two different groups | **90** ← *the ceiling the table allows* | Every gate met with margin, the protocol proven against three independent implementations, and §3 answerable |
+| At least one counted game | **85** ← *what we claim* | The build stands on its own and the league requirement is genuinely under way rather than untried |
 | §3 is still `0` | **75** | A threshold requirement is unmet. Claiming a high number over an empty games table invites the reader to check, and they will |
 
-**As of 2026-08-16 the top row is the true one: two counted games against two
-different groups, both filed and cross-diffed with the opponent.** That is the
-number `fill_submission.py` derives from the games table rather than typing it
-beside one, so the form cannot claim a grade its own table contradicts.
+**As of 2026-08-16 the top row is available: two counted games against two
+different groups, both filed and cross-diffed with the opponent.** The operator
+chose 85 on 2026-08-18 rather than the 90 the table allows. `fill_submission.py`
+enforces the ceiling and not the claim -- it raises rather than print a number
+above what the games table supports, and accepts any number below it, because
+claiming less is never the direction a grader has to check.
 
 Note what 90 does *not* rest on: our counted record is a tie and a loss, no
 wins. The row is earned by the gates, the documentation and the protocol
 working against three independent implementations — not by the scoreline.
 
-**Why 85 and not 90.** The engineering case is strong enough for 90 on its own
-terms — every gate exceeded rather than met, an independent implementation's
+**Why 85 and not 90**, which is the claim we are making. The engineering case is
+strong enough for 90 on its own terms — every gate exceeded rather than met, an independent implementation's
 fixtures reproduced with our own encoder, and corrections we filed against a
 shared league kit accepted and merged into its spec. But §3 is a *threshold*
 requirement, not a scored dimension, and 90 asserts the whole exercise was
