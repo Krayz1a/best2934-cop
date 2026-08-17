@@ -130,8 +130,24 @@ class CommitRecord:
         return {"payload": body, "commit": self.commit}
 
     def audit_view(self) -> dict[str, Any]:
-        """Full disclosure for the end-of-match mutual audit."""
-        return {"payload": self.payload, "nonce": self.nonce, "commit": self.commit}
+        """Full disclosure for the end-of-match mutual audit.
+
+        ``step`` is repeated at the top level even though the payload already
+        carries it, because a reveal is useless to a reader that cannot match it
+        to the commitment it opens. anrbj666's own records carry it at both
+        levels; ours carried it only inside the payload, and on 2026-08-17 they
+        reported every record of ours arriving as commit-plus-declaration with
+        no reveal attached -- 35 times a window, six windows. Our sender was
+        provably sending payload and nonce (``tools/reference_rehearsal.py``
+        asserts it over a socket), so the reveal was arriving and failing to be
+        keyed to anything.
+
+        Duplication is the cheap side of this trade, as it was for the identity
+        block: a field present twice with the same value costs bytes, and a
+        field the other side cannot find costs the whole audit.
+        """
+        return {"payload": self.payload, "nonce": self.nonce,
+                "commit": self.commit, "step": self.payload.get("step")}
 
 
 def commit(payload: dict[str, Any], nonce: str | None = None,

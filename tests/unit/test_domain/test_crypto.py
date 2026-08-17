@@ -121,7 +121,24 @@ def test_the_state_digest_would_have_given_the_position_away():
 
 def test_the_audit_view_discloses_everything():
     audit = commit(PAYLOAD).audit_view()
-    assert set(audit) == {"payload", "nonce", "commit"}
+    assert set(audit) == {"payload", "nonce", "commit", "step"}
+
+
+def test_the_step_is_repeated_at_the_top_level_of_a_disclosure():
+    """A reveal a reader cannot key to its commitment is not a disclosure.
+
+    anrbj666 reported every record of ours arriving as commit-plus-declaration
+    with no reveal attached, 35 times a window across six windows, while our
+    sender was provably sending payload and nonce. Their own records carry
+    ``step`` at both levels; ours carried it only inside the payload.
+    """
+    audit = commit({**PAYLOAD, "step": 7}).audit_view()
+    assert audit["step"] == 7 == audit["payload"]["step"]
+
+
+def test_a_payload_without_a_step_discloses_a_null_rather_than_raising():
+    """Not every sealed record is a move -- a control note has no step."""
+    assert commit({"type": "control"}).audit_view()["step"] is None
 
 
 def test_audit_passes_on_an_intact_chain():
