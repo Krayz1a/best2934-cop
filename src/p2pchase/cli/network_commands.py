@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import socket
 from typing import Any
 
 from ..domain import roles
@@ -41,6 +42,27 @@ class RoleClashError(RuntimeError):
 
 class GameIdClashError(RuntimeError):
     """Raised when --game-id contradicts the id the pairing derives."""
+
+
+def _port_is_free(host: str, port: int) -> bool:
+    """Whether we could bind this port right now.
+
+    The only honest way to know a port is bindable is to bind it, so that is
+    what this does and then lets go. There is a race between the probe and the
+    real bind and it does not matter: the job here is not to guarantee success,
+    it is to turn ``SystemExit: 3`` -- raised from inside the server, naming
+    nothing -- into a sentence that says which port and what to do about it.
+
+    ``SO_REUSEADDR`` is set because the real server sets it, so a port merely
+    in ``TIME_WAIT`` must not read as taken. A live listener still refuses.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind((host or "127.0.0.1", port))
+        except OSError:
+            return False
+    return True
 
 
 def _game_id_for(args: Any, config: Any) -> str:
@@ -176,6 +198,25 @@ def play(args: Any) -> int:
                         signing_secret=os.environ.get("P2PCHASE_SIGNING_SECRET", ""))
     handlers = PeerHandlers(sdk.config, session)
     port = args.port or sdk.config.my_port
+    # `play` is the whole peer: it hosts our tools as well as calling theirs,
+    # so it needs a port of its own. The default is `my_port`, which is exactly
+    # the port a permanent `serve` is already sitting on -- and on 2026-08-16
+    # that collision killed a run with a bare `SystemExit: 3` from inside
+    # uvicorn, naming neither the port nor the cause. Refuse instead, and say
+    # which of the two doors the caller actually wants.
+    #
+    # Deliberately NOT auto-moved to a free port: `my_port` is the port the
+    # public URL is routed to, so silently hosting somewhere else would leave
+    # us unreachable to an opponent who dials back -- a rule 6 technical loss
+    # arrived at by being helpful.
+    if not _port_is_free(args.host, port):
+        print(f"port {port} is already bound on {args.host or '127.0.0.1'}.\n"
+              f"`play` hosts our own MCP surface and cannot share a port with a "
+              f"running `serve`.\n"
+              f"  - to drive anyway:  --port <a free port>\n"
+              f"  - or do nothing:    the serve door on {port} is what our public "
+              f"URL points at, so the opponent can drive into it instead.")
+        return EXIT_CONFIG
 
     started = now_iso()
     outcome, handshake = asyncio.run(_play(runner, handlers, sdk, args.host, port, url))

@@ -187,3 +187,69 @@ def test_our_own_two_peers_rehearsing_are_left_alone(args):
     before every counted game."""
     args.role, args.role_explicit, args.opponent = "police", False, "test1234"
     assert network_commands._sdk_for_sub_game(args).config.role == "police"
+
+
+# ---------------------------------------------------------- the port collision
+# `play` hosts our own MCP surface as well as calling theirs, so it needs a port.
+# The default is `my_port` -- the very port a permanent `serve` sits on, and the
+# port our public URL is routed to. On 2026-08-16 that killed a run with a bare
+# `SystemExit: 3` raised inside uvicorn, naming neither the port nor the cause.
+def test_a_free_port_reads_as_free():
+    """The probe must not cry wolf, or the refusal below blocks every run."""
+    assert network_commands._port_is_free("127.0.0.1", 0) is True
+
+
+def test_a_bound_port_reads_as_taken():
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as held:
+        held.bind(("127.0.0.1", 0))
+        held.listen(1)
+        taken = held.getsockname()[1]
+
+        assert network_commands._port_is_free("127.0.0.1", taken) is False
+
+
+def test_play_refuses_a_port_a_serve_already_holds(args, capsys, monkeypatch):
+    """THE 16/08 SHAPE. The refusal has to name the port and both ways out,
+    because the operator who hits this is mid-match and reading one line."""
+    import socket
+
+    monkeypatch.setattr(
+        "p2pchase.shared.peer_config.PeerConfig.opponent_url",
+        property(lambda self: "http://127.0.0.1:9999/mcp"),
+    )
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as held:
+        held.bind(("127.0.0.1", 0))
+        held.listen(1)
+        args.port = held.getsockname()[1]
+
+        assert network_commands.play(args) == EXIT_CONFIG
+
+    out = capsys.readouterr().out
+    assert f"port {args.port} is already bound" in out
+    assert "--port" in out          # how to drive anyway
+    assert "drive into it instead" in out   # how to not need to
+
+
+def test_the_refusal_never_silently_moves_us_off_the_published_port(args, monkeypatch):
+    """`my_port` is where the public URL routes. Auto-picking a free port would
+    host us somewhere no opponent can reach -- a rule 6 technical loss arrived
+    at by being helpful -- so the refusal must be a refusal, not a fallback."""
+    import socket
+
+    monkeypatch.setattr(
+        "p2pchase.shared.peer_config.PeerConfig.opponent_url",
+        property(lambda self: "http://127.0.0.1:9999/mcp"),
+    )
+    reached = []
+    monkeypatch.setattr(network_commands, "host_and_play",
+                        lambda *a, **k: reached.append(a))
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as held:
+        held.bind(("127.0.0.1", 0))
+        held.listen(1)
+        args.port = held.getsockname()[1]
+        network_commands.play(args)
+
+    assert reached == []
