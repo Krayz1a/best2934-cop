@@ -15,7 +15,7 @@ submission per member**, not one for the group.
 | Template field | Answer |
 |---|---|
 | Group ID code (8 characters, English, no spaces) | `best2934` |
-| Recommendation for self-scoring for the group | **85** — see §4. The games table supports 90 (two counted games, two different groups: imreeyal 2026-08-15 47–47 tie, `gal-roy1` 2026-08-16 lost 15–30) and the operator chose to claim 85 on 2026-08-18. Marking ourselves down needs no justification; `fill_submission.py` still refuses to print more than the table supports |
+| Recommendation for self-scoring for the group | **85** — see §4. The games table supports 90 (two counted games, two different groups: imreeyal 2026-08-15 47–47 tie, `gal-roy1` 2026-08-16 lost 30–90) and the operator chose to claim 85 on 2026-08-18. Marking ourselves down needs no justification; `fill_submission.py` still refuses to print more than the table supports |
 | Cop repository url | `https://github.com/Krayz1a/best2934-cop` |
 | Thief repository url | `https://github.com/Krayz1a/best2934-thief` |
 | AI Agent email address that sent the results to the lecturer | `eyalkol2@gmail.com` — **authorised and verified by a live send** on 2026-08-07, see [GMAIL_SETUP.md](GMAIL_SETUP.md) §0. Results go **to** `rmisegal+uoh26finalgame@gmail.com`; this field is the address they arrive **from** |

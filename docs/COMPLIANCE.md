@@ -79,7 +79,7 @@ grep -oP '^\|\s*\d+\s*\|[^|]*\|\s*\K[^|]+' docs/COMPLIANCE.md | sed 's/ *$//' | 
 
 | # | Rule | Status | Where |
 |---|---|---|---|
-| 31 | Play the minimum number of games against different teams | External | **Minimum is 2**, confirmed by course staff 2026-08-06; a fixed parameter, already correct as `min_games_to_pass` in `config/<role>/game.json` and `constants.MIN_GAMES_TO_PASS`. The booklet prose leaves the number as an unfilled placeholder, so it was asked rather than derived. Rule 52 caps counted games at one per opponent, so 2 teams is structural. **Both counted games played**: imreeyal 2026-08-15 (47–47 tie) and `gal-roy1` 2026-08-16 (lost 15–30), each filed and cross-diffed. The minimum is met. Rule 52 spends both pairings; only `anrbj666` could add a third. [TODO.md](TODO.md) Phase 10 |
+| 31 | Play the minimum number of games against different teams | External | **Minimum is 2**, confirmed by course staff 2026-08-06; a fixed parameter, already correct as `min_games_to_pass` in `config/<role>/game.json` and `constants.MIN_GAMES_TO_PASS`. The booklet prose leaves the number as an unfilled placeholder, so it was asked rather than derived. Rule 52 caps counted games at one per opponent, so 2 teams is structural. **Both counted games played**: imreeyal 2026-08-15 (47–47 tie) and `gal-roy1` 2026-08-16 (lost 30–90 over six sub-games), each filed and cross-diffed. The minimum is met. Rule 52 spends both pairings; only `anrbj666` could add a third. [TODO.md](TODO.md) Phase 10 |
 | 32 | Report results automatically by Gmail | Met | `services/settlement_report.py` fires the counted report at settlement with no human in the loop, off the choke point both recording paths share. **This row said "Met" while the only caller of `send_result` was the `send-report` CLI command a person runs with `--live`** — automatic in the docstring, operator-armed in fact. imreeyal named it as their precondition for a counted series on 2026-08-15 and we built it rather than promise it. Guards: counted pairings only, complete series only (against the *signed* `num_sub_games`), exactly once (a receipt on disk is the sentinel, written on failure too), and it never raises. Fired live at the 14:20 UTC counted settlement |
 | 33 | The report is standard JSON | Met | `reports/result.py`; `tests/unit/test_reports/test_artifacts.py` |
 | 34 | No free-text final report — JSON attachment only | Met | The body carries a summary and names the attachment as binding; the artifact is the JSON file |
@@ -119,7 +119,7 @@ plainly is more useful than a green table:
 
 1. ~~**One counted game of the two needed to pass**~~ — **closed 2026-08-16.**
    Both counted games are played and filed: imreeyal 2026-08-15, 47–47 tie; and
-   `gal-roy1` 2026-08-16, lost 15–30 over three sub-games. Two counted games
+   `gal-roy1` 2026-08-16, lost 30–90 over six sub-games. Two counted games
    against two different groups meets the minimum, and rule 52 now spends both
    pairings. `anrbj666` is the only pairing left that could add a third, which
    would be upside only — our counted record is one tie and one loss, so a
