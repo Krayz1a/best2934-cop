@@ -106,10 +106,18 @@ def signed_agreement(negotiation: Any, opponent: str,
     reference-v3 turn message carries no sub-game identifier at all and our
     windows are byte-identical, so neither team can attribute a window after
     the fact.
+
+    ``role`` is lowercased here rather than trusted from the caller. Our own
+    wire spells roles ``"COP"``/``"THIEF"``, and theirs spells them
+    ``("police", "thief")`` -- ``reference_v3.from_internal`` already lowercases
+    the ``sender`` on every turn for exactly that reason. A 7.2 declaration
+    reading ``"THIEF"`` would be compared against their lowercase spelling and
+    could read as a mismatch, which would make the gate we just built fire on
+    nothing but a capital letter. The socket rehearsal caught this.
     """
     ours = negotiation.handshake(opponent=opponent).as_dict()
     return dict(ours, identity=identity_block(ours),
-                sub_game_number=int(sub_game), role=role)
+                sub_game_number=int(sub_game), role=str(role).lower())
 
 
 async def push_agreement(client: Any, agreement: dict[str, Any],
