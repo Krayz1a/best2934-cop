@@ -1,7 +1,12 @@
 # TODO — Tasks, phases and definitions of done
 
-**Project** `best2934-cop` · **Document version** 1.00
-**Last updated** 2026-08-06 · **Deadline** 2026-08-12 23:59 (no extensions)
+**Project** `best2934-cop` · **Document version** 1.01
+**Last updated** 2026-08-17 · **Deadline** 2026-08-20 23:59
+
+The deadline moved from 12/08 under the reserve-duty exception (Guidelines §8),
+which is also why this group has three members: Alon Issman is in active
+military reserve service, and the exception grants both the third member and
+submission up to the final-project deadline.
 
 Status values: **Done** · **In progress** · **Not started** · **Blocked**
 
@@ -70,13 +75,13 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | 6.5 | Test suite ≥85% coverage | P0 | Team | Done | 393 tests, 93.7% coverage, no test touching the network or a real API |
 | 6.6 | Enforce the coordinate ban (rule 27) | P0 | EK | Done | `strip_positions` deletes digit-bearing and square-naming tokens from every hint before it reaches the wire — the system prompt asks, this enforces (ADR-014) |
 
-## Phase 7 — Documentation · **In progress**
+## Phase 7 — Documentation · **Done**
 
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
 | 7.1 | `docs/PRD.md` | P0 | AI | Done | Goals, KPIs, acceptance criteria, FR/NFR, user stories, milestones |
 | 7.2 | `docs/PLAN.md` | P0 | TL | Done | C4 levels 1–4, UML, 12 ADRs with alternatives, API and data contracts |
-| 7.3 | `docs/TODO.md` | P0 | EK | Done | This document |
+| 7.3 | `docs/TODO.md` | P0 | EK | Done | This document. Refreshed 17/08 — a plan that still claims a passed deadline and an unmet threshold is worse than no plan |
 | 7.4 | Per-mechanism PRDs | P0 | Team | Done | One each for belief, stigmergy, commit-reveal, deception, gatekeeper, protocol |
 | 7.5 | Prompt book | P0 | Team | Done | `docs/PROMPTS.md` — context, prompts, outputs, iterations, lessons |
 | 7.6 | `docs/GMAIL_SETUP.md` | P1 | AI | Done | A human can complete OAuth setup from it without guessing |
@@ -102,20 +107,35 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | 9.1 | Push `best2934-cop` | P0 | Team | Done | Pushed via `gh auth git-credential` per invocation, so no token is ever held or written to git config. Working tree clean, nothing unpushed |
 | 9.2 | Create and push `best2934-thief` | P0 | Team | Done | Live at `https://github.com/Krayz1a/best2934-thief`, gates green (540 passed, 93.1%). Differs by one constant (`DEFAULT_ROLE`) plus config and README; cross-linked from both |
 | 9.3 | Tag `v1.0-submission` on both | P0 | Team | Not started | Annotated tag (rule 41). Deliberately left until after the counted games, so the tag marks what was actually submitted |
-| 9.4 | Fill the Word template → PDF | P0 | Team | In progress | [SUBMISSION.md](SUBMISSION.md) answers everything derivable. Outstanding: the six personal-data fields (on `best2934-ex01.pdf`, deliberately not in this public repo), the sending Gmail address, and §3, which needs counted games |
-| 9.5 | Self-assessed grade | P0 | Team | Not started | Agreed by all three members. [SUBMISSION.md](SUBMISSION.md) §4 proposes a number per scenario to argue from rather than starting blank |
-| 9.6 | Individual Moodle submission | P0 | Team | Not started | Three submissions, one per member |
+| 9.4 | Fill the Word template → PDF | P0 | Team | **Docx done, PDF not** | Filled and read back field by field: 2 counted games, max points 47, won 0 / lost 1 / drawn 1, bonus **No**. Two cells blank pending `gal-roy1` (their declared count and agent e-mail, asked 17/08). Generated outside both repositories by a script that is not in either, because it carries three ID numbers |
+| 9.5 | Self-assessed grade | P0 | Team | **Derived, needs the team** | `grade()` returns **90** from the games table rather than from memory, so the form cannot claim a number its own table contradicts. Two judgement calls left for the members: whether "maximum points accumulated" means our best series (47) or the league total (62), and whether they accept 90 |
+| 9.6 | Individual Moodle submission | P0 | Team | Not started | Three submissions, one per member. Then delete the `.docx`, `fill_submission.py` and `SUBMISSION_FILL_IN.md` — all three carry ID numbers |
 | 9.7 | Ask the staff for the counted-game minimum | P0 | Team | Done | Answered 2026-08-06: **2**, fixed and non-negotiable. Already correct as `min_games_to_pass` in our config; the booklet prose left it as a placeholder, so it had to be asked rather than derived |
 | 9.8 | Document the tied-series scoring choice | P0 | Team | Done | The book and the reference contradict each other; the course grants academic freedom with a written justification. We ADD `tie_score` to the sums rather than replacing them — see README §4, "The tied-series scoring choice". Cost recorded: our tie digest with `gal-roy1` moved and they must recompute or object |
 
-## Phase 10 — League play · **In progress, one opponent short**
+## Phase 10 — League play · **Threshold met: 2 counted games filed**
 
 | # | Task | Pri | Owner | Status | Definition of done |
 |---|---|---|---|---|---|
-| 10.1 | Recruit opponents on the course forum | **P0** | Ext | **In progress — the long pole** | Minimum is **2 different groups** (9.7), and rule 52 allows exactly one counted game per opponent, so a second counted game against `gal-roy1` does not count twice. `gal-roy1` secured and working end to end; `imreeyal` and `anrbj666` approached via issue #45 on their protocol kit. Three in play against a requirement of two |
+| 10.1 | Recruit opponents on the course forum | **P0** | Ext | **Done** | Three secured and played: `imreeyal`, `gal-roy1`, `anrbj666`. Rule 52 allows one counted game per opponent, so the first two are now **spent** and only `anrbj666` can still change the standing |
 | 10.2 | Expose the MCP endpoint via tunnel | P0 | TL | Done | `https://monogram-radio-blooper.ngrok-free.dev/mcp`, a **reserved** domain so it survives restarts. Verified by a real `hello` from the public internet. Both roles serve it in turn via `tools/endpoint.py take`; `hello` publishes `role` so the wrong one cannot answer unnoticed |
-| 10.3 | Play the counted games | P0 | Team | Blocked on 10.1 and sign-off | Two complete sub-games already played against `gal-roy1` — both won by our cop on a rule-46 barrier capture, mutual audit clean both ways — but **uncounted by design**. No game counts without both operators saying so in the shared log (rule 52) |
-| 10.4 | Mutual audit + both-sides e-mail | P0 | Team | Audit proven, e-mail blocked | The mutual audit has passed in both directions against a genuinely independent implementation. The e-mail half needs the Gmail OAuth client (`GMAIL_SETUP.md`) |
+| 10.3 | Play the counted games | P0 | Team | **Done — 2 of a minimum 2** | `imreeyal` 15/08, series **tied 47-47** over six sub-games. `gal-roy1` 16/08, **lost 15-30** over three. Both signed off by the operator before play and filed. A third against `anrbj666` would be upside only and needs the operator to say so: our counted record is one tie and one loss, so a counted loss there would make the standing worse than not playing |
+| 10.4 | Mutual audit + both-sides e-mail | P0 | Team | Audit proven, e-mail live | Mutual audit has passed in both directions against three genuinely independent implementations. The Gmail client is authorised and confirmed by a live send; the corrected `imreeyal` result was filed through it |
+
+## Phase 11 — Interoperability hardening · **Done**
+
+Provoked entirely by opponents. Five of the six defects fixed here were found by
+`anrbj666` reading our handshakes, not by our own suite — which is the finding,
+and the reason this phase exists as a record rather than being folded into 4.
+
+| # | Task | Pri | Owner | Status | Definition of done |
+|---|---|---|---|---|---|
+| 11.1 | Sealed step-0 on the reference-v3 wire (rule 53) | P0 | AI | Done | The record was always sealed and written as record 0 of our own log; nobody sent it. Their surface has no step-0 tool and `receive_control` is explicitly not part of the sealed record, so per the kit's log schema it now rides as the **first record of our final audit** |
+| 11.2 | SPEC 7.2 pairing declaration | P0 | AI | Done | `sub_game_number` and `role` at the **top level** of the agreement, never inside `terms` — their `verify_peer` is an exact dict compare, so a field in `terms` would get every agreement refused instead of adding a gate |
+| 11.3 | Our half of the 7.2 refusal | P0 | TL | Done | Their declared number compared against the window we opened. Silence is **not** a mismatch: a peer that does not implement 7.2 is quiet, not mispaired |
+| 11.4 | One counted ledger, not one per repo | P0 | EK | Done | Moved from gitignored per-repository `artifacts/` to synced, committed `config/counted_games.json`. The two had drifted to 1 and 2, so every cop window under-declared us — a false declaration under rule 37 |
+| 11.5 | The move ceiling is not a message to wait for | P0 | TL | Done | The thief's last move ends the sub-game, so there is no cop turn 35. We blocked on one and filed `technical_loss` for a game we had drawn — the outcome turned on whether their audit beat our 30s deadline |
+| 11.6 | Prove it over a real socket | P0 | AI | Done | `tools/reference_rehearsal.py` stands a peer publishing their four tool names on a real port and drives the real `p2pchase play` at it. Found a seventh bug on its first clean run: our 7.2 `role` was `"THIEF"` where reference-v3 spells roles lowercase |
 
 ---
 
@@ -124,17 +144,18 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 | Item | Blocked on | Note |
 |---|---|---|
 
-| 10.1 | Other teams | Nothing in the codebase can unblock this, and it is now the only thing between a working agent and a passing project. One opponent is not enough at any threshold. |
-| 10.3 | Both operators | Deliberate, not an obstacle: no game counts until both humans say so in the shared log. Warm-ups need no permission and are unlimited. |
-| 5.3 (live) | Google Cloud OAuth client | A human must create the client and run the consent flow — see [GMAIL_SETUP.md](GMAIL_SETUP.md). Dry-run mode works today. |
-| 9.4 (personal data) | Operator | The six name/ID fields stay out of a public repository on purpose. They are already filled in on `best2934-ex01.pdf`; copy them into the `.docx`. |
+| 9.4 (two cells) | `gal-roy1` | Their declared counted-game count and agent e-mail are theirs to declare, not ours to infer. Asked 17/08. A blank cell is better than a guess: rule 38 sanctions a false declaration. |
+| 9.5, 9.6 | The three members | Nothing in the codebase can unblock these, and they are now the only things between a finished agent and a submitted project. |
+| 10.3 (a third) | Operator | Deliberate. `anrbj666` is the one pairing rule 52 leaves, and a counted game there is **two-sided** — our record is one tie and one loss, so a counted loss would leave us worse off than not playing. Upside only, and the operator's call. |
 
 ## Known risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Only one opponent found before the deadline | **Fails a threshold requirement outright** | One opponent is secured and working. Rule 52 caps counted games at one per opponent, so the second team is structural and cannot be substituted by playing `gal-roy1` again. Task 10.1, and the highest risk on this list |
-| A second counted game does not materialise | Fails the threshold at 1 of 2 | Three opponents in play against a requirement of 2: `gal-roy1` working end to end, `imreeyal` and `anrbj666` approached via issue #45. Margin of one |
+| ~~Only one opponent found~~ | ~~Fails a threshold outright~~ | **Retired 16/08.** Three opponents played, two counted games filed against different groups. The threshold is met and banked |
+| The three Moodle submissions do not happen | **Fails outright, and is not recoverable** | Now the highest risk on this list by a distance. Every code risk below is survivable; a missed deadline is not, and no amount of league play substitutes for it. Tasks 9.5 and 9.6 |
+| A series is reported differently by the two teams | Rule 35 voids it **for both** | Our figures are posted to the opponent before filing so a disagreement surfaces while it can still be corrected. This is why the `gal-roy1` cells are blank rather than guessed |
+| `barrier_stall_turns` is reported as validated | A claim the evidence does not support | It has **never fired on a wire**: 0 barriers in every police window played. Every capture came from a chase that closed monotonically, so the stall counter never reached three. Must be described as untested, not as working |
 | Public repository exposes strategy | Opponents can read the weights | Flagged twice; kept public by the team's explicit decision. Weights live in `setup.json` and can be changed between matches without touching code |
 | Opponent implements Appendix F differently | Handshake refuses, no match | `check-config` and `handshake` let both sides compare fingerprints before agreeing to play |
 | Trust estimator's 30.7% false-contradiction rate | Under-trusts an honest opponent (0.724, not the 0.90 ceiling) | Measured over 30 seeds and documented (ADR-006); the separation from a liar (0.020) remains decisive |
