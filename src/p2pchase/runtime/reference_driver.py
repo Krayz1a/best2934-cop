@@ -38,6 +38,7 @@ from ..shared.peer_config import PeerConfig
 from . import opponent_capture, reference_handshake, reference_inbox, session_terminal
 from .peer import OpponentFinishedError, PeerOutcome
 from .peer_session import PeerSession
+from .reference_disclosure import exchange_chains
 from .turn_loop import TurnLoop
 from .watchdog import DeadlineExceededError, Watchdog, WatchdogTrippedError
 
@@ -65,7 +66,8 @@ class ReferenceDriver:
     """
 
     def __init__(self, config: PeerConfig, session: PeerSession, client: Any,
-                 inboxes: Any, negotiation: Any = None) -> None:
+                 inboxes: Any, negotiation: Any = None,
+                 step_zero: dict[str, Any] | None = None) -> None:
         self.config = config
         self.session = session
         self.client = client
@@ -75,6 +77,11 @@ class ReferenceDriver:
         #: always has one, and without it we do not handshake at all -- which
         #: is exactly the bug this argument was added to fix.
         self.negotiation = negotiation
+        #: Our sealed step-0 record, disclosed FIRST in the final audit. Their
+        #: wire publishes no step-0 tool, and the kit puts the record in the
+        #: chain rather than in a message of its own -- see
+        #: :mod:`reference_disclosure` for why it never left our disk before.
+        self.step_zero = step_zero
         self.loop = TurnLoop(session)
         self.watchdog = Watchdog(timeout_sec=float(config.watchdog_timeout))
         self.turn_timeout = float(config.turn_timeout)
@@ -257,7 +264,8 @@ class ReferenceDriver:
         :mod:`p2pchase.runtime.reference_handshake`.
         """
         return await reference_handshake.exchange(
-            self.negotiation, self.client, self.inboxes, self.session.opponent)
+            self.negotiation, self.client, self.inboxes, self.session.opponent,
+            sub_game=self.session.sub_game, role=self.sender)
 
     async def run_sub_game(self) -> PeerOutcome:
         """Play until capture, survival, the move ceiling, or a fault (rule 6)."""
@@ -292,33 +300,13 @@ class ReferenceDriver:
         return PeerOutcome(outcome, step, records=self.session.records,
                            opponent_audit=audit)
 
-    # -------------------------------------------------------------- finishing
     async def exchange_chains(self, outcome: str) -> dict[str, Any]:
-        """Disclose our nonces, collect theirs, then empty the inbox.
+        """Disclose our chain and collect theirs. See :mod:`reference_disclosure`.
 
-        Best-effort in both directions: a peer that has already exited owes us
-        nothing it can still send, and an audit we never receive costs the
-        proof rather than the game (rule 36).
-
-        The clear happens *here*, at the very end, and not at the start of the
-        next sub-game. Their model is a fresh MCP session per sub-game, so the
-        earliest their next turn can arrive is after that session's
-        ``negotiate`` -- which is strictly later than this line. Clearing on the
-        way in instead would race that opener and drop it, and a thief's step-1
-        turn is the one message a whole sub-game hangs on.
+        A thin hand-off rather than the logic itself: what we disclose is a
+        different question from how a round is played, and the sealed step-0
+        record that answers rule 53 belongs with the first.
         """
-        payload = reference_v3.audit_from_records(
-            self.sender, self.session.final_reveal(), outcome)
-        try:
-            await self.client.call("submit_audit", {"payload": payload})
-        except Exception as error:  # noqa: BLE001 -- they may simply have gone
-            LOGGER.warning("could not submit our audit: %s", error)
-        verdict: dict[str, Any] = {}
-        try:
-            theirs = await reference_inbox.await_audit(self.inboxes, self.turn_timeout)
-            verdict = self.session.audit(list(theirs.get("records") or []))
-        except DeadlineExceededError:
-            LOGGER.warning("no audit arrived from %s; their chain is unverified",
-                           self.session.opponent)
-        self.inboxes.clear()
-        return verdict
+        return await exchange_chains(
+            self.client, self.inboxes, self.session, self.sender, outcome,
+            self.step_zero, self.turn_timeout)

@@ -69,3 +69,28 @@ def test_the_driver_plays_the_same_session_the_handlers_do(peer_config):
     """One board, or the inbound half and the outbound half disagree about it."""
     runner, handlers = _runner(peer_config, IMREEYAL)
     assert select_driver(runner, handlers).session is runner.session
+
+
+# ------------------------------------------------------------ rule 53 wiring
+#
+# The record was always sealed and always written as record 0 of our own log.
+# What was missing was the hand-off: the driver was built without one, so
+# nothing reached anrbj666 and they read `opponent_step_zero: null` for three
+# days. These pin the wiring, which is the part that was broken -- a test of
+# the disclosure module alone would have passed throughout the outage.
+
+def test_the_reference_driver_is_given_a_sealed_step_zero(peer_config):
+    """Their surface has no step-0 tool, so the audit chain is the only way."""
+    driver = select_driver(*_runner(peer_config, IMREEYAL))
+    assert driver.step_zero is not None
+
+
+def test_that_step_zero_is_sealed_rather_than_raw(peer_config):
+    """Committing it proves we declared it BEFORE the match (rule 24)."""
+    driver = select_driver(*_runner(peer_config, IMREEYAL))
+    assert driver.step_zero.get("commit"), "an unsealed declaration proves nothing"
+
+
+def test_it_declares_the_sub_game_it_was_built_for(peer_config):
+    driver = select_driver(*_runner(peer_config, IMREEYAL))
+    assert driver.step_zero["payload"]["sub_game_number"] == driver.session.sub_game

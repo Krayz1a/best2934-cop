@@ -84,16 +84,32 @@ def identity_block(handshake: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def signed_agreement(negotiation: Any, opponent: str) -> dict[str, Any]:
+def signed_agreement(negotiation: Any, opponent: str,
+                     sub_game: int = 0, role: str = "") -> dict[str, Any]:
     """Our handshake in the shape their ``verify_peer`` reads.
 
     Their check is ``message["terms"] != self.terms`` -- an exact dict
     comparison, not a subset -- then a signature verify over those same terms.
     Our flat handshake already carries all three at the top level, so this adds
     the nested identity beside them rather than reshaping anything.
+
+    ``sub_game_number`` and ``role`` are the kit's **SPEC 7.2 pairing
+    declaration**, and they go at the TOP LEVEL for a load-bearing reason: an
+    extra key inside ``terms`` would fail that exact dict comparison and get
+    every one of our agreements refused. Beside ``terms`` is invisible to their
+    check and readable by their gate.
+
+    anrbj666's wire has implemented the 7.2 refusal since 2026-08-14 and it
+    never once fired against us, because we declared no number and silence
+    cannot mismatch. Declaring it is what lets THEIR side catch a mispaired
+    window in one round-trip -- which matters more than our own gate, since the
+    reference-v3 turn message carries no sub-game identifier at all and our
+    windows are byte-identical, so neither team can attribute a window after
+    the fact.
     """
     ours = negotiation.handshake(opponent=opponent).as_dict()
-    return dict(ours, identity=identity_block(ours))
+    return dict(ours, identity=identity_block(ours),
+                sub_game_number=int(sub_game), role=role)
 
 
 async def push_agreement(client: Any, agreement: dict[str, Any],
@@ -150,7 +166,8 @@ async def await_agreement(inboxes: Any,
 
 
 async def exchange(negotiation: Any, client: Any, inboxes: Any, opponent: str,
-                   timeout: float = AGREEMENT_TIMEOUT_SEC) -> dict[str, Any]:
+                   timeout: float = AGREEMENT_TIMEOUT_SEC,
+                   sub_game: int = 0, role: str = "") -> dict[str, Any]:
     """Cross both halves of the handshake and report what the far side said.
 
     Ours goes first and we do not wait for their call to arrive before sending:
@@ -164,7 +181,7 @@ async def exchange(negotiation: Any, client: Any, inboxes: Any, opponent: str,
     if negotiation is None:
         LOGGER.warning("no negotiation service; skipping the agreement exchange")
         return {}
-    ours = signed_agreement(negotiation, opponent)
+    ours = signed_agreement(negotiation, opponent, sub_game, role)
     delivered = await push_agreement(client, ours, timeout)
     theirs = await await_agreement(inboxes, timeout)
     if theirs is None:

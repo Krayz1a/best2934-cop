@@ -276,3 +276,33 @@ def test_an_empty_negotiate_payload_queues_nothing(peer_config, empty):
     handlers = PeerHandlers(peer_config)
     handlers.negotiate({"handshake": empty} if empty is not None else {})
     assert not handlers.reference_inboxes.agreements
+
+
+# ------------------------------------------------- SPEC 7.2 pairing declaration
+#
+# anrbj666, 2026-08-17: their wire has implemented the 7.2 refusal since the
+# label-skew night and it never fired against us, because we declared no number
+# and silence cannot mismatch. Their turn messages carry no sub-game identifier
+# and our odd-window walks are byte-identical, so a mispaired window cannot be
+# attributed after the fact by either team. The declaration is the only gate.
+
+def test_the_agreement_declares_the_sub_game_number_and_role(peer_config):
+    ours = reference_handshake.signed_agreement(
+        _service(peer_config), "anrbj666", sub_game=5, role="thief")
+    assert (ours["sub_game_number"], ours["role"]) == (5, "thief")
+
+
+def test_the_pairing_declaration_stays_out_of_terms(peer_config):
+    """THE load-bearing assertion. Their verify_peer is an exact dict compare.
+
+    ``message["terms"] != self.terms`` refuses on ANY extra key, so a 7.2 field
+    placed inside ``terms`` would not add a gate -- it would get every agreement
+    we ever send refused, on every wire, silently looking like a peer that will
+    not handshake. The second assertion says the same thing from the other end:
+    the set their signature verify reads must be byte-identical either way.
+    """
+    service = _service(peer_config)
+    ours = reference_handshake.signed_agreement(
+        service, "anrbj666", sub_game=5, role="thief")
+    assert "sub_game_number" not in ours["terms"] and "role" not in ours["terms"]
+    assert reference_handshake.signed_agreement(service, "anrbj666")["terms"] == ours["terms"]

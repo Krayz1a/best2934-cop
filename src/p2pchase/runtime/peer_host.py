@@ -146,6 +146,29 @@ def select_driver(runner: PeerRunner, handlers: PeerHandlers):
     from ..mcp import contracts as tools
     from .reference_driver import ReferenceDriver
 
+    def sealed_step0(runner: PeerRunner) -> dict[str, Any] | None:
+        """Our step-0 declaration, committed exactly as a move is.
+
+        Signing proves we declared it; committing proves we declared it before
+        the match and never edited it, which is what rule 24 actually needs.
+        Returns ``None`` on any failure -- a missing declaration is a rule 53
+        problem and worth reporting, but raising here would forfeit a playable
+        sub-game under rule 6, which is strictly worse.
+        """
+        from ..domain.crypto import commit
+        from ..infra.sysinfo import build_step0
+        try:
+            return commit(build_step0(
+                group_name=runner.config.group_name,
+                sub_game_number=runner.session.sub_game,
+                llm_model=str(runner.config.llm.get("model", "template")),
+                signing_secret=runner.signing_secret, role=runner.session.role,
+                group_id=runner.session.group_id,
+            )).audit_view()
+        except Exception as error:  # noqa: BLE001 -- see the docstring
+            LOGGER.warning("could not seal our step-0 declaration: %s", error)
+            return None
+
     published = set(runner.opponent_tools)
     if not published:
         return None
@@ -155,8 +178,14 @@ def select_driver(runner: PeerRunner, handlers: PeerHandlers):
         return None
     LOGGER.info("opponent publishes the reference-v3 surface and not %r: "
                 "driving this sub-game on their wire", tools.TOOL_COMMIT)
+    # Sealed here rather than inside the driver because the signing secret lives
+    # on the runner. It rides out as the first record of our final audit: their
+    # surface publishes no step-0 tool, so `declare_step0` below never runs on
+    # this wire and our declaration sat unsent from 2026-08-14 until anrbj666
+    # reported `opponent_step_zero: null` three days running (rule 53).
     return ReferenceDriver(runner.config, runner.session, runner.client,
-                           handlers.reference_inboxes, handlers.negotiation)
+                           handlers.reference_inboxes, handlers.negotiation,
+                           step_zero=sealed_step0(runner))
 
 
 async def declare_step0(runner: PeerRunner) -> str:
