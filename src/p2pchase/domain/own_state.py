@@ -293,12 +293,17 @@ def build_own_state(config: dict, role: str, board: Board,
         # no strategy key at all -- while every test that injected one passed.
         track_deposit=bool((strategy or {}).get("track_deposit", False)),
     )
-    state.my_scent.emit(state.position)
-    # Seed the delay line with the opening emission, so a sample taken before
-    # our first move answers "the field as of last turn" rather than silence.
-    # It discloses nothing: both start cells are named in the agreed config and
-    # the belief map is initialised from them. Leaving it empty would have made
-    # the reply depend on whether the opponent sampled before or after we moved,
-    # and a field that depends on call order is one the two logs disagree about.
+    # No opening emission. Both locked scent models declare `initial_field:
+    # "empty"`, so the first deposit belongs to the first move and a peer
+    # recomputing our field from our disclosed moves starts from nothing.
+    #
+    # We used to emit here to seed the delay line, so a sample taken before our
+    # first move answered "the field as of last turn" rather than silence. That
+    # reasoning only ever applied under a non-zero lag, and it cost us every
+    # frame against anrbj666: an undecayed opening deposit left cell (2,3)
+    # reading 0.82 where the spec says 0.758, and the error propagated for the
+    # whole sub-game, shrinking by exactly one decay factor a turn. The
+    # signature -- a constant ratio between our field and theirs -- is what
+    # identified it.
     state.broadcast.record(state.my_scent.grid)
     return state

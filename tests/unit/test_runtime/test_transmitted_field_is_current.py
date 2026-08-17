@@ -20,13 +20,15 @@ emit, send -- in that order.
 
 from __future__ import annotations
 
+import copy
+
 import pytest
 
 from p2pchase.mcp.handlers import PeerHandlers
 from p2pchase.mcp.interop import InteropAdapter
 from p2pchase.runtime.peer_session import PeerSession
 from p2pchase.shared.config import PeerConfig
-from p2pchase.shared.config_schema import deep_merge
+from p2pchase.shared.config_schema import DEFAULT_SHARED  # noqa: F401
 
 
 def _lag_zero(config):
@@ -38,7 +40,9 @@ def _lag_zero(config):
     lag 1 this whole file would pass for the wrong reason: the delay line hides
     the ordering bug by trailing a step deliberately.
     """
-    shared = deep_merge({}, config.shared)
+    # deepcopy: deep_merge hands nested dicts back by reference, so assigning
+    # into ["pheromones"] would rewrite the shared defaults for later tests.
+    shared = copy.deepcopy(config.shared)
     shared["pheromones"]["pheromone_transmit_lag"] = 0
     return PeerConfig(role=config.role, shared=shared, setup=config.setup)
 

@@ -133,10 +133,13 @@ def test_scent_is_reported_only_for_the_cells_asked_about(handlers):
     response = handlers.sample_scent({"game_id": GAME, "step": 1,
                                       "cells": [[0, 0], [6, 6]]})
     assert set(response["samples"]) == {"0,0", "6,6"}
-    # The cop starts here and emits, and the start cell is named in the agreed
-    # config -- so the opening field is disclosable and the delay line is seeded
-    # with it rather than answering silence until the first move.
-    assert response["samples"]["0,0"] > 0
+    # Zero before the first move, at the cop's own start cell. Both locked scent
+    # models declare `initial_field: "empty"`, so the opening field is silence
+    # and the first deposit belongs to the first move. This assertion used to
+    # read `> 0` and was the deviation, not the guard: an undecayed opening
+    # deposit put every later frame one decay factor above the agreed model and
+    # anrbj666 refused all 45 of our readings on 2026-08-17.
+    assert response["samples"]["0,0"] == 0.0
 
 
 def test_the_sampled_field_is_the_lagged_one_not_the_live_one(handlers):
