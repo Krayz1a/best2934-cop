@@ -15,7 +15,7 @@ submission per member**, not one for the group.
 | Template field | Answer |
 |---|---|
 | Group ID code (8 characters, English, no spaces) | `best2934` |
-| Recommendation for self-scoring for the group | **85** — see §4. **One counted game is complete** (imreeyal, 2026-08-15), so 85 is the row we are on. Revise to **90** only if a *second* counted game against a different group is complete at export — not if one is merely scheduled. Agree it between all three members before typing it |
+| Recommendation for self-scoring for the group | **90** — see §4. **Both counted games are complete**: imreeyal 2026-08-15 (47–47 tie) and `gal-roy1` 2026-08-16 (lost 15–30). Two counted games against two different groups is the top row. Agree it between all three members before typing it |
 | Cop repository url | `https://github.com/Krayz1a/best2934-cop` |
 | Thief repository url | `https://github.com/Krayz1a/best2934-thief` |
 | AI Agent email address that sent the results to the lecturer | `eyalkol2@gmail.com` — **authorised and verified by a live send** on 2026-08-07, see [GMAIL_SETUP.md](GMAIL_SETUP.md) §0. Results go **to** `rmisegal+uoh26finalgame@gmail.com`; this field is the address they arrive **from** |
@@ -71,7 +71,7 @@ third student block, or the timing, as an irregularity rather than a permission.
 | Maximum number of points accumulated | **47** (in the counted series) |
 | Games won / lost / drawn | 0 / 0 / **1** |
 | Bonus eligibility | Diversity reward not earned — it is paid for a *victory* over a new opponent, and the series was a tie |
-| Opponents with a working protocol | **2** (`imreeyal` — played counted; `gal-roy1` — played, friendly) |
+| Opponents with a working protocol | **3** (`imreeyal` — counted, tied; `gal-roy1` — counted, lost; `anrbj666` — friendlies only, uncounted) |
 | Counted games played | **1** of the 2 needed to pass — read from the ledger, not from the artifacts (rule 52) |
 
 ### The counted series: best2934 vs imreeyal, 2026-08-15
@@ -131,16 +131,16 @@ What *is* unambiguous in the rules, and what it costs us:
 
 Those two together mean one opponent can never satisfy the requirement — a
 second counted game against the same team does not count twice. With the
-minimum at 2, **one counted game is banked and exactly one more team must say
-yes.**
+minimum at 2, **both counted games are banked and the threshold is met.**
 
-`imreeyal` is spent under rule 52. That leaves `gal-roy1`, with whom the
-protocol works end to end and a six-sub-game friendly is already settled and
-audited both ways; they have been offered either designating that series or
-playing a fresh one, and the choice is theirs. `anrbj666` published terms and an
-open offer but have not answered six messages across two days; `uoh-sqak` play
-the same published forms, so the conformance work carries to them if they
-appear.
+`imreeyal` and `gal-roy1` are both spent under rule 52, which leaves
+`anrbj666` as the only pairing that could add a third counted game. They
+answered in the end and have been the most demanding opponent of the three:
+they found the sealed step-0 that never rode the wire, the counted ledger that
+had drifted between our two repositories, and the reveals that reached them
+unkeyable. A third counted game against them would be upside only — our counted
+record is one tie and one loss, so a counted loss would leave the standing worse
+than not playing at all.
 
 **The honest position: the pass threshold is not met until a second team
 agrees, and no amount of further engineering changes that.** It is recorded here
@@ -190,14 +190,18 @@ Beyond the gates, and each backed by data in `results/`:
 
 | If, at export | Recommend | Why |
 |---|---|---|
-| Two counted games, two different groups | **90** | Every gate met with margin, the protocol proven against an independent implementation, and §3 answerable |
-| **At least one counted game** | **85** ← *where we are today (1 of 2)* | The build stands on its own and the league requirement is genuinely under way rather than untried |
+| Two counted games, two different groups | **90** ← *where we are today (2 of 2)* | Every gate met with margin, the protocol proven against three independent implementations, and §3 answerable |
+| At least one counted game | **85** | The build stands on its own and the league requirement is genuinely under way rather than untried |
 | §3 is still `0` | **75** | A threshold requirement is unmet. Claiming a high number over an empty games table invites the reader to check, and they will |
 
-**As of 2026-08-15 the middle row is the true one: one counted game, filed and
-cross-diffed with the opponent.** Move to 90 only if a second counted game
-against a different group is complete at export — not if one is merely
-scheduled.
+**As of 2026-08-16 the top row is the true one: two counted games against two
+different groups, both filed and cross-diffed with the opponent.** That is the
+number `fill_submission.py` derives from the games table rather than typing it
+beside one, so the form cannot claim a grade its own table contradicts.
+
+Note what 90 does *not* rest on: our counted record is a tie and a loss, no
+wins. The row is earned by the gates, the documentation and the protocol
+working against three independent implementations — not by the scoreline.
 
 **Why 85 and not 90.** The engineering case is strong enough for 90 on its own
 terms — every gate exceeded rather than met, an independent implementation's
