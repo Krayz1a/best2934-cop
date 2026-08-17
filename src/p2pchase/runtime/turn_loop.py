@@ -224,12 +224,20 @@ class TurnLoop:
             sender=WIRE_ROLE.get(self.session.role, self.session.role.upper()),
             commit=commitment,
             hint=hint,
-            scent_grid=self.trail(),
+            scent_grid={},  # filled below, once the move has been applied
             barrier_placed=barrier,
             capture_claim=claim,
             win_claim=self._survival_claim(),
         )
         self.session.apply_own_step()
+        # Read AFTER the move, never while building the message. apply_own_step
+        # is what settles the move and deposits at the cell it lands on, so a
+        # field read before it is one emission behind the move this very message
+        # discloses -- an opponent recomputing our physics from our own reveals
+        # then refuses every frame, which is what anrbj666 saw 34/34 and 11/11
+        # on 2026-08-17. The reference orders it move, emit, send
+        # (peer/turn_sender.py send()); a config lag of 0 does not reach this.
+        turn.scent_grid = self.trail()
         # Judged after our move, not before: a thief still on the walled cell at
         # the end of its own round is caught under any reading of I-8 (rule 46).
         if wall_capture.leaving(self.session, self.walled) or \
