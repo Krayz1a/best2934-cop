@@ -204,3 +204,50 @@ def test_a_concession_we_never_claimed_is_not_believed(peer_config):
     driver, _, _ = _driver(peer_config, constants.ROLE_COP)
     driver._read_concession({"claim_response": {"claim": [2, 2], "caught": True}})
     assert driver.loop.finished == ""
+
+
+# --------------------------------------------------- the move ceiling (g05)
+#
+# anrbj666, 2026-08-17. Both g03 and g05 received exactly 34 cop turns -- the
+# correct number, since the thief opens the round and closes the sub-game --
+# and both then blocked waiting for a 35th that their protocol forbids. g03 was
+# rescued by their audit landing inside the deadline; g05's audit was slower and
+# the identical game was filed `technical_loss`. These pin the ceiling so the
+# result stops depending on which message wins a race.
+
+def _thief_at_the_ceiling(peer_config):
+    """A thief one move short of the survival threshold, with an EMPTY inbox.
+
+    The empty inbox is the assertion: anything that waits for a cop turn here
+    raises rather than hanging, so a regression fails loudly.
+    """
+    driver, wire, near = _driver(peer_config, constants.ROLE_THIEF)
+    driver.turn_timeout = 0.05
+    driver.session.state.step = driver.session.state.survival_threshold - 1
+    return driver, wire, near
+
+
+def test_the_thief_does_not_wait_for_a_cop_turn_after_its_final_move(peer_config):
+    """The move ceiling is a fact of the board, not a message to wait for."""
+    driver, _, _ = _thief_at_the_ceiling(peer_config)
+    settled = _run(driver.play_round(driver.session.state.survival_threshold))
+    assert settled, "the sub-game ends on the thief's last move"
+    assert driver.session.state.survival_reached()
+
+
+def test_the_terminal_message_still_goes_out_after_the_ceiling(peer_config):
+    """Not waiting for their turn must not become not sending ours.
+
+    The terminal is how the COP learns the sub-game ended in survival -- only
+    the thief can see that ending -- and it carries the answer to the cop's
+    final capture claim, which rule 22 makes compulsory. Skipping it to avoid
+    the stall would trade a phantom technical_loss for two sides filing
+    different results, and rule 35 voids that for both teams.
+    """
+    driver, wire, _ = _thief_at_the_ceiling(peer_config)
+    ceiling = driver.session.state.survival_threshold
+    _run(driver.play_round(ceiling))
+    before = len(wire.turns)
+    _run(driver.wrap_up(ceiling + 1))
+    assert len(wire.turns) == before + 1, "the thief still owes its terminal"
+    assert wire.turns[-1]["win_claim"] == {"type": "survival", "steps": ceiling}

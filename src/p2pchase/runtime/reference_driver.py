@@ -175,7 +175,35 @@ class ReferenceDriver:
         self.owed = None
         if self.loop.finished:
             return True
-        response = await self.receive(step)
+        # ONCE THE THIEF'S LAST MOVE IS AWAY, THEIR TURN IS OPTIONAL -- and
+        # which dialect we are facing decides whether it arrives at all. Our own
+        # cop sends it, carrying the claim rule 22 makes us answer on the
+        # terminal, so we must still wait for it. anrbj666's cop stops at 34,
+        # because the ceiling has already ended the sub-game on their board.
+        #
+        # So the wait stays and only its FAILURE changes meaning. This cost us
+        # g05 against them on 2026-08-17, and it nearly hid behind a
+        # coincidence: g03 and g05 both received exactly 34 cop turns and both
+        # blocked here on a 35th. g03 was rescued by their `submit_audit`
+        # landing inside the 30s deadline, which settles it `survival`. g05's
+        # audit was slower, the deadline fired first, and the identical game --
+        # same 35 moves, same hash -- was filed `technical_loss`. The result
+        # turned on which of two messages won a race.
+        #
+        # Raising the deadline would only have widened a race we were winning
+        # by luck. Below the ceiling an expiry is still a real fault and still
+        # raises; at the ceiling it is just a peer that had nothing left to say.
+        try:
+            response = await self.receive(step)
+        except DeadlineExceededError:
+            # Read after the failure rather than before it, which is equivalent
+            # -- our own move set this step and a receive that raised absorbed
+            # nothing -- and keeps the file under the 150-line gate.
+            if not self.session.state.survival_reached():
+                raise
+            LOGGER.info("no turn at the move ceiling (step %d) from %s; their "
+                        "board ended the sub-game too", step, self.session.opponent)
+            return True
         if self.session.i_am_caught:
             # Their claim landed on us. The answer is owed *now*, not next
             # round, because there is no next round -- so it rides on a
