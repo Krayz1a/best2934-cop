@@ -58,8 +58,12 @@ def _spec_step(field: dict, centre: tuple[int, int], params: dict) -> dict:
     return {cell: max(0.0, min(cap, value)) for cell, value in out.items()}
 
 
-def _thief_loop(seed: int):
-    """A thief on the anrbj666 pairing's physics: book model, no delay line."""
+#: Sub-game each role is played in, under the anrbj666 odd/even convention.
+SUB_GAME = {"thief": 1, "police": 2}
+
+
+def _loop(seed: int, role: str = "thief"):
+    """A peer on the anrbj666 pairing's physics: book model, no delay line."""
     setup = json.loads(
         (pathlib.Path(__file__).parents[3] / "config/police/setup.json").read_text()
     )
@@ -70,14 +74,21 @@ def _thief_loop(seed: int):
     shared = copy.deepcopy(DEFAULT_SHARED)
     shared["pheromones"]["pheromone_transmit_lag"] = 0
     config = PeerConfig(role="police", shared=shared, setup=setup)
-    session = PeerSession(config, "thief", "best2934-vs-anrbj666",
-                          sub_game=1, seed=seed)
+    session = PeerSession(config, role, "best2934-vs-anrbj666",
+                          sub_game=SUB_GAME[role], seed=seed)
     return session, InteropAdapter(PeerHandlers(config, session)).turns(session)
 
 
+@pytest.mark.parametrize("role", ["thief", "police"])
 @pytest.mark.parametrize("seed", [1, 5, 9])
-def test_every_transmitted_frame_matches_the_locked_model(seed):
+def test_every_transmitted_frame_matches_the_locked_model(seed, role):
     """Cell for cell, for a whole sub-game's worth of turns.
+
+    Both roles, because both were refused. The first version of this test only
+    ever built a thief, which would have left the cop's field resting on the
+    argument that it runs the same code -- and anrbj666 refused 11 of 11 cop
+    readings alongside the thief's 34 of 34. A role that was refused on the wire
+    does not get to be covered by inference.
 
     The tolerance is 1e-6 because :meth:`TurnLoop.trail` rounds to six decimals
     on the way out; anything looser would hide a real drift.
@@ -85,7 +96,7 @@ def test_every_transmitted_frame_matches_the_locked_model(seed):
     params = scent_models.locked_doc(MODEL)["params"]
     assert params["initial_field"] == "empty", "the premise this test rests on"
 
-    session, loop = _thief_loop(seed)
+    session, loop = _loop(seed, role)
     field: dict = {}
     for step in range(1, 20):
         turn = loop.take_turn(step)
@@ -105,7 +116,7 @@ def test_the_opening_field_is_empty():
     A deposit made before the first move is never decayed by it, so it does not
     merely add a cell -- it lifts the whole field for the rest of the sub-game.
     """
-    session, loop = _thief_loop(seed=1)
+    session, loop = _loop(seed=1)
     assert session.state.my_scent.grid == {}, (
         "no emission before the first move: both locked models declare "
         "initial_field 'empty'"
