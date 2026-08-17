@@ -24,9 +24,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 
-from ..shared.paths import artifacts_dir
+from ..shared.paths import artifacts_dir, config_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,12 +36,48 @@ RESULT_GLOB = "result_*.json"
 
 
 def ledger_path(directory: Path | None = None) -> Path:
-    return (directory or artifacts_dir()) / LEDGER_NAME
+    """Where the ledger lives. ``config/``, not ``artifacts/``, and here is why.
+
+    How many counted games *the team* has played is a fact about the team. It
+    was stored per repository, and rule 41 puts our cop and our thief in
+    separate ones -- so we kept two ledgers and they drifted. The cop's read
+    ``["imreeyal"]`` and the thief's ``["imreeyal", "gal-roy1"]``, which meant
+    every cop window we ever played declared 1 where the truth was 2. anrbj666
+    found it on 2026-08-17; we never would have, because each repository was
+    internally consistent and only the pair was wrong.
+
+    ``artifacts/`` cannot hold it. That directory is the one thing
+    :mod:`tools.sync_thief` must never copy between the repositories, because
+    the two halves of a six-sub-game series live there and mirroring one over
+    the other destroys half the evidence. ``config/`` is synced, role-
+    independent and committed, so the two repositories can no longer disagree
+    about a number rule 38 sanctions us for getting wrong.
+
+    An explicit ``directory`` still wins, for tests and for a caller that means
+    a specific tree. ``P2PCHASE_COUNTED_LEDGER`` overrides everything, for the
+    operator who wants one file outside both repositories.
+    """
+    if directory is not None:
+        return directory / LEDGER_NAME
+    override = os.environ.get("P2PCHASE_COUNTED_LEDGER", "").strip()
+    if override:
+        return Path(override).expanduser()
+    return config_dir() / LEDGER_NAME
 
 
 def counted_opponents(directory: Path | None = None) -> list[str]:
     """The opponents we have agreed a counted game with, in the order agreed."""
     path = ledger_path(directory)
+    if not path.exists() and directory is None:
+        # Migration: read the old per-repository ledger while one still exists,
+        # so an upgrade never silently drops the count back to zero. A ledger
+        # that reads 0 declares 0, and rule 38 sanctions a false declaration
+        # whichever direction it is wrong in.
+        legacy = artifacts_dir() / LEDGER_NAME
+        if legacy.exists():
+            LOGGER.warning("reading the legacy ledger at %s; move it to %s",
+                           legacy, path)
+            path = legacy
     if not path.exists():
         return []
     try:
@@ -65,13 +102,13 @@ def record_counted_game(opponent: str, directory: Path | None = None) -> list[st
     allows exactly one counted game per pairing, so the second call is either a
     mistake or a retry, and neither should inflate the count.
     """
-    directory = directory or artifacts_dir()
     entries = counted_opponents(directory)
     if opponent in entries:
         return entries
     entries.append(opponent)
-    directory.mkdir(parents=True, exist_ok=True)
-    ledger_path(directory).write_text(json.dumps(entries, indent=2) + "\n", encoding="utf-8")
+    path = ledger_path(directory)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(entries, indent=2) + "\n", encoding="utf-8")
     return entries
 
 
@@ -97,10 +134,14 @@ def discrepancies(us: str, directory: Path | None = None) -> list[str]:
     information and not as a fault -- but it is reported, because a counted
     game someone forgot to record looks exactly the same from here.
     """
+    # An explicit directory means *that tree*, ledger and results together --
+    # which is what a caller inspecting an archived series wants. Left to
+    # itself, the ledger comes from its canonical home instead: reading it out
+    # of the artifacts tree is the drift this module just moved away from.
+    claimed = set(counted_opponents(directory))
     directory = directory or artifacts_dir()
     if not directory.is_dir():
         return []
-    claimed = set(counted_opponents(directory))
     played = _opponents_with_results(us, directory)
     problems = [f"declared a counted game against {name!r} with no result artifact to show for it"
                 for name in sorted(claimed - played)]
