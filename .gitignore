@@ -20,6 +20,11 @@ anthropic.json
 logs/*.json
 logs/*.log
 artifacts/*.json
+# Archived runs. Kept on disk so a repeat series cannot merge an old
+# sub-game into a new result, but never committed -- an untracked
+# directory here stamps every result row with a "-dirty" commit that
+# no grader can resolve back to a tree.
+artifacts/*/
 # Sent-mail receipts: they carry opponents' addresses, and both repos are public.
 artifacts/*.eml
 artifacts/**/*.eml
