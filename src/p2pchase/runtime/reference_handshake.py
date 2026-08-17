@@ -165,6 +165,27 @@ async def await_agreement(inboxes: Any,
     return dict(inboxes.agreements.popleft())
 
 
+def pairing_mismatch(theirs: dict[str, Any], sub_game: int) -> int | None:
+    """Their declared sub-game when it is not the one we opened (SPEC 7.2).
+
+    ``None`` when they agree with us **and** when they declare nothing at all.
+    Silence cannot refuse: a peer that does not implement 7.2 is not
+    mispaired, it is quiet, and inventing a refusal for it would punish them
+    for a requirement the rulebook does not make of them. That asymmetry is
+    exactly why anrbj666's own gate never fired against us -- we were the
+    silent one -- so it is worth being precise about which case is which.
+
+    We report rather than abort. A mispaired window is already dead: their
+    side refuses it, so nothing plays either way. Killing our own process on
+    top of that risks turning a void into a rule 6 technical loss, which
+    charges BOTH teams, and the operator gate on that decision is task #90.
+    """
+    declared = theirs.get("sub_game_number")
+    if not isinstance(declared, int) or not sub_game:
+        return None
+    return None if declared == sub_game else declared
+
+
 async def exchange(negotiation: Any, client: Any, inboxes: Any, opponent: str,
                    timeout: float = AGREEMENT_TIMEOUT_SEC,
                    sub_game: int = 0, role: str = "") -> dict[str, Any]:
@@ -187,6 +208,11 @@ async def exchange(negotiation: Any, client: Any, inboxes: Any, opponent: str,
     if theirs is None:
         return {"delivered": delivered, "agreed": False, "group_id": "",
                 "reason": "no agreement received"}
+    mispaired = pairing_mismatch(theirs, sub_game)
+    if mispaired:
+        LOGGER.error("PAIRING MISMATCH: we opened sub-game %s and they declared %s. "
+                     "This window is not the same sub-game on the two sides and "
+                     "anything played in it is unattributable.", sub_game, mispaired)
     verdict = negotiation.compare(theirs)
     LOGGER.info("agreement crossed with %r: agreed=%s%s",
                 theirs.get("group_id") or (theirs.get("identity") or {}).get("group_id", ""),
@@ -195,4 +221,5 @@ async def exchange(negotiation: Any, client: Any, inboxes: Any, opponent: str,
     return {"delivered": delivered, "agreed": verdict.agreed,
             "group_id": str(theirs.get("group_id")
                             or (theirs.get("identity") or {}).get("group_id", "")),
-            "mismatches": list(verdict.mismatches)}
+            "mismatches": list(verdict.mismatches),
+            "sub_game_mismatch": mispaired}
