@@ -167,7 +167,8 @@ class P2PChaseSDK:
         The quarantine tests were not wrong; they covered the service. Nothing
         covered how the driver built it.
         """
-        step_zero = self.match.step_zero(sub_game)
+        # `opponent` decides the seal form -- see MatchService.step_zero.
+        step_zero = self.match.step_zero(sub_game, opponent=opponent)
         service = NetworkArtifactService.for_opponent(self.config, opponent,
                                                       self.output_dir)
         return service.record_sub_game(

@@ -82,7 +82,8 @@ class MatchService:
             hardware_spec=collect_hardware().as_dict(),
         )
 
-    def step_zero(self, sub_game: int, role: str = "") -> dict[str, Any]:
+    def step_zero(self, sub_game: int, role: str = "",
+                  opponent: str = "") -> dict[str, Any]:
         """Signed hardware declaration, committed as step 0 of every log.
 
         It is wrapped in a commit record like any other step, not written raw.
@@ -99,7 +100,22 @@ class MatchService:
             role=role or self.config.role,
             group_id=self.config.group_id,
         )
-        return commit(payload).audit_view()
+        # Seal it under the form this pairing DECLARES, exactly as the turn
+        # path does (`peer_session.commit_step`, `session_terminal`). This call
+        # site did not, so `commit`'s empty form fell to
+        # `kit_seal.DEFAULT_FORM` (merged_nonce_v1) while our negotiate and our
+        # setup block both declared `kit_pipe_v1` to anrbj666. Every other
+        # record in the chain recomputed under the declared construction and
+        # step 0 did not, so rule 19 voided the whole chain -- and because the
+        # rule-53 fix prepends this record to every audit chain, it voided all
+        # six windows on 2026-08-18 while the scent frames they used to refuse
+        # passed clean. anrbj666 named the line on 2026-08-18; we verified it
+        # here before changing anything.
+        #
+        # An empty `opponent` keeps the old behaviour: `pairing("")` is `{}` and
+        # `seal_form` falls to the kit default, which is what the local-match
+        # path wants when there is no pairing to honour.
+        return commit(payload, form=self.config.seal_form(opponent)).audit_view()
 
     # ---------------------------------------------------------------- series
     def run_series(self, opponent_group: str, sub_games: int | None = None,
@@ -182,7 +198,8 @@ class MatchService:
 
         log = artifacts.build_log_artifact(
             game_id, game_uid, number, mine, assignment[mine], opponent, report.outcome,
-            report.winner_role, [self.step_zero(number, assignment[mine]), *mine_side.records],
+            report.winner_role,
+            [self.step_zero(number, assignment[mine], opponent), *mine_side.records],
             started, ended, mine_side.talk.tokens_used, audit, steps=report.steps,
         )
         result.paths.append(artifacts.write_json(names.log(number), log))
