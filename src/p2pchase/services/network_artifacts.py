@@ -242,11 +242,17 @@ class NetworkArtifactService:
                 # guessed: a number we invent for another team is a false
                 # declaration in *their* column of the lecturer's standings.
                 int(self.config.pairing(opponent).get("opponent_counted_games", 0)),
-                # The ledger is team-level, so it is read from the friendly
-                # root whatever posture this series has -- otherwise a counted
-                # series counts itself out of its own directory and a friendly
-                # cannot see it at all.
-                final_result.get("winner_group"), artifacts_dir()),
+                # No directory: the ledger is team-level and lives in
+                # `config/`, which is role-independent, committed and synced
+                # between the two repositories. Passing `artifacts_dir()` here
+                # pointed at the per-repository ledger the project moved AWAY
+                # from -- the cop's read ["imreeyal"] and the thief's read
+                # ["imreeyal", "gal-roy1"], which is the drift anrbj666 caught
+                # on 2026-08-17. The move to `config/` fixed the storage; this
+                # call site kept reading the old location, so every result we
+                # wrote after it declared 1 counted game where the truth was 2.
+                # A wrong number here is a false declaration under rule 38.
+                final_result.get("winner_group")),
             headline_digest=self.config.headline_digest(opponent))
         return artifacts.write_json(names.result(), report)
 
