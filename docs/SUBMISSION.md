@@ -98,17 +98,35 @@ whose block was wrong re-files, and the corrected artifact carries a
 `_supersedes` field naming the message it replaces. No game, score, winner,
 audit or digest changed: `mutual_agreement.sha256` is identical in both.
 
-### The friendly against gal-roy1
+### The counted series: best2934 vs gal-roy1, 2026-08-16
 
-Six sub-games, settled 75–35 to us, audited both ways. **Not counted**, and not
-claimed here: rule 37 declares the number of *counted* games, and
-`counted_games_played()` reads the ledger of games both sides agreed to count —
-not the artifacts on disk. Counting a warm-up would be a false declaration under
-rule 38, which disqualifies the group that makes it.
+```
+six sub-games, 22:32:33-22:38:17 Asia/Jerusalem
+total_score      best2934 30  ·  gal-roy1 90
+sub_games_won    0 · 6        winner_group gal-roy1   series_tie false
+mutual_agreement 15353760b4392b9d404cbe8d4d7c4a1b8749d1a3226402e98f822430c456160c
+interop_sha256   4969b8b37b8ed6197cfbda321f839e78deeb000ce3a9ac6d5379fbc972bb5b8a
+```
+
+We lost this one, and the margin was corrected upward against ourselves on
+2026-08-18. We had been recording it as 15–30 over three sub-games, because the
+odd/even role convention makes each repository store only the half it played and
+the figure was read from the cop half alone. Both halves carry the same
+`game_uid` and each digests correctly on its own, so no gate could see that a
+row count was short. gal-roy1 caught it when we sent them our figures to check
+before filing; their two digests reproduce ours exactly, which is what settled
+it rather than their say-so.
+
+A separate **friendly** against the same team on 2026-08-15 settled 75–35 to us.
+It is not counted and is not claimed anywhere: rule 37 declares the number of
+*counted* games, and `counted_games_played()` reads the ledger of games both
+sides agreed to count — not the artifacts on disk. Counting a warm-up would be a
+false declaration under rule 38, which disqualifies the group that makes it. The
+two are easy to confuse precisely because we won the one that does not count.
 
 **This is the one section no amount of engineering can fill.** It needs
-opponents, and nothing in the codebase can produce one. One is now banked; the
-second needs a second team to say yes.
+opponents, and nothing in the codebase can produce one. Both are now banked: one
+tie and one loss, against two different groups, which meets the minimum of 2.
 
 **The minimum is 2, confirmed by the course staff on 2026-08-06.** The booklet
 prose leaves it as an unfilled placeholder — `לפחות [ מינימום משחקים למעבר ] מול
