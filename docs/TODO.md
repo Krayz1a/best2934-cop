@@ -119,7 +119,7 @@ Owners: **TL** Tomer Levy · **EK** Eyal Koloshi · **AI** Alon Issman ·
 |---|---|---|---|---|---|
 | 10.1 | Recruit opponents on the course forum | **P0** | Ext | **Done** | Three secured and played: `imreeyal`, `gal-roy1`, `anrbj666`. Rule 52 allows one counted game per opponent, so the first two are now **spent** and only `anrbj666` can still change the standing |
 | 10.2 | Expose the MCP endpoint via tunnel | P0 | TL | Done | `https://monogram-radio-blooper.ngrok-free.dev/mcp`, a **reserved** domain so it survives restarts. Verified by a real `hello` from the public internet. Both roles serve it in turn via `tools/endpoint.py take`; `hello` publishes `role` so the wrong one cannot answer unnoticed |
-| 10.3 | Play the counted games | P0 | Team | **Done — 2 of a minimum 2** | `imreeyal` 15/08, series **tied 47-47** over six sub-games. `gal-roy1` 16/08, **lost 30-90** over six. Both signed off by the operator before play and filed. A third against `anrbj666` would be upside only and needs the operator to say so: our counted record is one tie and one loss, so a counted loss there would make the standing worse than not playing |
+| 10.3 | Play the counted games | P0 | Team | **Done — 2 of a minimum 2** | `imreeyal` 15/08, series **tied 47-47** over six sub-games. `gal-roy1` 16/08, **lost 30-90** over six. Both signed off by the operator before play and filed. A third against `anrbj666` was **declined by the operator on 18/08** after the 10:00 friendly: our cop converted in none of the three police windows that morning, having converted in all three the previous day, so the evidence the sign-off rested on no longer held. A counted tie adds nothing (max points is already 47, and the bonus needs a victory) and a counted loss moves us down |
 | 10.4 | Mutual audit + both-sides e-mail | P0 | Team | Audit proven, e-mail live | Mutual audit has passed in both directions against three genuinely independent implementations. The Gmail client is authorised and confirmed by a live send; the corrected `imreeyal` result was filed through it |
 
 ## Phase 11 — Interoperability hardening · **Done**
@@ -144,9 +144,9 @@ and the reason this phase exists as a record rather than being folded into 4.
 | Item | Blocked on | Note |
 |---|---|---|
 
-| 9.4 (two cells) | `gal-roy1` | Their declared counted-game count and agent e-mail are theirs to declare, not ours to infer. Asked 17/08. A blank cell is better than a guess: rule 38 sanctions a false declaration. |
+| 9.4 (two cells) | ~~`gal-roy1`~~ **Answered 18/08** | They declared 2 counted games and `galbb12@gmail.com`, and corrected our own row while they were at it: we had the series as 15-30 over three sub-games, which is the first half of it. Asking them to check our figures before filing is what caught it. |
 | 9.5, 9.6 | The three members | Nothing in the codebase can unblock these, and they are now the only things between a finished agent and a submitted project. |
-| 10.3 (a third) | Operator | Deliberate. `anrbj666` is the one pairing rule 52 leaves, and a counted game there is **two-sided** — our record is one tie and one loss, so a counted loss would leave us worse off than not playing. Upside only, and the operator's call. |
+| 10.3 (a third) | ~~Operator~~ **Closed 18/08** | Declined, and stated to `anrbj666` on league issue #49 before the operator answered. Rule 52 leaves them as the only pairing that can still move our standing — which also makes them the only one that can still make it worse. Our cop converted in all three police windows on 17/08 and none on 18/08; their thief improved in between, and `barrier_stall_turns` has still never fired on a wire. |
 
 ## Known risks
 
