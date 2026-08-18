@@ -158,13 +158,23 @@ def select_driver(runner: PeerRunner, handlers: PeerHandlers):
         from ..domain.crypto import commit
         from ..infra.sysinfo import build_step0
         try:
+            # `form=` is not optional here. This is the SECOND place step 0
+            # is sealed: `MatchService.step_zero` writes the artifact copy and
+            # this one builds the record that actually rides the wire, into
+            # `ReferenceDriver(step_zero=...)` and thence to the front of every
+            # audit chain we disclose. Fixing only the other one on 2026-08-18
+            # left the wire broken and, worse, left it verifiable-looking --
+            # re-sealing the stored log showed `kit_pipe_v1` while anrbj666
+            # went on refusing record 0 of all six windows under the same
+            # declaration. Two seal sites for one record is the defect; until
+            # they are merged, neither may be edited alone.
             return commit(build_step0(
                 group_name=runner.config.group_name,
                 sub_game_number=runner.session.sub_game,
                 llm_model=str(runner.config.llm.get("model", "template")),
                 signing_secret=runner.signing_secret, role=runner.session.role,
                 group_id=runner.session.group_id,
-            )).audit_view()
+            ), form=runner.config.seal_form(runner.session.opponent)).audit_view()
         except Exception as error:  # noqa: BLE001 -- see the docstring
             LOGGER.warning("could not seal our step-0 declaration: %s", error)
             return None
