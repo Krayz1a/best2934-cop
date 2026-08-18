@@ -160,9 +160,17 @@ unkeyable. A third counted game against them would be upside only — our counte
 record is one tie and one loss, so a counted loss would leave the standing worse
 than not playing at all.
 
-**The honest position: the pass threshold is not met until a second team
-agrees, and no amount of further engineering changes that.** It is recorded here
-rather than smoothed over, because §3 is the section a reader checks first.
+A third counted game there was **declined on 2026-08-18**, and the reason is
+worth stating because it runs against our own interest. Our cop converted in all
+three police windows of the 17/08 friendly and in none of the three on 18/08 —
+their thief improved in between, and `barrier_stall_turns` has still never fired
+on a wire. With `maximum points accumulated` already at 47 and the diversity
+bonus payable only for a *victory*, a counted tie there would add nothing and a
+counted loss would move the standing down.
+
+**The honest position: the threshold is met, and the record behind it is one tie
+and one loss rather than a win.** It is recorded here rather than smoothed over,
+because §3 is the section a reader checks first.
 
 The "List of teams you played against" table wants, per game: date, start time,
 end time, opponent team name, your score, their score, their declared number of
@@ -267,15 +275,17 @@ empty game table will read as one that was not checked.
       itself. The sender is `eyalkol2@gmail.com`, the same address §1 declares
 - [x] Ask the course staff for the **counted-game minimum** — answered
       2026-08-06: it is **2**, fixed and non-negotiable
-- [ ] Play counted games against **2 different teams** (rule 52 caps counted
+- [x] Play counted games against **2 different teams** (rule 52 caps counted
       games at one per opponent, so 2 teams is structural, not optional).
-      **1 of 2 done**: `imreeyal`, 2026-08-15, 47–47 tie, filed and cross-diffed
-      — that pairing is now spent. The second must come from `gal-roy1`, who
-      have been offered both a designation of the settled friendly and a fresh
-      series; `anrbj666` have not answered six messages
-- [ ] Annotated tag on both: `git tag -a v1.0-submission -m "…" && git push
-      origin v1.0-submission` (rule 41) — after the last counted game
-- [ ] Copy the six personal-data values from `best2934-ex01.pdf` into the
-      `.docx` (§2) — they are deliberately not in this repository
+      **2 of 2 done**: `imreeyal`, 2026-08-15, 47–47 tie; `gal-roy1`,
+      2026-08-16, lost 30–90 over six sub-games. Both pairings are spent under
+      rule 52. `anrbj666` is the only one that could have added a third, and
+      that was **declined on 2026-08-18** — see §3
+- [x] Annotated tag on both: `v1.0-submission`, 2026-08-18 (rule 41) — cut
+      after the last counted game and after the third was declined, so the tag
+      names the tree that was actually submitted
+- [x] Copy the six personal-data values from `best2934-ex01.pdf` into the
+      `.docx` (§2) — they are deliberately not in this repository, and are
+      injected by a script that lives outside both of them
 - [ ] Attach the match artifacts for every counted game
 - [ ] Export to PDF and submit **once per member** in Moodle
