@@ -18,6 +18,7 @@ from typing import Any
 
 from .. import constants
 from ..domain.audit import NON_GAME_TYPES
+from ..infra.sysinfo import git_commit
 from .naming import TIMEZONE, links_block
 
 
@@ -118,6 +119,11 @@ def build_log_artifact(
             "group_id": group_id,
             "role": role,
             "opponent_group_id": opponent_group_id,
+            # Rule 53: the commit that played THIS sub-game, recorded by the
+            # process that played it. A series runs two processes out of two
+            # repositories, so the only moment either head is knowable is here
+            # -- by report-build time one of them has usually moved on.
+            "github_commit": git_commit(),
             "result": outcome,
             "winner_role": winner_role,
             # Derived only when the caller cannot say; see the docstring.

@@ -221,6 +221,27 @@ class NetworkArtifactService:
                 found[(number, role, "" if number and role else path.name)] = payload
         return [found[key] for key in sorted(found)]
 
+    def commit_by_role(self) -> dict[str, str]:
+        """Head of each repository, keyed by the role that repository plays.
+
+        Only a fallback. Logs written since this change carry the commit that
+        played them, and :func:`commit_for` prefers that; this answers for the
+        older ones, which is still strictly better than the single
+        ``git_commit()`` that used to be stamped across every row.
+
+        It is a weaker fact than the log's own value and the difference is not
+        academic: a rebuild happens after the series, by which time one head
+        has usually moved. Ours had -- the thief repo gained a commit between
+        T5 settling and the report being rebuilt.
+        """
+        mine = "thief" if self.config.role == "thief" else "police"
+        theirs = "police" if mine == "thief" else "thief"
+        by_role = {mine: git_commit()}
+        sibling = sibling_artifacts_dir(self.counted)
+        if sibling:
+            by_role[theirs] = git_commit(str(Path(sibling).parent))
+        return by_role
+
     def refresh_result(self, game_id: str, game_uid: str, opponent: str) -> Path:
         """Rebuild `result_<game_id>.json` from every log this match has produced."""
         names = artifacts.ArtifactSet(game_id=game_id, directory=self.output_dir)
@@ -228,7 +249,7 @@ class NetworkArtifactService:
 
         mine = self.config.group_id
         outcomes, final_result, tokens = assemble_series(
-            logs, mine, opponent, self.table, git_commit(),
+            logs, mine, opponent, self.table, self.commit_by_role(),
             self.config.tie_rule(opponent), self.config.role_convention(opponent))
         counted, _sign_off = self.config.counted_series(opponent)
         report = artifacts.build_result_artifact(

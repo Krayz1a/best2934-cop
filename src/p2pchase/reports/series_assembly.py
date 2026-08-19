@@ -34,6 +34,35 @@ def _roles(summary: dict[str, Any], mine: str, theirs: str) -> dict[str, str]:
     return {mine: my_role, theirs: other}
 
 
+def commit_for(summary: dict[str, Any], commit: str | dict[str, str]) -> str:
+    """Which commit played THIS sub-game, not which one is checked out now.
+
+    A networked series is played by two processes out of two repositories, and
+    only one of them builds the report. Stamping that builder's HEAD across
+    every row answers "which code played this game" wrongly in half of them --
+    anrbj666 caught exactly that on our T5 friendly: six rows carrying the cop
+    head while g1/g3/g5 were played by the thief at a different commit, which
+    their own per-window negotiates recorded.
+
+    Resolution order, most authoritative first:
+
+    1. the log's own ``github_commit``, written by the process that played it;
+    2. a role -> commit mapping supplied by the caller, for logs written before
+       (1) existed;
+    3. a single string, the legacy behaviour.
+
+    Never re-reads git here. The head at rebuild time is a different fact from
+    the head that played, and after a series settles the two diverge -- our
+    thief repo had already moved on by the time we rebuilt this report.
+    """
+    recorded = str(summary.get("github_commit", "") or "")
+    if recorded:
+        return recorded
+    if isinstance(commit, dict):
+        return str(commit.get(normalise_role(str(summary.get("role", ""))), ""))
+    return commit
+
+
 def template_audit(audit: dict) -> dict[str, bool]:
     """The course template's two-field audit row, from our six-field diagnostic.
 
@@ -103,7 +132,7 @@ def assemble_series(
     mine: str,
     theirs: str,
     table: ScoreTable,
-    commit_hash: str = "",
+    commit_hash: str | dict[str, str] = "",
     tie_rule: str = SERIES_ADD,
     convention: str = DEFAULT_CONVENTION,
 ) -> tuple[list[SubGameOutcome], dict[str, Any], dict[str, int]]:
@@ -148,7 +177,7 @@ def assemble_series(
             ended_at=str(summary.get("ended_at", "")),
             result=outcome,
             winner_group=next((g for g, r in roles.items() if r == winner_role), None),
-            github_commit={mine: commit_hash},
+            github_commit={mine: commit_for(summary, commit_hash)},
             tokens={mine: my_tokens},
             score=score,
             log_files={mine: log.get("_filename", "")},
