@@ -19,6 +19,16 @@ from sentences its opponent may be lying in.
 
 ---
 
+> **Seven defects, six found by our opponents, all named in public with
+> evidence.** Every quality gate in this repository was green while our chains
+> were being refused at record 0, our counted-games ledger answered 0 forever,
+> and our public doors returned 404. Each one was a check watching the wrong
+> object. The full account, with commits and league-thread links, is
+> [section 12](#12-what-went-wrong-and-how-we-found-it) — including the
+> arguments we lost and retracted.
+
+---
+
 ## Table of contents
 
 1. [What this is](#1-what-this-is) · [Two repositories, one engine](#11-two-repositories-one-engine)
@@ -32,8 +42,9 @@ from sentences its opponent may be lying in.
 9. [Screenshots](#9-screenshots)
 10. [Architecture](#10-architecture)
 11. [Quality gates](#11-quality-gates)
-12. [Contributing](#12-contributing)
-13. [License and credits](#13-license-and-credits)
+12. [**What went wrong, and how we found it**](#12-what-went-wrong-and-how-we-found-it)
+13. [Contributing](#13-contributing)
+14. [License and credits](#14-license-and-credits)
 
 ---
 
@@ -742,7 +753,122 @@ score zero, none of them visible from inside a single process.
 
 ---
 
-## 12. Contributing
+## 12. What went wrong, and how we found it
+
+Every gate in section 11 was green for most of the week described below. None of
+these defects was caught by a test, a linter or a coverage threshold, because
+each one was a **check watching the wrong object** — a suite exercising a
+function nobody called, a verification run against the copy we had just fixed, a
+probe answering from the wrong side of a tunnel. That is the single lesson of
+this project and it is worth more than the scoreboard.
+
+Six of the seven entries below were found by opponents reading our output, and
+we have named them. The league thread ([issue #49][i49], [#45][i45],
+[#48][i48]) carries every claim, correction and retraction in public, with
+hashes, at the time it happened.
+
+### 12.1 Step 0 sealed under the wrong construction — twice
+
+Our chains open with a sealed step-0 record. We declare `kit_pipe_v1` to
+anrbj666; `crypto.commit()` defaulted to the kit's `merged_nonce_v1`. Every
+chain we ever sent them was refused at record 0, in all six windows.
+
+Fixed in [`747e131`][c1]. **Then it happened again**, because step 0 was sealed
+in *two* places: `MatchService.step_zero` writes the stored artifact, and
+`peer_host.sealed_step0` builds the record that actually rides the wire. We
+fixed the first, verified the fix by re-sealing our stored logs — the copy the
+function we had just fixed produces — and reported success. **That check could
+not have failed.** anrbj666 named the file and line of the second site; fixed in
+[`f3cefdb`][c2], with the regression test driving `select_driver` and re-hashing
+the driver's own `step_zero`, which is the object the wire discloses.
+
+### 12.2 A ledger with no production caller
+
+`record_counted_game` existed, was tested, and nothing called it. So
+`counted_games_played` answered 0 however many counted series we played, and our
+rule-37 declaration to every future opponent would have been false — silently,
+and in the direction that understates us. anrbj666 found it by reading the
+output of a check we had posted to prove something *else*: our printed standings
+said `best2934: 0` one comment after our prose said 1.
+
+Then the storage moved to `config/` and the **reader** followed it while the
+**writer** did not, so a settled series was appended to the per-repository file
+while every reader looked at the team-level one — after the anrbj666 series the
+two ledgers held `["imreeyal", "gal-roy1"]` and `["imreeyal", "anrbj666"]`, three
+games played and neither file knowing it. [`79a81b1`][c3], [`6fba9b3`][c4].
+
+### 12.3 One commit stamped across a two-process series
+
+A series runs two processes out of two repositories and only one builds the
+report. `assemble_series` took a single `commit_hash` and stamped it on every
+row, so half the rows named code that did not play them — while its own
+docstring said the value is "recorded per sub-game". anrbj666 caught it diffing
+our friendly report.
+
+The instructive part is the near-miss: the obvious repair, rebuilding, would
+have been **worse**, because `refresh_result` read `git_commit()` — the head at
+rebuild time, by which point our thief repo had moved on. The fix records the
+commit at play time, in the log, by the process that played it. [`f810e57`][c5].
+
+### 12.4 A half series is a valid smaller artifact
+
+Under `odd_even` each repository stores only the sub-games it played. Our
+cross-repo merge dropped one side, so the gal-roy1 result read 15-30 over three
+sub-games when the series was 30-90 over six. Nothing looked wrong: both halves
+carry the same `game_uid`, the artifact was internally consistent and correctly
+digested, and it reached a graded form. gal-roy1 caught it when we sent them our
+figures to check. [`26dfbc4`][c6].
+
+### 12.5 Three names asserting a delivery that never happened
+
+Neither of our first two counted reports ever reached the instructor. The
+receipts read `sent: false` for days — one `ModuleNotFoundError`, one expired
+OAuth grant — while three separate names asserted the opposite: a directory
+ending `-COUNTED-filed`, a `sent_*.eml` archive written *before* the send is
+attempted, and a receipt written the moment a report is merely *attempted*.
+Underneath, `already_fired()` tested only that the receipt **file exists**, not
+that `sent` was true, so the first failure suppressed every later retry.
+
+We found this one ourselves, three days late, and filed both reports by hand.
+[`be7f58e`][c7]. Read the field, never the filename.
+
+### 12.6 Green locally, absent from the outside
+
+Our three services were `systemd --user` units and answered 406 on every local
+port. The tunnel agent was **not** a unit, and had died — so the public doors
+returned 404 while every check we owned was green. anrbj666 found it by probing
+us before a counted game. Under rule 6 an unreachable endpoint is a technical
+loss charging **both** teams. The tunnel is now the fourth unit, pinned to the
+reserved hostname so a restart cannot hand opponents a changed address.
+
+### 12.7 A retraction
+
+We declined a counted series against anrbj666, arguing a loss "would move our
+standing down". They challenged it; we checked the binding table and they were
+right — `capture_thief 5`, `survival_cop 5`, `technical_loss 0`, and no negative
+value anywhere in the agreed config. Accumulated points cannot go down. We
+withdrew the claim publicly on the thread before going back to our operator, and
+the series was played.
+
+We were also wrong in the other direction: we predicted another 47-47 tie from
+five friendlies that had all been explicitly **disarmed**, and lost 30-90 at full
+strength. Extrapolating full-strength behaviour from disarmed play is the same
+error as every entry above — measuring the wrong object.
+
+[i49]: https://github.com/Imreec/copthief-league-protocol/issues/49
+[i45]: https://github.com/Imreec/copthief-league-protocol/issues/45
+[i48]: https://github.com/Imreec/copthief-league-protocol/issues/48
+[c1]: https://github.com/Krayz1a/best2934-cop/commit/747e131
+[c2]: https://github.com/Krayz1a/best2934-cop/commit/f3cefdb
+[c3]: https://github.com/Krayz1a/best2934-cop/commit/79a81b1
+[c4]: https://github.com/Krayz1a/best2934-cop/commit/6fba9b3
+[c5]: https://github.com/Krayz1a/best2934-cop/commit/f810e57
+[c6]: https://github.com/Krayz1a/best2934-cop/commit/26dfbc4
+[c7]: https://github.com/Krayz1a/best2934-thief/commit/be7f58e
+
+---
+
+## 13. Contributing
 
 - Every file stays under 150 code lines. When one grows past it, **split it by
   responsibility** — never compress it to fit.
@@ -757,7 +883,7 @@ score zero, none of them visible from inside a single process.
 
 ---
 
-## 13. License and credits
+## 14. License and credits
 
 Released under the [MIT License](LICENSE).
 
