@@ -15,7 +15,7 @@ submission per member**, not one for the group.
 | Template field | Answer |
 |---|---|
 | Group ID code (8 characters, English, no spaces) | `best2934` |
-| Recommendation for self-scoring for the group | **85** — see §4. The games table supports 90 (two counted games, two different groups: imreeyal 2026-08-15 47–47 tie, `gal-roy1` 2026-08-16 lost 30–90) and the operator chose to claim 85 on 2026-08-18. Marking ourselves down needs no justification; `fill_submission.py` still refuses to print more than the table supports |
+| Recommendation for self-scoring for the group | **85** — see §4. The games table supports 90 (three counted games, three different groups: `imreeyal` 2026-08-15 47–47 tie, `gal-roy1` 2026-08-16 lost 30–90, `anrbj666` 2026-08-20 lost 30–90) and the operator chose to claim 85 on 2026-08-18. Marking ourselves down needs no justification; `fill_submission.py` still refuses to print more than the table supports |
 | Cop repository url | `https://github.com/Krayz1a/best2934-cop` |
 | Thief repository url | `https://github.com/Krayz1a/best2934-thief` |
 | AI Agent email address that sent the results to the lecturer | `eyalkol2@gmail.com` — **authorised and verified by a live send** on 2026-08-07, see [GMAIL_SETUP.md](GMAIL_SETUP.md) §0. Results go **to** `rmisegal+uoh26finalgame@gmail.com`; this field is the address they arrive **from** |
@@ -71,7 +71,7 @@ third student block, or the timing, as an irregularity rather than a permission.
 | Maximum number of points accumulated | **47** (in the counted series) |
 | Games won / lost / drawn | 0 / 0 / **1** |
 | Bonus eligibility | Diversity reward not earned — it is paid for a *victory* over a new opponent, and the series was a tie |
-| Opponents with a working protocol | **3** (`imreeyal` — counted, tied; `gal-roy1` — counted, lost; `anrbj666` — friendlies only, uncounted) |
+| Opponents with a working protocol | **3** (`imreeyal` — counted, tied; `gal-roy1` — counted, lost; `anrbj666` — counted, lost) |
 | Counted games played | **1** of the 2 needed to pass — read from the ledger, not from the artifacts (rule 52) |
 
 ### The counted series: best2934 vs imreeyal, 2026-08-15
@@ -124,9 +124,43 @@ sides agreed to count — not the artifacts on disk. Counting a warm-up would be
 false declaration under rule 38, which disqualifies the group that makes it. The
 two are easy to confuse precisely because we won the one that does not count.
 
+### The counted series: best2934 vs anrbj666, 2026-08-20
+
+```
+six sub-games, 22:36:57-22:48:38 Asia/Jerusalem
+total_score      best2934 30  ·  anrbj666 90
+sub_games_won    0 · 6        winner_group anrbj666   series_tie false
+mutual_agreement f9aa522dbad27f72b4499f1e3e30e30e29e8ddbd4e09d5b4f4f9cfea637882d0
+heads that played  cop 74b50ff  ·  thief 1ac172e
+filed            sent: true, id 1a020b7e1773d1ad, rmisegal+uoh26finalgame@gmail.com
+```
+
+Both operators declared the series counted **in writing on league issue #49
+before the first move**, and `counted` was flipped to true in all four config
+files and pushed before the thief opened — verified through
+`counted_series("anrbj666")`, the function that reads it, rather than by
+looking at the JSON. A unilateral flip, or one made afterwards, is the rule-35
+contradiction that voids a match for both teams.
+
+anrbj666 computed `mutual_agreement.sha256` independently and posted it to the
+thread before either side mailed; ours matched digit for digit. The delivered
+attachment was verified by decoding it **out of the flown `.eml`** rather than
+by reading the artifact beside it — the discipline imreeyal taught us when they
+challenged which version of our report had actually been delivered.
+
+We lost 6–0. Their cop captured our thief at step 10 in all three windows we
+played thief; our cop converted in none of the three where we were police.
+
+Full artifacts: `artifacts/counted/anrbj666-20260820-COUNTED-filed/` in both
+repositories — six logs, per-sub-game configs, the declaration, the result and
+the delivery receipt, at the heads that played. They are force-added past
+`.gitignore`, because a settled counted series is the most evidential thing
+either repository holds and rules 49/53 grade what the repos contain.
+
 **This is the one section no amount of engineering can fill.** It needs
-opponents, and nothing in the codebase can produce one. Both are now banked: one
-tie and one loss, against two different groups, which meets the minimum of 2.
+opponents, and nothing in the codebase can produce one. Three are now banked —
+one tie and two losses, against three different groups — which meets the minimum
+of 2 with one to spare.
 
 **The minimum is 2, confirmed by the course staff on 2026-08-06.** The booklet
 prose leaves it as an unfilled placeholder — `לפחות [ מינימום משחקים למעבר ] מול
@@ -149,28 +183,40 @@ What *is* unambiguous in the rules, and what it costs us:
 
 Those two together mean one opponent can never satisfy the requirement — a
 second counted game against the same team does not count twice. With the
-minimum at 2, **both counted games are banked and the threshold is met.**
+minimum at 2, **all three counted games are banked and the threshold is met
+with one to spare.**
 
-`imreeyal` and `gal-roy1` are both spent under rule 52, which leaves
-`anrbj666` as the only pairing that could add a third counted game. They
-answered in the end and have been the most demanding opponent of the three:
-they found the sealed step-0 that never rode the wire, the counted ledger that
-had drifted between our two repositories, and the reveals that reached them
-unkeyable. A third counted game against them would be upside only — our counted
-record is one tie and one loss, so a counted loss would leave the standing worse
-than not playing at all.
+All three opponents — `imreeyal`, `gal-roy1` and `anrbj666` — are now spent
+under rule 52. **Three counted games, against three different groups.**
 
-A third counted game there was **declined on 2026-08-18**, and the reason is
-worth stating because it runs against our own interest. Our cop converted in all
-three police windows of the 17/08 friendly and in none of the three on 18/08 —
-their thief improved in between, and `barrier_stall_turns` has still never fired
-on a wire. With `maximum points accumulated` already at 47 and the diversity
-bonus payable only for a *victory*, a counted tie there would add nothing and a
-counted loss would move the standing down.
+The third one has a history worth recording, because we were wrong twice in it
+and both errors are instructive.
 
-**The honest position: the threshold is met, and the record behind it is one tie
-and one loss rather than a win.** It is recorded here rather than smoothed over,
-because §3 is the section a reader checks first.
+We **declined** it on 2026-08-18, arguing that our counted record was one tie
+and one loss and that "a counted loss would move the standing down". anrbj666
+challenged that directly and they were right: Appendix F pays `capture_cop 20`,
+`capture_thief 5`, `survival_cop 5`, `survival_thief 10`, `technical_loss 0`,
+and a scan of the whole agreed config finds **no negative value anywhere**.
+Every outcome pays both sides at or above zero, so accumulated points cannot go
+down. "Moves our standing down" is not a state the scoring table can produce.
+We withdrew the claim publicly on league issue #49 before going back to our
+operator, and the earlier reasoning is preserved verbatim in `_counted_flip`
+rather than edited to agree with the reversal.
+
+The series was played on 2026-08-20 and **we lost it 30–90, six sub-games to
+nil**. Our second error was predicting otherwise: five previous series against
+them had all settled 47–47, move for move, and we forecast another tie on the
+public thread. Every one of those five was explicitly **disarmed**. At full
+strength their cop captured our thief at step 10 in all three windows we played
+thief, and our cop converted in none of the three where we were police — the
+asymmetry our own logs had been showing all week (distance 1 nine times,
+distance 0 never; `barrier_stall_turns` has still never fired on a wire).
+Extrapolating full-strength behaviour from disarmed play is the same mistake as
+every defect in README §12: measuring the wrong object.
+
+**The honest position: the threshold is met three times over, and the record
+behind it is one tie and two losses rather than a win.** It is recorded here
+rather than smoothed over, because §3 is the section a reader checks first.
 
 The "List of teams you played against" table wants, per game: date, start time,
 end time, opponent team name, your score, their score, their declared number of
@@ -216,13 +262,15 @@ Beyond the gates, and each backed by data in `results/`:
 
 | If, at export | Recommend | Why |
 |---|---|---|
-| Two counted games, two different groups | **90** ← *the ceiling the table allows* | Every gate met with margin, the protocol proven against three independent implementations, and §3 answerable |
+| Two or more counted games, different groups | **90** ← *the ceiling the table allows* | Every gate met with margin, the protocol proven against three independent implementations, and §3 answerable |
 | At least one counted game | **85** ← *what we claim* | The build stands on its own and the league requirement is genuinely under way rather than untried |
 | §3 is still `0` | **75** | A threshold requirement is unmet. Claiming a high number over an empty games table invites the reader to check, and they will |
 
-**As of 2026-08-16 the top row is available: two counted games against two
-different groups, both filed and cross-diffed with the opponent.** The operator
-chose 85 on 2026-08-18 rather than the 90 the table allows. `fill_submission.py`
+**As of 2026-08-20 the top row is available with margin: three counted games
+against three different groups, all filed and each cross-diffed with the
+opponent.** The operator chose 85 on 2026-08-18 rather than the 90 the table
+allows, and did not revise it upward after the third game — a team may always
+mark itself down. `fill_submission.py`
 enforces the ceiling and not the claim -- it raises rather than print a number
 above what the games table supports, and accepts any number below it, because
 claiming less is never the direction a grader has to check.
@@ -277,15 +325,21 @@ empty game table will read as one that was not checked.
       2026-08-06: it is **2**, fixed and non-negotiable
 - [x] Play counted games against **2 different teams** (rule 52 caps counted
       games at one per opponent, so 2 teams is structural, not optional).
-      **2 of 2 done**: `imreeyal`, 2026-08-15, 47–47 tie; `gal-roy1`,
-      2026-08-16, lost 30–90 over six sub-games. Both pairings are spent under
-      rule 52. `anrbj666` is the only one that could have added a third, and
-      that was **declined on 2026-08-18** — see §3
-- [x] Annotated tag on both: `v1.0-submission`, 2026-08-18 (rule 41) — cut
-      after the last counted game and after the third was declined, so the tag
-      names the tree that was actually submitted
+      **3 of 2 done**: `imreeyal`, 2026-08-15, 47–47 tie; `gal-roy1`,
+      2026-08-16, lost 30–90; `anrbj666`, 2026-08-20, lost 30–90. All three
+      pairings are now spent under rule 52. The anrbj666 series was declined on
+      2026-08-18 on reasoning we later retracted, then played after both
+      operators declared it counted in writing — see §3
+- [x] Annotated tag on both: `v1.0-submission` (rule 41). **Re-cut
+      2026-08-20** after the anrbj666 counted series, the ledger fix and the
+      defect record landed. The 2026-08-18 tag named a tree that predated a
+      counted game, so it no longer named what was submitted — a tag that
+      lies about its own scope is worse than no tag
 - [x] Copy the six personal-data values from `best2934-ex01.pdf` into the
       `.docx` (§2) — they are deliberately not in this repository, and are
       injected by a script that lives outside both of them
-- [ ] Attach the match artifacts for every counted game
+- [x] Attach the match artifacts for every counted game — archived under
+      `artifacts/counted/<opponent>-<date>-COUNTED-filed/` in whichever
+      repository played each half, force-added past `.gitignore` so the repos
+      hold the evidence rules 49/53 grade
 - [ ] Export to PDF and submit **once per member** in Moodle
