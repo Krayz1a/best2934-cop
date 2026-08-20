@@ -1,0 +1,236 @@
+{
+  "_schema": "Summary and final result for the WHOLE game (all sub-games) between two teams: per-sub-game scores and the aggregate outcome used to build the league standings. Both teams must agree on this result and each sends its own copy to the lecturer (book ch9).",
+  "schema_version": "1.1",
+  "report_type": "final_game_result",
+  "game_id": "anrbj666-vs-best2934",
+  "game_uid": "c82e9a5f-8800-85da-eea6-2b57b4fab4f6",
+  "links": {
+    "_remark": "Logical roles, NOT fixed filenames. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json.",
+    "declaration": "declaration_anrbj666-vs-best2934.json",
+    "config": "config_anrbj666-vs-best2934_g<NN>.json",
+    "log": "log_anrbj666-vs-best2934_g<NN>.json",
+    "result": "result_anrbj666-vs-best2934.json",
+    "github": {
+      "best2934": {
+        "cop": "https://github.com/Krayz1a/best2934-cop",
+        "thief": "https://github.com/Krayz1a/best2934-thief"
+      },
+      "anrbj666": {}
+    }
+  },
+  "timezone": "Asia/Jerusalem",
+  "groups": [
+    "anrbj666",
+    "best2934"
+  ],
+  "num_sub_games": 6,
+  "sub_games": [
+    {
+      "sub_game_number": 1,
+      "roles": {
+        "best2934": "thief",
+        "anrbj666": "police"
+      },
+      "started_at": "2026-08-20T19:37:00.247365+00:00",
+      "ended_at": "2026-08-20T19:43:13.598272+00:00",
+      "result": "capture",
+      "winner_group": "anrbj666",
+      "tie": false,
+      "github_commit": {
+        "best2934": "1ac172e227da613fbc36f8da0f9e77b120ab4080"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "anrbj666": 20
+      },
+      "log_files": {
+        "best2934": "log_anrbj666-vs-best2934_g01.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 2,
+      "roles": {
+        "best2934": "police",
+        "anrbj666": "thief"
+      },
+      "started_at": "2026-08-20T19:43:59.057693+00:00",
+      "ended_at": "2026-08-20T19:44:25.741095+00:00",
+      "result": "survival",
+      "winner_group": "anrbj666",
+      "tie": false,
+      "github_commit": {
+        "best2934": "74b50ff2e4eb44eb5a46f198256fa5ea7c040029"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "anrbj666": 10
+      },
+      "log_files": {
+        "best2934": "log_anrbj666-vs-best2934_g02.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 3,
+      "roles": {
+        "best2934": "thief",
+        "anrbj666": "police"
+      },
+      "started_at": "2026-08-20T19:45:11.331637+00:00",
+      "ended_at": "2026-08-20T19:45:23.247105+00:00",
+      "result": "capture",
+      "winner_group": "anrbj666",
+      "tie": false,
+      "github_commit": {
+        "best2934": "1ac172e227da613fbc36f8da0f9e77b120ab4080"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "anrbj666": 20
+      },
+      "log_files": {
+        "best2934": "log_anrbj666-vs-best2934_g03.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 4,
+      "roles": {
+        "best2934": "police",
+        "anrbj666": "thief"
+      },
+      "started_at": "2026-08-20T19:46:08.696616+00:00",
+      "ended_at": "2026-08-20T19:46:33.218058+00:00",
+      "result": "survival",
+      "winner_group": "anrbj666",
+      "tie": false,
+      "github_commit": {
+        "best2934": "74b50ff2e4eb44eb5a46f198256fa5ea7c040029"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "anrbj666": 10
+      },
+      "log_files": {
+        "best2934": "log_anrbj666-vs-best2934_g04.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 5,
+      "roles": {
+        "best2934": "thief",
+        "anrbj666": "police"
+      },
+      "started_at": "2026-08-20T19:47:18.779051+00:00",
+      "ended_at": "2026-08-20T19:47:27.429326+00:00",
+      "result": "capture",
+      "winner_group": "anrbj666",
+      "tie": false,
+      "github_commit": {
+        "best2934": "1ac172e227da613fbc36f8da0f9e77b120ab4080"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "anrbj666": 20
+      },
+      "log_files": {
+        "best2934": "log_anrbj666-vs-best2934_g05.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    },
+    {
+      "sub_game_number": 6,
+      "roles": {
+        "best2934": "police",
+        "anrbj666": "thief"
+      },
+      "started_at": "2026-08-20T19:48:12.821871+00:00",
+      "ended_at": "2026-08-20T19:48:34.807431+00:00",
+      "result": "survival",
+      "winner_group": "anrbj666",
+      "tie": false,
+      "github_commit": {
+        "best2934": "74b50ff2e4eb44eb5a46f198256fa5ea7c040029"
+      },
+      "tokens": {
+        "best2934": 0
+      },
+      "score": {
+        "best2934": 5,
+        "anrbj666": 10
+      },
+      "log_files": {
+        "best2934": "log_anrbj666-vs-best2934_g06.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    }
+  ],
+  "final_result": {
+    "total_score": {
+      "best2934": 30,
+      "anrbj666": 90
+    },
+    "sub_games_won": {
+      "best2934": 0,
+      "anrbj666": 6
+    },
+    "ties": 0,
+    "winner_group": "anrbj666",
+    "series_tie": false,
+    "tokens_total_series": {
+      "best2934": 0,
+      "anrbj666": 0
+    },
+    "games_played_including_this": {
+      "best2934": 3,
+      "anrbj666": 4
+    },
+    "first_meeting_between_groups": true,
+    "diversity_reward_applied": {
+      "best2934": false,
+      "anrbj666": true
+    }
+  },
+  "mutual_agreement": {
+    "sha256": "f9aa522dbad27f72b4499f1e3e30e30e29e8ddbd4e09d5b4f4f9cfea637882d0",
+    "scope": "league trimmed scope -- game_id, derived aggregate, and the five-key per sub-game row (sub_game_number, roles, result, winner_group, score); spaced canonical form (copthief-league-protocol SPEC section 6)",
+    "own_form_sha256": "1046cdae2f3773fd6998b4320e08ff49e9eecd350fff199791313cc4b4d9433f",
+    "own_form_scope": "agreed_summary: game_id, sorted group_ids, per sub-game roles/result/winner/tie/scores, and derived totals",
+    "confirmed": false
+  }
+}

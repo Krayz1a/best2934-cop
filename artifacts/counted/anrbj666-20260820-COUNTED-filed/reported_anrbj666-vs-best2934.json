@@ -1,0 +1,11 @@
+{
+  "_schema": "Receipt for the automatic counted-series report (rule 32). Its presence prevents a second send.",
+  "game_id": "anrbj666-vs-best2934",
+  "opponent": "anrbj666",
+  "sent": true,
+  "recipient": "rmisegal+uoh26finalgame@gmail.com",
+  "subject": "[UOH26 Final Game] anrbj666-vs-best2934 — best2934 result report",
+  "attachment": "result_anrbj666-vs-best2934.json",
+  "message_id": "1a020b7e1773d1ad",
+  "reason": ""
+}
