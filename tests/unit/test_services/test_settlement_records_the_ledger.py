@@ -40,12 +40,24 @@ def _result(tmp_path, game_id="best2934-vs-imreeyal", sub_games=6):
 
 @pytest.fixture
 def ledger(monkeypatch, tmp_path):
-    """Point the ledger at the sandbox and capture sends."""
-    root = tmp_path / "artifacts"
-    root.mkdir()
-    monkeypatch.setattr("p2pchase.services.settlement_report.artifacts_dir",
-                        lambda counted=False: root)
-    return root
+    """Point the TEAM-LEVEL ledger at the sandbox.
+
+    This used to monkeypatch `settlement_report.artifacts_dir`, because the
+    writer was handed a directory. It no longer is -- the ledger lives in
+    `config/` and the writer resolves it itself -- so patching that name would
+    sandbox nothing and every test here would append to the REAL repository
+    ledger. Rule 52's dedupe is the only reason that was survivable when it
+    happened on 2026-08-20; a test with a new opponent name would have written
+    a false counted game into a committed file.
+    """
+    path = tmp_path / "counted_games.json"
+    # Written empty rather than left absent: a missing ledger falls back to the
+    # LEGACY `artifacts/counted_games.json`, so an absent sandbox file silently
+    # reads the real repository's stale one and the assertions here would be
+    # about our actual counted history instead of this test's.
+    path.write_text("[]", encoding="utf-8")
+    monkeypatch.setenv("P2PCHASE_COUNTED_LEDGER", str(path))
+    return path
 
 
 @pytest.fixture
@@ -65,15 +77,15 @@ def test_a_settled_counted_series_enters_the_ledger(peer_config, tmp_path, ledge
     settlement_report.fire_if_settled(peer_config, "imreeyal", _result(tmp_path),
                                       counted=True)
 
-    assert counted_opponents(ledger) == ["imreeyal"]
-    assert counted_games_played(ledger) == 1
+    assert counted_opponents() == ["imreeyal"]
+    assert counted_games_played() == 1
 
 
 def test_a_friendly_never_enters_the_ledger(peer_config, tmp_path, ledger, sent):
     settlement_report.fire_if_settled(peer_config, "imreeyal", _result(tmp_path),
                                       counted=False)
 
-    assert counted_opponents(ledger) == []
+    assert counted_opponents() == []
 
 
 def test_an_incomplete_series_never_enters_the_ledger(peer_config, tmp_path, ledger,
@@ -82,7 +94,7 @@ def test_an_incomplete_series_never_enters_the_ledger(peer_config, tmp_path, led
     settlement_report.fire_if_settled(peer_config, "imreeyal",
                                       _result(tmp_path, sub_games=3), counted=True)
 
-    assert counted_opponents(ledger) == []
+    assert counted_opponents() == []
 
 
 def test_a_failed_send_still_records_the_game(peer_config, tmp_path, ledger,
@@ -101,7 +113,7 @@ def test_a_failed_send_still_records_the_game(peer_config, tmp_path, ledger,
     settlement_report.fire_if_settled(peer_config, "imreeyal", _result(tmp_path),
                                       counted=True)
 
-    assert counted_opponents(ledger) == ["imreeyal"]
+    assert counted_opponents() == ["imreeyal"]
 
 
 def test_rule_52_keeps_the_count_at_one_per_opponent(peer_config, tmp_path, ledger,
@@ -113,8 +125,8 @@ def test_rule_52_keeps_the_count_at_one_per_opponent(peer_config, tmp_path, ledg
             missing_ok=True)
         settlement_report.fire_if_settled(peer_config, "imreeyal", path, counted=True)
 
-    assert counted_opponents(ledger) == ["imreeyal"]
-    assert counted_games_played(ledger) == 1
+    assert counted_opponents() == ["imreeyal"]
+    assert counted_games_played() == 1
 
 
 def test_two_different_opponents_both_count(peer_config, tmp_path, ledger, sent):
@@ -125,4 +137,4 @@ def test_two_different_opponents_both_count(peer_config, tmp_path, ledger, sent)
         peer_config, "gal-roy1", _result(tmp_path, "best2934-vs-gal-roy1"),
         counted=True)
 
-    assert counted_games_played(ledger) == 2
+    assert counted_games_played() == 2

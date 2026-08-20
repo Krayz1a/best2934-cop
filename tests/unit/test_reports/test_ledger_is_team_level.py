@@ -24,8 +24,11 @@ same field in a counted series is a false declaration under rule 38.
 from __future__ import annotations
 
 import json
+import pathlib
 
+from p2pchase.reports.history import record_counted_game
 from p2pchase.reports.standings import standings_block
+from p2pchase.services import settlement_report
 
 
 def _played(directory=None, **kw):
@@ -71,3 +74,35 @@ def test_a_counted_series_adds_itself_to_the_team_count(tmp_path, monkeypatch):
     monkeypatch.setenv("P2PCHASE_COUNTED_LEDGER", str(team))
 
     assert _played(counted=True) == 3
+
+
+# --------------------------------------------------- and the WRITER, 2026-08-20
+def test_a_settled_counted_series_is_recorded_where_the_reader_looks(tmp_path,
+                                                                     monkeypatch):
+    """The reader moved to `config/` and the WRITER was left behind too.
+
+    `standings_block` was fixed on 2026-08-18. `record_counted_game` was not:
+    `fire_if_settled` still handed it `artifacts_dir()`, so a settled counted
+    series was appended to the per-repository ledger while every reader looked
+    at the team-level one. After the anrbj666 counted series the two files held
+    `["imreeyal", "gal-roy1"]` and `["imreeyal", "anrbj666"]` -- three games
+    played and neither file knew it.
+
+    Under-reporting a counted count is a false declaration under rule 38 in
+    exactly the way over-reporting is.
+    """
+    ledger = tmp_path / "counted_games.json"
+    ledger.write_text(json.dumps(["imreeyal", "gal-roy1"]), encoding="utf-8")
+    monkeypatch.setenv("P2PCHASE_COUNTED_LEDGER", str(ledger))
+
+    record_counted_game("anrbj666")
+
+    assert json.loads(ledger.read_text(encoding="utf-8")) == [
+        "imreeyal", "gal-roy1", "anrbj666"]
+
+
+def test_the_writer_is_never_handed_a_directory_by_the_settlement_path():
+    """Pins the call site itself, because that is what regressed twice."""
+    source = pathlib.Path(settlement_report.__file__).read_text(encoding="utf-8")
+    assert "record_counted_game(opponent)" in source
+    assert "record_counted_game(opponent, artifacts_dir())" not in source

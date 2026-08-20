@@ -39,7 +39,6 @@ from typing import Any
 
 from ..reports.history import record_counted_game
 from ..reports.naming import write_json
-from ..shared.paths import artifacts_dir
 from ..shared.peer_config import PeerConfig
 from .reporting_service import DeliveryReceipt, ReportingService
 
@@ -101,10 +100,17 @@ def fire_if_settled(config: PeerConfig, opponent: str, result_path: Path,
     # rules 37-38. anrbj666 found it on league issue #49 by reading the output
     # of a check we posted to prove something else.
     #
-    # The ledger lives at the FRIENDLY artifacts root deliberately: it is a
-    # team-level record, not a per-series artifact, so it must survive a
-    # settled series being archived out of the live tree.
-    record_counted_game(opponent, artifacts_dir())
+    # No directory: the team-level ledger lives in `config/`, which is
+    # role-independent, committed and synced between the two repositories.
+    # Passing `artifacts_dir()` here wrote the PER-REPOSITORY ledger instead --
+    # the same wrong-directory bug already fixed in `standings_block`, left
+    # behind at this call site. It split the record in half: after the
+    # anrbj666 counted series on 2026-08-20 the config ledger read
+    # ["imreeyal", "gal-roy1"] and the artifacts one read
+    # ["imreeyal", "anrbj666"], so neither file knew we had played three.
+    # A count we under-report is a false declaration under rule 38 exactly as
+    # much as one we inflate.
+    record_counted_game(opponent)
 
     LOGGER.warning("SERIES SETTLED -- firing the counted report to %s (rule 32)",
                    config.email["recipient"])
